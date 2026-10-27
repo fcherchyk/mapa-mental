@@ -1,0 +1,2 @@
+name: mapa-mental
+test_command: python -m pytest -q
