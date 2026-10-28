@@ -1,0 +1,4 @@
+<!-- claude · claude-sonnet-5-5 · familia anthropic -->
+
+- Web: API Python (FastAPI) + SPA TypeScript/React (Vite). Así el backend sigue en el lenguaje por defecto, el frontend queda separado de la API y una app móvil futura puede reutilizar la misma API.
+- Base de datos por defecto: PostgreSQL. Cubre datos relacionales y jsonb, soporta consultas recursivas de árboles y migraciones, y evita decidir de nuevo en cada proyecto.
