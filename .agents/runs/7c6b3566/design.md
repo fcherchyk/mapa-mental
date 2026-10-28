@@ -4,154 +4,134 @@
 
 ## Decisiones abiertas
 
-**1. ¿Qué stack web usamos (backend + frontend)?** `[candidata a estándar]`
-- A) Backend FastAPI (Python) que expone una API JSON, y frontend SPA en TypeScript + React (Vite). Respeta el estándar Python y una futura app puede usar la misma API; el costo es manejar dos lenguajes.
-- B) Django + HTMX. Todo queda en Python, pero un lienzo interactivo de mapa mental igual exige mucho JS, y el HTML que arma el servidor no le sirve a una app móvil.
-- C) Todo en TypeScript (Next.js). Un solo lenguaje, pero rompe el estándar Python.
-- **Recomiendo A.** El estándar de Python sigue valiendo para el backend, y el frontend en TS se justifica porque la interacción del lienzo tiene que correr en el navegador. Si lo aprobás, propongo agregar a `codigo.md`: "Web: API Python (FastAPI) + SPA TypeScript/React".
-
-**2. ¿Con qué dibujamos el mapa en pantalla?**
-- A) React Flow (xyflow, MIT). Ya trae zoom, desplazamiento y nodos a medida por tipo. Es una dependencia, pero madura.
-- B) SVG propio + `d3-hierarchy` para calcular la disposición. Control total, pero bastante más trabajo (zoom, selección, edición).
-- C) Una biblioteca de mapas mentales lista (Mind Elixir, jsMind). Es lo más rápido, pero cuesta meterle nodos de tipo documento, tarea, etc.
-- **Recomiendo A.** Es la que mejor soporta tipos de nodo distintos más adelante.
-
-**3. ¿Dónde se ubican los nodos en el lienzo?**
-- A) Disposición automática: árbol horizontal desde la raíz y el usuario solo ordena los hijos. Es simple, siempre prolijo y anda bien en celular.
-- B) Posición libre: el usuario arrastra cada nodo. Más flexible, pero hay que guardar coordenadas y el mapa se desordena.
-- C) Automática, con la opción de "fijar" la posición de algunos nodos. Lo mejor de las dos, con más complejidad.
-- **Recomiendo A en el primer corte.** C se puede sumar después sin migrar: la posición iría en `props`.
-
-**4. ¿Dónde guardamos los mapas?** `[candidata a estándar]`
-- A) PostgreSQL propio. Permite consultas, control de concurrencia y cruzar datos con las integraciones; a cambio, los datos del usuario quedan en nuestra base.
-- B) Un archivo JSON en el Drive del usuario (`appDataFolder`). Los datos quedan del lado del usuario, pero no hay consultas, la latencia es alta y hay conflictos si edita en dos pestañas.
-- C) SQLite. Lo más simple, pero se complica con hosting de varias instancias.
-- **Recomiendo A.** Si lo aprobás, la base por defecto del workspace sería PostgreSQL.
-
-**5. ¿Dónde lo alojamos?** `[candidata a estándar]`
-- A) Google Cloud Run + Cloud SQL + Secret Manager. Es el mismo proyecto de GCP que ya necesitamos para OAuth y escala a cero, pero Cloud SQL cuesta unos USD 10/mes como mínimo.
-- B) Render o Fly.io con Postgres administrado. Es lo más simple de operar y barato, pero suma un proveedor más.
-- C) Un VPS propio con docker compose. Lo más barato, pero el mantenimiento queda de tu lado.
-- **Recomiendo A.** Ya vamos a tener un proyecto de Google sí o sí, así que no se suma ningún proveedor.
+Las 6, 7 y 8 no te llegaron porque se cortó el mensaje. Mantengo la numeración para que no se mezclen con las que ya respondiste.
 
 **6. ¿Cómo manejamos la sesión y los tokens de Google?** `[candidata a estándar]`
-- A) El backend hace de intermediario (patrón BFF): ejecuta el flujo OAuth, guarda los tokens del lado del servidor y al navegador solo le da una cookie de sesión `HttpOnly`.
+- A) El backend hace de intermediario (patrón BFF): corre el flujo OAuth, guarda los tokens en el servidor y al navegador solo le da una cookie de sesión `HttpOnly`.
 - B) Los tokens viven en el navegador (Google Identity Services) y el backend solo valida el ID token. Es más simple, pero un ataque XSS puede robar los tokens de Drive y no se puede trabajar en segundo plano.
-- **Recomiendo A.** La futura app móvil puede usar el mismo backend con OAuth + PKCE.
+- **Recomiendo A.** Una futura app móvil puede usar el mismo backend con OAuth + PKCE.
 
 **7. ¿Qué permisos de Google pedimos en el primer corte?** `[candidata a estándar]`
 - A) Solo `openid email profile`. `drive.file` se pide con autorización incremental recién cuando llegue el nodo tipo documento. Es el mínimo, pero no cumple al pie de la letra el pedido de dar acceso a Drive en el login.
 - B) `drive.file` desde el login. No es un scope sensible y solo da acceso a los archivos que el usuario elija o que cree la app, pero el primer corte no lo usa.
-- C) `drive.readonly`. Ve todo el Drive, pero es un scope *restringido*: Google exige una auditoría de seguridad (CASA) que es cara y lenta.
-- **Recomiendo A.** Pedir el permiso en el primer corte no aporta nada, y la autorización incremental no cuesta nada después. Si querés que el permiso ya aparezca en el login, B. Como estándar: "scopes mínimos + autorización incremental".
+- C) `drive.readonly`. Ve todo el Drive, pero es un scope restringido: Google exige una auditoría de seguridad (CASA), cara y lenta.
+- **Recomiendo A.** Pedirlo ahora no aporta nada y pedirlo después no cuesta nada. Si querés que el permiso de Drive ya aparezca en el login, elegí B. Como estándar quedaría: "scopes mínimos + autorización incremental".
 
 **8. ¿Cuántos mapas tiene un usuario y se van a compartir?**
-- A) Varios mapas por usuario, cada uno con un único dueño, sin compartir por ahora. Es simple; pasar a "miembros" después es una migración chica.
-- B) Un solo mapa por usuario; se organiza con ramas desde la raíz. Lo más simple, pero limita.
+- A) Varios mapas por usuario, cada uno con un único dueño y sin compartir por ahora. Es simple; pasar a "miembros" después es una migración chica.
+- B) Un solo mapa por usuario, organizado en ramas desde la raíz. Es lo más simple, pero limita.
 - C) Varios mapas con tabla de miembros y roles desde el inicio. Habilita compartir, pero suma complejidad que hoy nadie pidió.
 - **Recomiendo A.**
 
+**9. ¿Pasamos ya a `codigo.md` los estándares que aprobaste (1 y 4)?** `[candidata a estándar]`
+- A) Sí, ahora: "Web: API Python (FastAPI) + SPA TypeScript/React (Vite)" y "Base de datos por defecto: PostgreSQL". El próximo proyecto ya arranca con eso.
+- B) Esperar a un segundo proyecto web que lo confirme. Es más prudente, pero el siguiente proyecto vuelve a discutir lo mismo.
+- **Recomiendo A.** React Flow (2) y la disposición automática (3) quedan solo para este proyecto. Correr en local (5) también, porque es una decisión de esta etapa y no del workspace.
+
 ## Resumen
 
-Una aplicación web para que una persona con cuenta de Google arme mapas mentales: cree ideas, las organice en árbol, expanda y colapse ramas y navegue el mapa con mouse, tacto o teclado. El primer corte solo tiene nodos "idea" con título. El modelo y el backend ya están pensados para que un nodo pueda ser después un documento de Drive, una planilla, un evento, una tarea o un repositorio, y para que una app móvil use la misma API.
+Una aplicación web para que una persona con cuenta de Google arme mapas mentales: crea ideas, las organiza en árbol, expande y colapsa ramas y navega el mapa con mouse, tacto o teclado. El primer corte solo tiene nodos "idea" con título y corre en local con docker compose. El modelo y la API ya contemplan que un nodo sea después un documento de Drive, una planilla, un evento, una tarea o un repositorio, y que una app móvil use el mismo backend.
 
 ## Componentes
 
 ```
-[SPA React/TS] --HTTPS + cookie de sesión--> [API FastAPI] --> [PostgreSQL]
-                                                   |
-                                                   +--> Google OAuth (login)
-                                                   +--> (futuro) Drive / Calendar / Trello / GitHub
+[SPA React/TS (Vite)] --HTTP local + cookie de sesión--> [API FastAPI] --> [PostgreSQL]
+                                                               |
+                                                               +--> Google OAuth (login)
+                                                               +--> (futuro) Drive / Calendar / Trello / GitHub
 ```
 
+- **Entorno local (docker compose)**
+  - Tres servicios: `db` (PostgreSQL 16 con volumen persistente), `api` (FastAPI con recarga en caliente) y `web` (servidor de desarrollo de Vite).
+  - Vite redirige `/api` al backend, así que todo sale del mismo origen (`http://localhost:5173`) y no hace falta CORS.
 - **Frontend (SPA)**
-  - `MapCanvas`: React Flow con la disposición automática calculada en el cliente.
-  - `NodeRenderer`: elige el componente según el tipo de nodo (`kind`); en el primer corte solo existe `IdeaNode`.
-  - Atajos de teclado: Tab crea un hijo, Enter crea un hermano, las flechas navegan, Espacio colapsa o expande, F2 renombra y Supr borra.
-  - Estado local con `useReducer` y actualizaciones optimistas: la interfaz cambia antes de que confirme el servidor y vuelve atrás si falla.
+  - `MapCanvas`: React Flow, con la disposición automática (árbol horizontal) calculada en el cliente.
+  - `NodeRenderer`: elige el componente según `kind`; en el primer corte solo existe `IdeaNode`.
+  - Teclado: Tab crea un hijo, Enter crea un hermano, las flechas navegan, Espacio colapsa o expande, F2 renombra y Supr borra.
+  - Estado con `useReducer` y actualizaciones optimistas: la interfaz cambia antes de que confirme el servidor y vuelve atrás si falla.
   - Cliente de la API tipado a partir del OpenAPI de FastAPI.
 - **Backend (FastAPI, Python 3.12)**
-  - `auth`: login, callback de OAuth, logout y `/me`, con sesiones en la base.
+  - `auth`: login, callback de OAuth, logout y `/me`.
   - `maps`: servicio y repositorio de mapas y nodos.
-  - `node_types`: registro de tipos de nodo, cada uno con su esquema Pydantic para `props`; el primer corte solo trae `idea`.
-  - `integrations` (vacío en el primer corte): una interfaz `Provider` por servicio externo (resolver referencias, refrescar metadatos).
+  - `node_types`: registro de tipos de nodo, cada uno con su esquema Pydantic para `props`; en el primer corte solo está `idea`.
+  - `integrations` (vacío en el primer corte): una interfaz `Provider` por servicio externo.
   - SQLAlchemy 2 + Alembic para los modelos y las migraciones.
 - **API REST**
-  - `GET/POST /maps`, `GET/PATCH/DELETE /maps/{id}`. El `GET` devuelve el árbol completo, que alcanza para mapas de hasta miles de nodos.
+  - `GET/POST /maps` y `GET/PATCH/DELETE /maps/{id}`. El `GET` devuelve el árbol completo.
   - `POST /maps/{id}/nodes`.
-  - `PATCH /nodes/{id}`: título, `collapsed`, `parent_id`, `sort_key`.
-  - `DELETE /nodes/{id}`: borra el nodo con todo su subárbol.
-  - Concurrencia optimista: el cliente manda la `version` que conoce y, si cambió, el servidor responde `409`.
+  - `PATCH /nodes/{id}`: `title`, `collapsed`, `parent_id`, `sort_key`.
+  - `DELETE /nodes/{id}`: borra el nodo y todo su subárbol.
+  - Concurrencia optimista con `version`: si el cliente manda una versión vieja, el servidor responde `409`.
 
 ## Modelo de datos
 
 - **users**: `id` (uuid), `google_sub` (único), `email`, `name`, `avatar_url`, `created_at`.
-- **sessions**: `id` (token aleatorio, guardado como hash), `user_id`, `expires_at`, `created_at`. Están en la base para poder revocarlas.
+- **sessions**: `id` (hash de un token aleatorio), `user_id`, `expires_at`, `created_at`.
 - **maps**: `id`, `owner_id`, `title`, `created_at`, `updated_at`.
 - **nodes**:
   - `id` (uuid), `map_id`, `parent_id` (vacío solo en la raíz);
-  - `kind` (texto, `'idea'`);
-  - `title`;
-  - `sort_key` (texto, con índices fraccionarios para reordenar sin renumerar a los hermanos);
+  - `kind` (texto, `'idea'`) y `title`;
+  - `sort_key` (texto, índice fraccionario para reordenar sin renumerar a los hermanos);
   - `collapsed` (booleano);
   - `props` (jsonb, `{}` por defecto);
-  - `version` (entero), `created_at`, `updated_at`.
+  - `version`, `created_at`, `updated_at`.
   - Índices: `(map_id)` y `(parent_id, sort_key)`.
 
 **Cómo crece sin migraciones dolorosas:**
-- `kind` es texto, no un enum de la base. Un tipo nuevo es un valor nuevo más un esquema Pydantic para `props`, sin tocar la base.
-- Los datos propios de cada tipo (fecha del evento, estado de la tarea, posición fijada) van en `props`, y se validan en el backend según `kind`.
-- Las referencias a sistemas externos van en una tabla aparte, que se crea en el corte 2:
-  - **external_refs**: `node_id`, `provider` (`google_drive`, `trello`, `github`…), `external_id`, `url`, `metadata` (jsonb, caché), `synced_at`.
-- Los permisos por proveedor también van en una tabla aparte, que se crea en el corte 2:
-  - **oauth_grants**: `user_id`, `provider`, `scopes`, `refresh_token_enc`, `updated_at`.
-- Si más adelante hacen falta enlaces entre ramas (grafo, no solo árbol), se suma una tabla `edges` sin tocar `nodes`.
+- `kind` es texto y no un enum de la base: un tipo nuevo es un valor nuevo más un esquema Pydantic.
+- Los datos propios de cada tipo (fecha, estado de una tarea, posición fijada) van en `props`, validados según `kind`.
+- Corte 2: **external_refs** (`node_id`, `provider`, `external_id`, `url`, `metadata` jsonb, `synced_at`).
+- Corte 2: **oauth_grants** (`user_id`, `provider`, `scopes`, `refresh_token_enc`, `updated_at`).
+- Si hacen falta enlaces entre ramas (un grafo y no solo un árbol), se suma una tabla `edges` sin tocar `nodes`.
 
 ## Integraciones
 
-- **Google OAuth 2.0** (Authorization Code, del lado del servidor, con Authlib). La dependencia se justifica porque implementar OAuth/OIDC a mano con la biblioteca estándar es propenso a errores de seguridad.
-  - Primer corte, según la decisión 7: `openid email profile`.
-  - La pantalla de consentimiento necesita nombre de la app, dominio y política de privacidad. Con scopes básicos o `drive.file` no hace falta la verificación de scopes sensibles.
-- **Corte 2**: Google Picker + `drive.file`, pedido de forma incremental y solo en el momento de crear un nodo tipo documento.
-- **Más adelante**: Calendar (`calendar.events.readonly` o el que alcance), Trello y GitHub. Cada uno tiene su propio flujo OAuth y su fila en `oauth_grants`, y se pide solo cuando el usuario conecta ese servicio.
+- **Google OAuth 2.0**: Authorization Code del lado del servidor, con Authlib. La dependencia se justifica porque hacer OIDC a mano con la biblioteca estándar es riesgoso.
+  - URI de redirección: `http://localhost:5173/api/auth/callback`. Google acepta `localhost` sin HTTPS.
+  - La app de OAuth queda en modo *Testing*: hay que dar de alta a los usuarios de prueba (tu cuenta) y no hace falta verificar la app.
+  - Ojo: en modo *Testing* los refresh tokens vencen a los 7 días. No afecta al primer corte, pero sí al corte 2 (Drive).
+  - Scopes según la decisión 7.
+- **Corte 2**: Google Picker + `drive.file`, pedido de forma incremental al crear el primer nodo documento.
+- **Más adelante**: Calendar, Trello y GitHub, cada uno con su propio OAuth y su fila en `oauth_grants`, pedido solo cuando el usuario conecta ese servicio.
 
 ## Seguridad y datos
 
-- **Datos**: los mapas viven en PostgreSQL. Del lado de Google, el primer corte solo guarda identidad (`sub`, email, nombre).
-- **Secretos**: solo por variables de entorno (en producción, cargadas desde Secret Manager): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `DATABASE_URL`. A partir del corte 2 se suma `TOKEN_ENCRYPTION_KEY`.
-- **Tokens de Google**: con la opción 7A, el primer corte no guarda ninguno. Desde el corte 2, los refresh tokens se guardan cifrados (Fernet, con la biblioteca `cryptography`) y nunca llegan al navegador.
+- **Datos**: en el PostgreSQL local (un volumen de docker). De Google solo se guarda identidad: `sub`, email y nombre.
+- **Secretos**: variables de entorno cargadas desde un `.env` que está en `.gitignore`; el repo trae un `.env.example`.
+  - Variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `DATABASE_URL`.
+  - Desde el corte 2 se suma `TOKEN_ENCRYPTION_KEY`.
+- **Tokens de Google**: con 7A, el primer corte no guarda ninguno. Desde el corte 2, los refresh tokens se cifran con Fernet (`cryptography`) y nunca llegan al navegador.
 - **Sesión**:
-  - Cookie `HttpOnly`, `Secure`, `SameSite=Lax`, con vencimiento por inactividad.
-  - Defensa contra CSRF: además de SameSite, la API exige un header propio en las mutaciones.
+  - Cookie `HttpOnly` y `SameSite=Lax`. `Secure` se configura por variable de entorno: apagado en `localhost` y obligatorio si algún día se expone.
+  - Header propio obligatorio en las mutaciones, como defensa contra CSRF.
   - `state` y `nonce` en el flujo OAuth.
 - **Riesgos**:
   - *Acceso a datos ajenos (IDOR)*: cada consulta filtra por `owner_id`, con tests específicos.
-  - *XSS*: React escapa los títulos, nunca se renderiza HTML del usuario y se configura una CSP estricta.
-  - *Abuso*: límites de largo del título, cantidad de nodos por mapa y frecuencia de pedidos.
-  - *Pérdida de datos*: backups automáticos de la base.
-- **Privacidad**: la app permite borrar la cuenta con todos sus datos, porque las políticas de Google lo exigen.
+  - *XSS*: React escapa los títulos, nunca se renderiza HTML del usuario y hay CSP.
+  - *Pérdida de datos*: con todo en local, el riesgo es perder el volumen. Hay un script `pg_dump` para backups manuales.
+  - *Exposición accidental*: los puertos de docker se publican solo en `127.0.0.1`.
+- **Privacidad**: endpoint para borrar la cuenta con todos sus datos (Google lo exige si la app se publica).
 
 ## Cortes de entrega
 
-1. **Primer corte**:
-   - login con Google;
-   - lista de mapas;
-   - crear, renombrar y borrar nodos "idea";
-   - expandir y colapsar;
-   - navegar con teclado, zoom y desplazamiento;
-   - persistencia y deploy.
-2. Reordenar y mover nodos de rama (arrastrar), y nodo "documento de Drive" con Picker + `drive.file` incremental.
-3. Más tipos de Google: planilla y evento de calendario, con vista previa y metadatos en caché.
-4. Nodos "tarea" y "proyecto", e integraciones con Trello y GitHub vía `oauth_grants` y `external_refs`.
-5. App móvil (PWA primero; Capacitor o React Native si hace falta) usando la misma API.
+1. **Primer corte**: login con Google, lista de mapas, crear/renombrar/borrar nodos "idea", expandir y colapsar, navegación con teclado, zoom y desplazamiento, y persistencia en PostgreSQL. Corre con `docker compose up`.
+2. Reordenar y mover nodos de rama (arrastrando), y nodo "documento de Drive" con Picker + `drive.file` incremental.
+3. Planilla y evento de calendario, con vista previa y metadatos en caché.
+4. Nodos "tarea" y "proyecto", e integraciones con Trello y GitHub.
+5. Deploy fuera de local (se decide entonces: VPS, Cloud Run, etc.) y app móvil (PWA primero) sobre la misma API.
 
 ## Decisiones tomadas
 
-- **Backend en Python 3.12+** (estándar `codigo.md`).
+- **1A. Stack: FastAPI + SPA React/TypeScript (Vite)** (tu respuesta). Respeta el estándar Python en el backend; TS se justifica porque la interacción del lienzo corre en el navegador. Propuesta de estándar en la decisión 9.
+- **2A. Lienzo con React Flow** (tu respuesta). Es la opción que mejor soporta tipos de nodo distintos.
+- **3A. Disposición automática en árbol horizontal** (tu respuesta). Fijar posiciones se puede sumar después en `props`, sin migrar.
+- **4A. PostgreSQL** (tu respuesta). Propuesta de estándar en la decisión 9.
+- **5C. Por ahora todo en local con docker compose** (tu respuesta). No hay hosting ni costo; el deploy se decide en un corte posterior. Por eso no se usa Secret Manager y los secretos van en `.env`.
+- **Backend en Python 3.12+** (estándar).
 - **Código y nombres en inglés; comentarios y documentación en español** (estándar).
-- **Tests en cada cambio de comportamiento** (estándar): pytest + httpx en el backend, Vitest en el frontend.
+- **Tests en cada cambio de comportamiento** (estándar): pytest + httpx en el backend y Vitest en el frontend.
 - **Secretos solo en variables de entorno** (estándar).
-- **Dependencias justificadas** (estándar: preferir la biblioteca estándar). FastAPI, SQLAlchemy/Alembic, Authlib, React Flow y, desde el corte 2, `cryptography`. Cada una reemplaza algo que sería caro o riesgoso escribir a mano.
-- **Web primero, con API separada del frontend** (pedido): así la futura app no requiere rehacer el backend.
+- **Dependencias justificadas** (estándar): FastAPI, SQLAlchemy/Alembic, Authlib, React Flow y, desde el corte 2, `cryptography`.
+- **Web primero, con la API separada del frontend** (pedido), para que la app futura no obligue a rehacer el backend.
 - **Login con Google** (pedido).
-- **Nodo con `kind` + `props` extensibles y referencias externas en tabla aparte** (pedido): así se pueden sumar tipos de nodo e integraciones sin migraciones pesadas.
+- **Nodos con `kind` + `props` y referencias externas en una tabla aparte** (pedido), para sumar tipos e integraciones sin migraciones pesadas.
