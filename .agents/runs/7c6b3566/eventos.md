@@ -39,3 +39,7 @@
 - 22:40:18 · estándares agregados a memory/standards/decisiones.md
 - 22:40:18 · paso spec
 - 22:41:25 · spec hecho por claude-readonly/claude-opus-5-5
+- 22:41:25 · gate enviado: Spec del primer corte
+- 22:43:36 · 👤 aprobaste
+- 22:43:36 · paso merge
+- 22:43:36 · merge de agent/7c6b3566 en main
