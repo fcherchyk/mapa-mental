@@ -26,3 +26,7 @@
 - 22:00:48 · 👤 pediste cambios: Apruebo casi todas las recomendaciones: 6, 7 y 9 —> A, paar el 8 un usuario tiene un solo mapa, cada vez que se hace doble click en un nodo se muestra como si ese nodo fuese el raiz, y si se vuelve a hacer doble click se para un nivel mas arriba (salvo en el nivel cero) como mucho deben mostrarse informacion de N niveles (con N configurable) y luego indicar de alguna froma que hay niveles mas abajo pero esos nodos solo podran verse a medida que se navega el arbol hacia los niveles mas detallados
 - 22:00:48 · paso design
 - 22:02:05 · design hecho por claude-readonly/claude-opus-5-5
+- 22:02:05 · gate enviado: Arquitectura propuesta
+- 22:08:11 · 👤 pediste cambios: Apruebo de 10 a 13 la recomendacion A en cada caso. La 14 llegó cortada
+- 22:08:11 · paso design
+- 22:08:57 · design hecho por claude-readonly/claude-opus-5-5
