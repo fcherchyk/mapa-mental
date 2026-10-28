@@ -3,3 +3,8 @@ __pycache__/
 .pytest_cache/
 .env
 .DS_Store
+node_modules/
+web/dist/
+web/coverage/
+.coverage
+htmlcov/

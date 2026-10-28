@@ -10,4 +10,6 @@
 
 **Cómo se corre**: copiar `.env.example` a `.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `DATABASE_URL`) y `docker compose up`; la app queda en `http://localhost:5173`. Tests: pytest (backend) y Vitest (frontend).
 
+**Estructura y comandos**: backend en `api/` (paquete `api/app/`, tests en `api/tests/`, entorno con `uv`) y frontend en `web/` (`pnpm`). Los tests del backend usan PostgreSQL efímero con `testcontainers`, así que Docker (OrbStack) tiene que estar abierto. `setup_command` y `test_command` de `.agents/project.yaml` asumen esta estructura y piden 80% de cobertura en cada lado.
+
 Detalle en `memory/arquitectura.md` y `memory/adr/`.
