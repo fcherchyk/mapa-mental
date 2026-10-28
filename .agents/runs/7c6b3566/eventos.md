@@ -34,3 +34,8 @@
 - 22:37:40 · 👤 aprobaste
 - 22:37:40 · paso record
 - 22:39:19 · record hecho por claude/claude-sonnet-5-5
+- 22:39:19 · gate enviado: Estándares para todos los proyectos
+- 22:40:18 · 👤 aprobaste
+- 22:40:18 · estándares agregados a memory/standards/decisiones.md
+- 22:40:18 · paso spec
+- 22:41:25 · spec hecho por claude-readonly/claude-opus-5-5
