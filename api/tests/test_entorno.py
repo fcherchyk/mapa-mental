@@ -2,13 +2,18 @@
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from sqlalchemy import Engine, inspect, make_url
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.config import DEFAULT_REDIRECT_URI, Config
+from app.models import Map, User
 
 REPO_DIR = Path(__file__).resolve().parents[2]
 ENV_EXAMPLE = REPO_DIR / ".env.example"
@@ -54,6 +59,20 @@ def test_criterio_1_compose_solo_db_y_api_con_puertos_en_localhost() -> None:
             assert port["host_ip"] == "127.0.0.1"
 
 
+def test_criterio_1_compose_config_con_archivo_env_copiado(tmp_path: Path) -> None:
+    env_copy = tmp_path / ".env"
+    shutil.copy(ENV_EXAMPLE, env_copy)
+    result = subprocess.run(
+        ["docker", "compose", "--env-file", str(env_copy), "config", "--format", "json"],
+        cwd=REPO_DIR,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    config = json.loads(result.stdout)
+    assert set(config["services"]) == {"db", "api"}
+
+
 def test_criterio_1_env_example_sin_valores_reales_y_env_fuera_del_repo() -> None:
     values = read_env_example()
 
@@ -74,6 +93,20 @@ def test_criterio_2_migraciones_crean_tablas_unique_e_indices(admin_engine: Engi
     node_indexes = [i["column_names"] for i in inspector.get_indexes("nodes")]
     assert ["map_id"] in node_indexes
     assert ["parent_id", "sort_key"] in node_indexes
+
+
+def test_criterio_2_unique_constraint_en_maps_owner_id_impide_duplicados(db: Session) -> None:
+    user = User(google_sub="sub-unique", email="u@example.com", name="Usuario")
+    db.add(user)
+    db.flush()
+
+    db.add(Map(owner_id=user.id))
+    db.commit()
+
+    db.add(Map(owner_id=user.id))
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
 
 
 def test_criterio_18_la_app_de_tests_usa_el_postgres_de_testcontainers(

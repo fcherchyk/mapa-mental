@@ -108,6 +108,41 @@ def test_criterio_11_raiz_no_tiene_ancestros(client: TestClient) -> None:
     assert window["focus"]["parent_id"] is None
 
 
+def test_criterio_11_hermanos_ordenados_estrictamente_por_sort_key(client: TestClient) -> None:
+    root = root_id(client)
+    parent = add(client, root, "Padre")
+    h1 = add(client, parent["id"], "H1")
+    add(client, parent["id"], "H3")
+    # Insertamos H2 en el medio entre H1 y H3
+    add(client, parent["id"], "H2", after_sort_key=h1["sort_key"])
+
+    window = view(client, parent["id"], depth=1)
+    titles = [n["title"] for n in window["nodes"]]
+    sort_keys = [n["sort_key"] for n in window["nodes"]]
+    assert titles == ["H1", "H2", "H3"]
+    assert sort_keys == sorted(sort_keys)
+
+
+def test_criterio_11_foco_en_hoja_devuelve_nodes_vacio_y_ancestros_completos(
+    client: TestClient, tree: dict[str, dict]
+) -> None:
+    window = view(client, tree["L5"]["id"], depth=2)
+
+    assert window["focus"]["id"] == tree["L5"]["id"]
+    assert window["focus"]["child_count"] == 0
+    assert window["nodes"] == []
+    expected_ancestor_ids = [
+        tree["root"]["id"],
+        tree["A"]["id"],
+        tree["F"]["id"],
+        tree["L1a"]["id"],
+        tree["L2a"]["id"],
+        tree["L3a"]["id"],
+        tree["L4"]["id"],
+    ]
+    assert [a["id"] for a in window["ancestors"]] == expected_ancestor_ids
+
+
 def test_criterio_12_sin_depth_usa_la_preferencia_del_usuario(
     client: TestClient, tree: dict[str, dict]
 ) -> None:
@@ -118,8 +153,18 @@ def test_criterio_12_sin_depth_usa_la_preferencia_del_usuario(
     assert [n["title"] for n in window["nodes"]] == ["L1a", "L1b"]
 
 
-@pytest.mark.parametrize("depth", [0, 11])
-def test_criterio_12_depth_fuera_de_rango_responde_422(client: TestClient, depth: int) -> None:
+def test_criterio_12_depth_valores_limite_1_y_10_son_validos(
+    client: TestClient, tree: dict[str, dict]
+) -> None:
+    w1 = view(client, tree["F"]["id"], depth=1)
+    assert max(n["level"] for n in w1["nodes"]) == 1
+
+    w10 = view(client, tree["F"]["id"], depth=10)
+    assert max(n["level"] for n in w10["nodes"]) == 5
+
+
+@pytest.mark.parametrize("depth", [0, 11, -1, 100, "abc"])
+def test_criterio_12_depth_fuera_de_rango_responde_422(client: TestClient, depth: object) -> None:
     response = client.get(f"/api/nodes/{root_id(client)}/view", params={"depth": depth})
 
     assert response.status_code == 422
@@ -155,6 +200,36 @@ def test_criterio_13_id_inexistente_responde_404(client: TestClient) -> None:
     ]
 
     assert [r.status_code for r in requests] == [404, 404, 404, 404]
+
+
+def test_criterio_13_raiz_ajena_responde_404_a_todas_las_operaciones(
+    login: Callable[..., TestClient],
+) -> None:
+    owner = login(sub="sub-owner", name="Owner")
+    root_owner = root_id(owner)
+    intruder = login(sub="sub-intruder", name="Intruder")
+
+    requests = [
+        intruder.get(f"/api/nodes/{root_owner}/view"),
+        intruder.post(f"/api/nodes/{root_owner}/children", json={"title": "hijo"}, headers=CSRF),
+        intruder.patch(
+            f"/api/nodes/{root_owner}", json={"version": 1, "title": "hack"}, headers=CSRF
+        ),
+        intruder.delete(f"/api/nodes/{root_owner}", headers=CSRF),
+    ]
+
+    assert [r.status_code for r in requests] == [404, 404, 404, 404]
+
+
+def test_criterio_13_id_malformado_no_uuid_responde_422(client: TestClient) -> None:
+    malformed = "no-es-un-uuid"
+    requests = [
+        client.get(f"/api/nodes/{malformed}/view"),
+        client.post(f"/api/nodes/{malformed}/children", json={"title": "x"}, headers=CSRF),
+        client.patch(f"/api/nodes/{malformed}", json={"version": 1, "title": "x"}, headers=CSRF),
+        client.delete(f"/api/nodes/{malformed}", headers=CSRF),
+    ]
+    assert [r.status_code for r in requests] == [422, 422, 422, 422]
 
 
 def test_criterio_14_crear_despues_de_un_hermano_lo_inserta_en_orden(client: TestClient) -> None:
@@ -201,6 +276,29 @@ def test_criterio_14_titulo_vacio_o_largo_responde_422(client: TestClient, title
     assert view(client, root)["focus"]["child_count"] == 0
 
 
+def test_criterio_14_titulo_se_recorta_y_admite_longitud_maxima_200(client: TestClient) -> None:
+    root = root_id(client)
+    max_title = "A" * 200
+    padded = f"   {max_title}   "
+
+    response = client.post(f"/api/nodes/{root}/children", json={"title": padded}, headers=CSRF)
+
+    assert response.status_code == 201
+    assert response.json()["title"] == max_title
+
+
+def test_criterio_14_after_sort_key_invalido_responde_422(client: TestClient) -> None:
+    root = root_id(client)
+
+    response = client.post(
+        f"/api/nodes/{root}/children",
+        json={"title": "Nuevo", "after_sort_key": "invalido@#$"},
+        headers=CSRF,
+    )
+
+    assert response.status_code == 422
+
+
 def test_criterio_15_patch_con_version_vigente_incrementa_version(client: TestClient) -> None:
     node = add(client, root_id(client), "Antes")
 
@@ -222,10 +320,58 @@ def test_criterio_15_patch_con_version_vieja_responde_409_y_no_cambia(client: Te
     assert (child["title"], child["version"]) == ("Primero", updated["version"])
 
 
+def test_criterio_15_patch_con_version_adelantada_responde_409(client: TestClient) -> None:
+    node = add(client, root_id(client), "Original")
+
+    response = patch(client, {**node, "version": node["version"] + 5}, title="Futuro")
+
+    assert response.status_code == 409
+    child = view(client, root_id(client), depth=1)["nodes"][0]
+    assert child["title"] == "Original"
+    assert child["version"] == node["version"]
+
+
 def test_criterio_15_patch_sin_version_responde_422(client: TestClient) -> None:
     node = add(client, root_id(client), "Sin versión")
 
     response = client.patch(f"/api/nodes/{node['id']}", json={"title": "x"}, headers=CSRF)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("ver", [0, -1, "uno", 1.5])
+def test_criterio_15_patch_version_invalida_responde_422(client: TestClient, ver: object) -> None:
+    node = add(client, root_id(client), "Nodo")
+
+    response = client.patch(
+        f"/api/nodes/{node['id']}", json={"version": ver, "title": "x"}, headers=CSRF
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("title", ["", "   ", "x" * 201])
+def test_criterio_15_patch_titulo_vacio_o_largo_responde_422(
+    client: TestClient, title: str
+) -> None:
+    node = add(client, root_id(client), "Original")
+
+    response = patch(client, node, title=title)
+
+    assert response.status_code == 422
+    child = view(client, root_id(client), depth=1)["nodes"][0]
+    assert child["title"] == "Original"
+    assert child["version"] == node["version"]
+
+
+def test_criterio_15_patch_campos_desconocidos_responde_422(client: TestClient) -> None:
+    node = add(client, root_id(client), "Original")
+
+    response = client.patch(
+        f"/api/nodes/{node['id']}",
+        json={"version": node["version"], "invalido": "no"},
+        headers=CSRF,
+    )
 
     assert response.status_code == 422
 
@@ -272,6 +418,29 @@ def test_criterio_16_borrar_la_raiz_responde_422(client: TestClient) -> None:
     assert view(client, root)["focus"]["child_count"] == 1
 
 
+def test_criterio_16_borrar_nodo_hoja_baja_child_count_del_padre(client: TestClient) -> None:
+    root = root_id(client)
+    leaf = add(client, root, "Hoja")
+    assert view(client, root)["focus"]["child_count"] == 1
+
+    response = client.delete(f"/api/nodes/{leaf['id']}", headers=CSRF)
+
+    assert response.status_code == 204
+    assert view(client, root)["focus"]["child_count"] == 0
+    assert client.get(f"/api/nodes/{leaf['id']}/view").status_code == 404
+
+
+def test_criterio_16_borrado_repetido_responde_404(client: TestClient) -> None:
+    root = root_id(client)
+    node = add(client, root, "Eliminable")
+
+    res1 = client.delete(f"/api/nodes/{node['id']}", headers=CSRF)
+    assert res1.status_code == 204
+
+    res2 = client.delete(f"/api/nodes/{node['id']}", headers=CSRF)
+    assert res2.status_code == 404
+
+
 @pytest.mark.parametrize(
     "extra", [{"kind": "document"}, {"props": {"url": "https://x"}}, {"props": "texto"}]
 )
@@ -286,6 +455,34 @@ def test_criterio_17_post_con_kind_o_props_invalidos_responde_422(
 
     assert response.status_code == 422
     assert view(client, root)["focus"]["child_count"] == 0
+
+
+def test_criterio_17_props_con_claves_desconocidas_para_idea_responde_422(
+    client: TestClient,
+) -> None:
+    root = root_id(client)
+
+    # POST con props desconocidas
+    res_post = client.post(
+        f"/api/nodes/{root}/children",
+        json={"title": "x", "props": {"clave_extra": "no_permitida"}},
+        headers=CSRF,
+    )
+    assert res_post.status_code == 422
+
+    # PATCH con props desconocidas
+    node = add(client, root, "Idea")
+    res_patch = patch(client, node, props={"otra_clave": 123})
+    assert res_patch.status_code == 422
+
+
+def test_criterio_17_patch_cambiar_kind_responde_422(client: TestClient) -> None:
+    root = root_id(client)
+    node = add(client, root, "Idea")
+
+    # Intentar cambiar de "idea" a otro tipo responde 422
+    response = patch(client, node, kind="document")
+    assert response.status_code == 422
 
 
 @pytest.mark.parametrize("extra", [{"kind": "document"}, {"props": {"url": "https://x"}}])
