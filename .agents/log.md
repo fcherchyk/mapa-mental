@@ -4,3 +4,4 @@
 
 Plataforma:
 - En pri
+- 2026-10-28 · corrida 9a7eb41c · done · rama agent/9a7eb41c · Implementar la parte de backend del primer corte de .agents/memory/specs/7c6b3566.md: docker…
