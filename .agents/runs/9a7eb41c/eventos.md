@@ -8,3 +8,9 @@
 - 23:10:58 · implement hecho por claude/claude-opus-5-5
 - 23:10:58 · paso qa
 - 23:19:08 · qa hecho por antigravity/gemini-3.8-flash-high
+- 23:19:08 · paso setup
+- 23:19:08 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 23:19:08 · paso tests
+- 23:19:23 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98%)
+- 23:19:23 · paso review
+- 23:20:41 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
