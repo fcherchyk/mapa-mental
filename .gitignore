@@ -6,5 +6,6 @@ __pycache__/
 node_modules/
 web/dist/
 web/coverage/
+web/openapi.json
 .coverage
 htmlcov/
