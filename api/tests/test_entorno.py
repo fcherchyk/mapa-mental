@@ -46,10 +46,13 @@ def compose_config() -> dict:
     return json.loads(result.stdout)
 
 
-def test_criterio_1_compose_solo_db_y_api_con_puertos_en_localhost() -> None:
+COMPOSE_SERVICES = {"db", "api", "web"}
+
+
+def test_criterio_1_compose_db_api_y_web_con_puertos_en_localhost() -> None:
     config = compose_config()
 
-    assert set(config["services"]) == {"db", "api"}
+    assert set(config["services"]) == COMPOSE_SERVICES
     db = config["services"]["db"]
     assert db["image"] == "postgres:16"
     named_volumes = [v for v in db["volumes"] if v["type"] == "volume"]
@@ -70,7 +73,11 @@ def test_criterio_1_compose_config_con_archivo_env_copiado(tmp_path: Path) -> No
         check=True,
     )
     config = json.loads(result.stdout)
-    assert set(config["services"]) == {"db", "api"}
+    assert set(config["services"]) == COMPOSE_SERVICES
+    web_ports = config["services"]["web"]["ports"]
+    assert [(p["host_ip"], p["published"], p["target"]) for p in web_ports] == [
+        ("127.0.0.1", "5173", 5173)
+    ]
 
 
 def test_criterio_1_env_example_sin_valores_reales_y_env_fuera_del_repo() -> None:

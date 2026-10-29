@@ -1,5 +1,5 @@
 # Entorno local del primer corte (ADR 0005). Los valores salen de .env (copiado de .env.example).
-# El servicio `web` (Vite con proxy de /api) se suma en la corrida del frontend.
+# `web` sirve la SPA con Vite en localhost:5173 y reenvía /api a `api` (mismo origen, sin CORS).
 services:
   db:
     image: postgres:16
@@ -34,5 +34,19 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build: ./web
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    volumes:
+      - ./web:/srv/web
+      # node_modules de Linux, separado de los de la Mac.
+      - web-node-modules:/srv/web/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+
 volumes:
   db-data:
+  web-node-modules:

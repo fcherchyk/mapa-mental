@@ -1,40 +1,64 @@
-# Progreso · corrida 9a7eb41c (backend del primer corte)
+# Progreso · frontend del primer corte (spec 7c6b3566, parte Interfaz)
 
 ## Hecho
 
-- [x] Proyecto `api/` con uv: `pyproject.toml` (deps + grupo dev con pytest, pytest-cov, testcontainers, ruff)
-- [x] `docker-compose.yml` (`db`, `api`), `api/Dockerfile`, `api/.dockerignore`, `.env.example`
-- [x] Modelo SQLAlchemy (`app/models.py`) y migración `migrations/versions/0001_initial.py`
-- [x] Auth: login, callback, logout, `/me`, sesiones con hash, cookie HttpOnly/Lax/Secure opcional, CSRF
-- [x] Preferencias `PATCH /me/settings`
-- [x] Nodos: view (CTE recursiva), crear (índice fraccionario), editar con versión, borrar subárbol
-- [x] `node_types` con `idea`
-- [x] Tests: `tests/conftest.py` (testcontainers + Alembic), `tests/fake_google.py` (OIDC falso con JWKS propio),
-      un archivo por área con `criterio_N` en los nombres
-- [x] README; `project.yaml` saltea `web/` mientras no exista
+- [x] `api/scripts/export_openapi.py`: exporta el OpenAPI sin levantar el servidor (único agregado al backend).
+- [x] `api/tests/test_entorno.py`: ahora espera los servicios `db`, `api` y `web`, y `web` en `127.0.0.1:5173`.
+- [x] Proyecto `web/`: Vite 6 + React 19 + TS strict, pnpm 10.29 (`pnpm-lock.yaml`), ESLint (typescript-eslint + react-hooks).
+- [x] Cliente `web/src/api/client.ts` (fetch, rutas `/api/...`, `credentials: 'same-origin'`, `X-CSRF: 1` en mutaciones, 401 → login).
+- [x] Sesión y rutas (`App.tsx`, `session.tsx`): login, logout, N, `/`, `/n/:nodeId`, `*`.
+- [x] Mapa: `tree.ts` (ventana normalizada, operaciones puras), `layout.ts` (árbol horizontal), `useMapView.ts`
+      (caché por `(nodo, N)`, mutaciones optimistas en cola con reversión), `MapPage.tsx` (atajos), `MapCanvas.tsx`
+      (React Flow), `nodes/` (NodeRenderer por `kind`, IdeaNode, TitleEditor).
+- [x] Servicio `web` en `docker-compose.yml` + `web/Dockerfile` (Node 22, pnpm con corepack, volumen `web-node-modules`).
+- [x] Tests: 61 en Vitest (criterios 1 a 18 con `criterio_N`), 99,4% de líneas; backend 104 en verde.
+- [x] `tsc --noEmit` y `eslint .` limpios. README actualizado.
 
 ## Falta
 
-- [x] `api/uv.lock` generado (Python 3.12, `api/.python-version`); `uv sync` instala bien.
-- [ ] **Correr los tests** (`test_command`) y la cobertura: el entorno no me dio permiso para ejecutar
-      `pytest`, `ruff` ni `docker`. Puntos a mirar si algo falla:
-  - El callback captura `AuthlibBaseError` y `joserfc.errors.JoseError` (Authlib 1.9 valida el `id_token` con joserfc).
-  - El Google falso parchea `httpx.AsyncHTTPTransport.handle_async_request`.
-- [ ] `ruff format` / `ruff check` sobre `api/`.
-- [ ] Wiki: la actualiza el paso `docs` (mencionar prefijo `/api`, `X-CSRF: 1`, `GOOGLE_REDIRECT_URI`).
+- [ ] **Prettier**: me rechazaron `prettier --check` y `pnpm --dir web run format`. El código está escrito con comillas
+      simples; hay que correr `pnpm --dir web format` (la configuración por defecto pasa todo a comillas dobles) y
+      volver a correr los tests.
+- [ ] **Regenerar `web/src/api/schema.ts`**: me rechazaron `uv run --directory api python scripts/export_openapi.py`.
+      El archivo lo escribí a mano siguiendo los esquemas Pydantic, con la forma de openapi-typescript (`components`).
+      Correr `pnpm --dir web gen:api` y revisar el diff.
+- [ ] `vite build` (rechazado): verificar que el build de producción arma.
+- [ ] Arranque manual con `docker compose up --build` y login real con Google (criterio 1; proxy y cookie, pregunta 6).
+- [ ] Wiki (`.agents/memory/wiki/index.md`): la actualiza el paso `docs` (no toco `.agents/memory/`).
 
-## Decisiones sobre preguntas abiertas de la spec
+## Comandos rechazados
 
-1. `project.yaml`: setup y tests de `web/` se saltean si la carpeta no existe (cambio mínimo, sigue igual cuando llegue el frontend).
-2. Rutas con prefijo `/api` en FastAPI (el proxy de Vite no reescribe). Redirect URI por `GOOGLE_REDIRECT_URI`
-   (por defecto `http://localhost:5173/api/auth/callback`) y destino post-login por `POST_LOGIN_REDIRECT`.
-3. y 4. `DELETE /me` y backup con `pg_dump`: fuera de esta corrida.
-5. Nodo ajeno o inexistente: `404`.
-6. Header anti-CSRF: `X-CSRF: 1` (también en logout).
-7. Título: se recortan espacios, 1 a 200 caracteres. La raíz normaliza el nombre de Google, lo corta a 200 y usa "Mi mapa" si queda vacío.
-8. Sesión: 30 días fijos (`SESSION_TTL_DAYS`), no deslizante; logout borra la fila. Sin limpieza de vencidas.
-9. `sort_key` en PATCH: solo se valida formato (`[0-9A-Za-z]*[1-9A-Za-z]`, máx. 128).
-10. Google simulado con un OIDC falso (metadata, token y JWKS con clave RSA propia): Authlib valida firma, `iss`, `aud` y `nonce`.
-- Extra: `collapsed` se respeta también en el foco (nivel 0), igual que en el resto de la ventana.
-- Extra: `sort_key` con collation `"C"` para que PostgreSQL ordene igual que Python.
-- Extra: el estado OAuth (`state`, `nonce`) vive en la cookie firmada `oauth_flow` (SessionMiddleware, 10 min).
+- `uv run --directory api python scripts/export_openapi.py ../web/openapi.json`
+- `pnpm --dir web exec prettier --check …`, `pnpm --dir web run format`
+- `pnpm --dir web exec vite build`
+- `setup_command` completo (el grupo con llaves no se pudo verificar); corrí sus dos partes por separado y anduvieron.
+
+## Decisiones sobre preguntas abiertas
+
+1. CSP (solo desarrollo con Vite): `default-src 'self'`, `script-src 'self' 'unsafe-inline'` (preámbulo de React
+   Refresh), `style-src 'self' 'unsafe-inline'` (React Flow usa estilos en línea), `img-src 'self' data:`,
+   `connect-src 'self' ws://localhost:5173`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+   `frame-ancestors 'none'`. Sin `unsafe-eval`.
+2. Cliente: `openapi-typescript` (dev) solo para tipos + `fetch` propio, sin `openapi-fetch`. `schema.ts` se versiona y
+   queda fuera de la cobertura; `openapi.json` es intermedio y va en `.gitignore`.
+3. Sin TanStack Query ni dagre/d3-hierarchy: caché propia (`ViewCache`) y disposición propia (`layoutTree`).
+   Ante una mutación exitosa se vacía la caché y se guarda la ventana actual; ante un error se borra la ventana
+   actual y se vuelve a pedir.
+4. API simulada con un `fetch` falso propio (`src/test/fakeApi.ts`), sin MSW. En jsdom React Flow no mide los nodos
+   (quedan `visibility: hidden`), así que los tests buscan por `data-testid`/etiqueta y usan `fireEvent.click` (el
+   `mousedown` de user-event rompe d3-zoom en jsdom).
+5. pnpm 10.29.3 (fijado en el Dockerfile con corepack); `pnpm.onlyBuiltDependencies: ["esbuild"]`.
+6. Proxy sin `changeOrigin` (el Host sigue siendo `localhost:5173`). Hay que verificarlo con el arranque manual.
+7. Selección: después de borrar, el hermano anterior o el padre; al cambiar el foco, el foco.
+8. Un colapsado muestra "+k" con borde punteado; uno del borde, "+k" relleno. Espacio sobre un nodo del borde no hace
+   nada. Tab sobre un nodo del borde o colapsado tampoco (el hijo quedaría oculto).
+9. `409`: se revierte, se avisa y se vuelve a pedir la ventana, sin reintento.
+10. Descendientes para borrar: los cargados + los `child_count` de los nodos sin hijos cargados; si falta algún nivel,
+    la confirmación dice "al menos N". Sin `descendant_count` en la API.
+11. Se incluyen todos los atajos del ADR 0009.
+12. No se muestra el avatar (no hace falta `img-src` externo).
+- Extra: las mutaciones van en una cola en orden, así cada `PATCH` lleva la `version` vigente y el hermano creado con
+  Enter usa el `sort_key` que la API le asignó al anterior.
+- Extra: borrar el foco (no la raíz) navega a su padre después del `DELETE`.
+- Extra: React Flow con `panActivationKeyCode`, `deleteKeyCode` y demás teclas en `null` y `zoomOnDoubleClick` apagado,
+  para que el teclado y el doble click los maneje la app.
