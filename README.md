@@ -9,7 +9,7 @@ App web para que una persona con cuenta de Google arme un único mapa mental de 
 - `GET /api/me` con el usuario, sus preferencias y `root_node_id`; logout.
 - Preferencia `depth` (1 a 10, por defecto 3) con `PATCH /api/me/settings`.
 - Ventana visible `GET /api/nodes/{id}/view?depth=N`: foco, ancestros y hasta N niveles con `child_count`, respetando `collapsed`.
-- Crear hijos (`POST /api/nodes/{id}/children`, con `after_sort_key` opcional), editar con control de versión (`PATCH /api/nodes/{id}`) y borrar subárboles (`DELETE /api/nodes/{id}`).
+- Crear hijos (`POST /api/nodes/{id}/children`, con `after_sort_key` opcional), editar con control de versión (`PATCH /api/nodes/{id}`) y borrar subárboles (`DELETE /api/nodes/{id}`). Títulos de 1 a 200 caracteres, con los espacios de los extremos recortados.
 - Aislamiento por usuario: un nodo ajeno responde `404`.
 - Protección CSRF: toda mutación exige el header `X-CSRF: 1`.
 
