@@ -83,16 +83,19 @@ web/
   package.json, pnpm-lock.yaml  pnpm (solo esbuild puede correr scripts de instalación)
   Dockerfile              Node 22 + pnpm con corepack
   vite.config.ts          servidor (proxy /api, CSP) y configuración de Vitest
+  index.html, vite.config.ts  entrada de la SPA; servidor (proxy /api, CSP) y configuración de Vitest
   src/
+    main.tsx, styles.css  arranque de React y estilos
     App.tsx, session.tsx  sesión (/api/me, login, logout, N) y rutas / y /n/:nodeId
-    api/                  cliente fetch con X-CSRF y tipos del OpenAPI
+    api/                  cliente fetch con X-CSRF y tipos del OpenAPI (schema.ts)
     components/           login, "No encontrado", miga de pan, SettingsPanel
     map/
       tree.ts             ventana normalizada y operaciones puras (insertar, borrar, flechas)
       layout.ts           disposición en árbol horizontal
-      useMapView.ts       carga, caché por (nodo, N) y mutaciones optimistas
+      viewCache.ts        caché de ventanas por (nodo, N)
+      useMapView.ts       carga y mutaciones optimistas
       MapPage.tsx         página del mapa y atajos de teclado
       MapCanvas.tsx       React Flow
-      nodes/              NodeRenderer (elige por kind), IdeaNode, TitleEditor
-    test/                 setup de jsdom, API simulada y helpers
+      nodes/              NodeRenderer (elige por kind), IdeaNode, TitleEditor, nodeActions.ts
+    test/                 setup de jsdom, API simulada (fakeApi.ts) y helpers
 ```
