@@ -2,7 +2,8 @@ name: mapa-mental
 # Docker (OrbStack) tiene que estar abierto: los tests del backend levantan PostgreSQL con testcontainers.
 preflight:
   - docker info
-setup_command: uv sync --directory api && pnpm --dir web install --frozen-lockfile
+# El frontend se salta mientras no exista web/ (llega en la corrida siguiente).
+setup_command: uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }
 test_command: >-
   uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
-  && pnpm --dir web exec vitest run --coverage
+  && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }
