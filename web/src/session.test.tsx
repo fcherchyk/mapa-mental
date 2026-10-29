@@ -108,4 +108,19 @@ describe('seguridad', () => {
     expect(within(crumbs).getByRole('link', { name: malicious })).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
   });
+
+  it('criterio_17: payloads con <script> y <svg> no inyectan elementos en el DOM', async () => {
+    const scriptPayload = '<script>alert(1)</script>';
+    const svgPayload = '<svg onload=alert(1)>';
+    const api = new FakeApi([
+      { id: 'root', parent_id: null, title: 'Raíz', sort_key: 'V' },
+      { id: 'f', parent_id: 'root', title: scriptPayload, sort_key: 'V' },
+      { id: 'c', parent_id: 'f', title: svgPayload, sort_key: 'V' },
+    ]);
+    const { container } = renderApp('/n/f', api);
+    expect(await screen.findByTestId('node-c')).toHaveTextContent(svgPayload);
+    expect(screen.getByTestId('node-f')).toHaveTextContent(scriptPayload);
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelector('svg:not([class*="react-flow"])')).toBeNull();
+  });
 });

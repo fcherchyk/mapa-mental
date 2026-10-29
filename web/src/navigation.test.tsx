@@ -20,9 +20,13 @@ describe('navegación por foco', () => {
 
   it('criterio_5: un 404 muestra "No encontrado" con enlace a /', async () => {
     const api = sampleApi();
-    renderApp('/n/ajeno', api);
+    const { user } = renderApp('/n/ajeno', api);
     expect(await screen.findByRole('heading', { name: 'No encontrado' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/');
+    const link = screen.getByRole('link', { name: 'Volver al inicio' });
+    expect(link).toHaveAttribute('href', '/');
+    await user.click(link);
+    await waitFor(() => expect(currentPath()).toBe('/'));
+    expect(await screen.findByTestId('node-root')).toHaveClass('is-focus');
   });
 
   it('criterio_5: un 422 (id que no es UUID) también muestra "No encontrado"', async () => {
@@ -118,6 +122,9 @@ describe('navegación por foco', () => {
     await user.keyboard(' ');
     expect(queryNode('b1')).not.toBeInTheDocument();
     expect(api.callsTo('PATCH', '/api/nodes/b')).toHaveLength(0);
+    // Un click directo sobre el indicador tampoco lo expande en el lugar
+    fireEvent.click(screen.getByText('+4'));
+    expect(queryNode('b1')).not.toBeInTheDocument();
   });
 
   it('criterio_9: un nodo del borde sin hijos no muestra indicador', async () => {

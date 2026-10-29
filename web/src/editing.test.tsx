@@ -72,6 +72,29 @@ describe('crear nodos', () => {
     expect(nodeElement('f')).toHaveClass('is-selected');
   });
 
+  it('criterio_10: un título con espacios en los extremos se envía recortado', async () => {
+    const { user, api } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    await user.keyboard('{Tab}');
+    await user.type(titleInput(), '   Espacios recortados   ');
+    fireEvent.blur(titleInput());
+    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/nodes/f/children')[0].body).toEqual({
+      title: 'Espacios recortados',
+    });
+  });
+
+  it('criterio_10: Escape durante la creación cancela el nuevo nodo sin llamar a la API', async () => {
+    const { user, api } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    await user.keyboard('{Tab}');
+    expect(titleInput()).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(queryTitleInput()).not.toBeInTheDocument();
+    expect(api.callsTo('POST', /children/)).toHaveLength(0);
+    expect(nodeElement('f')).toHaveClass('is-selected');
+  });
+
   it('Tab sobre un nodo del borde no crea un hijo que quedaría oculto', async () => {
     const api = sampleApi();
     api.depth = 1;
@@ -279,6 +302,20 @@ describe('selección con flechas', () => {
     expectSelected('a1');
     await user.keyboard('{ArrowLeft}{ArrowLeft}');
     expectSelected('f');
+  });
+
+  it('criterio_14: flecha derecha sobre un nodo colapsado o del borde no cambia la selección', async () => {
+    const api = sampleApi();
+    api.nodes.get('a')!.collapsed = true;
+    api.depth = 1;
+    const { user } = renderApp('/n/f', api);
+    const expectSelected = (id: string) => expect(nodeElement(id)).toHaveClass('is-selected');
+    await screen.findByTestId('node-f');
+    await user.keyboard('{ArrowRight}');
+    expectSelected('a');
+    // 'a' está colapsado y en el borde: no tiene hijos visibles
+    await user.keyboard('{ArrowRight}');
+    expectSelected('a');
   });
 });
 
