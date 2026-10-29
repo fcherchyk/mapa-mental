@@ -1,0 +1,174 @@
+<!-- claude-readonly · claude-opus-5-5 · familia anthropic -->
+
+# Spec: Backend del primer corte del mapa mental
+
+## 1. Contexto
+
+La spec 7c6b3566 define el primer corte del mapa mental: login con Google, un mapa por usuario y una ventana de N niveles. Esta corrida entrega solo la parte de servidor. Incluye el entorno con `docker compose` (`db` y `api`), la API FastAPI con su modelo y migraciones, y tests contra un PostgreSQL efímero. El objetivo es que la SPA de la corrida siguiente tenga una API estable y probada contra la cual trabajar.
+
+## 2. Alcance
+
+**Incluye**
+
+- **Entorno local** (ADR 0005)
+  - `docker-compose.yml` con dos servicios: `db` (PostgreSQL 16 con volumen persistente) y `api` (FastAPI con recarga en caliente).
+  - Los puertos se publican solo en `127.0.0.1`.
+  - Un `.env.example` con `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `DATABASE_URL` y la variable que activa `Secure` en la cookie. `.env` ya está en `.gitignore`.
+  - El servicio `web` queda para la corrida del frontend.
+- **Proyecto Python** en `api/`
+  - Entorno con `uv`: `pyproject.toml`, `uv.lock` versionado, y pytest, pytest-cov y testcontainers en el grupo `dev`.
+  - Paquete en `api/app/` con los módulos `auth`, `nodes`, `settings`, `node_types` e `integrations` (vacío).
+  - SQLAlchemy 2 y Alembic (ADR 0004).
+- **Modelo y migraciones**
+  - Tablas `users`, `sessions`, `maps` y `nodes`, con los campos de `arquitectura.md`.
+  - Índices: `owner_id` único en `maps`, `(map_id)` y `(parent_id, sort_key)` en `nodes`.
+  - `kind` es texto y `props` es jsonb (ADR 0013).
+- **Autenticación** (ADR 0006 y 0007)
+  - Login con Google por Authorization Code con Authlib, con `state` y `nonce`. Se piden solo los scopes `openid email profile`.
+  - Callback, logout y `GET /me`.
+  - Sesión en la tabla `sessions`, que guarda el hash del token. El navegador recibe una cookie `HttpOnly` y `SameSite=Lax`, con `Secure` por variable de entorno.
+  - Header anti-CSRF obligatorio en toda mutación.
+- **Primer login**: crea el `user`, el `map` y el nodo raíz `kind='idea'`, con el nombre del usuario como título (ADR 0008).
+- **Preferencias**: `PATCH /me/settings` con `depth` de 1 a 10, por defecto 3, validado con Pydantic (ADR 0010).
+- **API de nodos** (ADR 0011 y 0012)
+  - `GET /nodes/{id}/view?depth=N` devuelve `focus`, `ancestors` y `nodes`, cada uno con su `child_count`. Usa una CTE recursiva con tope de profundidad y respeta `collapsed`.
+  - `POST /nodes/{id}/children` crea un hijo, con `sort_key` por índice fraccionario.
+  - `PATCH /nodes/{id}` cambia `title`, `collapsed` o `sort_key`, con control de `version`.
+  - `DELETE /nodes/{id}` borra el subárbol entero.
+  - Toda consulta filtra por `maps.owner_id`.
+- **Registro `node_types`**: un solo tipo, `idea`, con su esquema Pydantic para `props`.
+- **Tests**
+  - pytest con httpx, contra PostgreSQL 16 levantado con `testcontainers` una vez por sesión y migrado con Alembic.
+  - Google se simula; ningún test sale a la red.
+  - Cobertura de 80% o más sobre `app`.
+- **Documentación**: `README.md` con las secciones del estándar y la wiki actualizada, en la parte que corresponde al backend.
+
+**Queda afuera**
+
+- Toda la SPA: el servicio `web` y su proxy de Vite, React Flow, rutas, teclado, caché del cliente, el cliente tipado generado del OpenAPI y la CSP de la SPA.
+- Todo lo que la spec 7c6b3566 deja afuera: Drive, `oauth_grants`, `external_refs`, otros tipos de nodo, varios mapas y deploy.
+- `DELETE /me` y el script de backup con `pg_dump`, salvo que se resuelvan las preguntas abiertas 3 y 4.
+
+## 3. Criterios de aceptación
+
+**Entorno**
+
+1. **Compose**
+   - Dado el repositorio con un `.env` copiado de `.env.example`,
+   - cuando se ejecuta `docker compose config`,
+   - entonces aparecen solo los servicios `db` (imagen `postgres:16`, con volumen con nombre) y `api`, y todo puerto publicado está ligado a `127.0.0.1`.
+   - `.env.example` tiene las variables del alcance sin valores reales.
+   - `git ls-files` no incluye `.env`.
+2. **Migraciones**
+   - Dado un PostgreSQL 16 vacío,
+   - cuando se ejecuta `alembic upgrade head`,
+   - entonces existen `users`, `sessions`, `maps` y `nodes`, con la restricción `unique` sobre `maps.owner_id` y los índices `(map_id)` y `(parent_id, sort_key)` en `nodes`.
+
+**Autenticación**
+
+3. **Inicio del login**
+   - Dado un pedido al endpoint de inicio de login,
+   - cuando el backend responde,
+   - entonces es una redirección a Google cuyo parámetro `scope` contiene exactamente `openid email profile` e incluye `state` y `nonce`.
+4. **Primer login y reingreso**
+   - Dado un callback válido de un usuario de Google que nunca entró (Google simulado),
+   - cuando se procesa,
+   - entonces se crean un `user`, un `map` y un nodo raíz `kind='idea'` con el nombre del usuario como título.
+   - Después, `GET /me` devuelve `root_node_id` y `settings.depth = 3`.
+   - Si el mismo `google_sub` vuelve a entrar, se mantienen un solo `user` y un solo `map`.
+5. **Cookie y tokens**
+   - Dado un login exitoso,
+   - cuando se inspecciona el `Set-Cookie`,
+   - entonces la cookie es `HttpOnly` y `SameSite=Lax`, y lleva `Secure` solo si la variable de entorno lo activa.
+   - Ninguna respuesta incluye tokens de Google (`access_token`, `id_token` ni `refresh_token`), y ninguna tabla los guarda.
+   - `sessions.id` no es igual al valor de la cookie.
+6. **`state` inválido**
+   - Dado un callback con `state` ausente o distinto del emitido,
+   - cuando se procesa,
+   - entonces se rechaza con un código 4xx, no se setea cookie de sesión y no se crean filas en `sessions` ni en `users`.
+7. **Sin sesión**
+   - Dado un pedido sin cookie, con una cookie inventada o con una sesión de `expires_at` vencido,
+   - cuando se llama a `GET /me`, a `PATCH /me/settings` o a cualquier endpoint de nodos,
+   - entonces responde `401`.
+8. **CSRF**
+   - Dado un usuario con sesión,
+   - cuando hace `POST`, `PATCH` o `DELETE` sobre nodos, o `PATCH /me/settings`, sin el header anti-CSRF,
+   - entonces responde `403` y el estado de la base no cambia.
+9. **Logout**
+   - Dado un usuario con sesión,
+   - cuando hace logout,
+   - entonces su fila en `sessions` queda invalidada y reusar esa cookie da `401`.
+
+**Preferencias**
+
+10. **Profundidad del usuario**
+    - Dado un usuario con sesión,
+    - cuando hace `PATCH /me/settings` con `{depth: 5}`,
+    - entonces `GET /me` devuelve `settings.depth = 5`, también desde una sesión nueva.
+    - Con `depth` igual a 0, 11 o no entero, responde `422` y el valor guardado no cambia.
+
+**Nodos**
+
+11. **Ventana visible**
+    - Dado un árbol de 5 niveles bajo un foco F, que no es la raíz,
+    - cuando se pide `GET /nodes/F/view?depth=2`,
+    - entonces la respuesta trae `focus` = F, los `ancestors` en orden de la raíz al padre de F y en `nodes` solo los niveles 1 y 2 bajo F, con los hermanos ordenados por `sort_key`.
+    - Cada nodo trae su `child_count` real, y un nodo del nivel 2 con 4 hijos trae `child_count = 4`.
+    - Si un nodo del nivel 1 tiene `collapsed = true`, sus hijos no vienen, pero conserva su `child_count`.
+12. **Profundidad por defecto y límites**
+    - Sin `depth`, la ventana usa `settings.depth` del usuario. Se verifica con un usuario que tiene `depth = 1`.
+    - Con `depth=0` o `depth=11`, responde `422`.
+13. **Aislamiento (IDOR)**
+    - Dados los usuarios A y B, y un nodo X del mapa de B,
+    - cuando A llama a `view`, `POST children`, `PATCH` o `DELETE` sobre X,
+    - entonces responde `404` y el mapa de B no cambia.
+    - Un id inexistente también da `404`.
+14. **Crear**
+    - Dado un nodo P con hijos H1 y H2,
+    - cuando se hace `POST /nodes/P/children` con `{title: "N", after_sort_key: H1.sort_key}`,
+    - entonces la siguiente `view` de P devuelve el orden H1, N, H2.
+    - Sin `after_sort_key`, el nodo queda último.
+    - Un título vacío o con solo espacios responde `422`.
+    - La respuesta del nuevo nodo trae `kind='idea'`, `props={}`, `collapsed=false` y una `version` inicial.
+15. **Editar con versión**
+    - Dado un nodo con `version = v`,
+    - cuando llega un `PATCH` con `{title, version: v}`,
+    - entonces se aplica y la respuesta trae `version = v+1`.
+    - Si llega con `version: v-1`, responde `409` y el nodo no cambia.
+    - Un `PATCH` sin `version` responde `422`.
+16. **Borrar**
+    - Dado un nodo con 7 descendientes,
+    - cuando se llama a `DELETE`,
+    - entonces desaparecen el nodo y sus 7 descendientes, y el `child_count` del padre baja en 1.
+    - `DELETE` sobre la raíz del mapa responde `422` y no borra nada.
+17. **Tipos de nodo**
+    - Dado un `POST` o `PATCH` que manda un `kind` distinto de `idea`, o un `props` que no cumple el esquema de `idea`,
+    - cuando se procesa,
+    - entonces responde `422` y no cambia nada.
+
+**Calidad**
+
+18. **Tests y cobertura**
+    - Dado Docker (OrbStack) abierto,
+    - cuando se ejecuta `uv run --directory api pytest -q --cov=app --cov-fail-under=80`,
+    - entonces los tests pasan contra un PostgreSQL de `testcontainers`, la cobertura de `app` es de 80% o más y ningún test usa la `DATABASE_URL` de desarrollo.
+    - Cada criterio de esta spec tiene al menos un test cuyo nombre lo identifica.
+
+## 4. Riesgos y preguntas abiertas
+
+1. **`test_command` sin frontend.** `.agents/project.yaml` encadena `pnpm --dir web install` y `vitest`. Sin `web/`, el `setup_command` y el `test_command` fallan aunque el backend esté bien. ¿Se ajusta `project.yaml` en esta corrida para correr solo el backend, o se deja un `web/` mínimo? Cambiar `project.yaml` toca la configuración del workspace, así que no lo decido acá.
+2. **Callback y prefijo `/api`.** La arquitectura fija la redirección a `http://localhost:5173/api/auth/callback`, a través del proxy de Vite, pero esta corrida no tiene `web`. Hay que definir:
+   - si el redirect URI sale de una variable de entorno, para probar el login manual contra `api` directo mientras no exista el proxy;
+   - si las rutas de FastAPI llevan el prefijo `/api` o si el proxy lo quita. Esto afecta las rutas de todos los criterios.
+3. **`DELETE /me`.** La arquitectura promete borrar la cuenta, pero la spec original lo deja sin decidir. Si entra, se suma un criterio: después de `DELETE /me` no quedan filas del usuario en `users`, `sessions`, `maps` ni `nodes`.
+4. **Backup con `pg_dump`.** Sigue sin estar claro si es entregable del primer corte.
+5. **`404` o `403` para nodos ajenos.** El criterio 13 asume `404`, igual que la spec original, pero falta confirmarlo.
+6. **Nombre y valor del header anti-CSRF.** Están sin definir, por ejemplo `X-CSRF: 1`. Los tests del criterio 8 dependen de esto.
+7. **Límites del título.** No hay largo máximo, por ejemplo 200, ni regla sobre si se recortan los espacios. El nodo raíz hereda el nombre de Google, que podría superar ese límite.
+8. **Duración de la sesión.** No están definidos la expiración, si es deslizante ni la limpieza de sesiones vencidas. El criterio 7 solo exige que una sesión vencida dé `401`.
+9. **`PATCH` de `sort_key`.** La API acepta `sort_key` sin que haya interfaz que lo use hasta el corte 2. No está definido cómo se valida, por ejemplo formato o choque con un hermano. Propuesta: validar el formato y no hacer nada más en este corte.
+10. **Simulación de Google.** Los criterios 3 a 6 requieren simular el intercambio de código y la validación del `id_token` (`nonce`). Hay dos opciones:
+    - un doble de Authlib, que es más simple pero no prueba la validación del `nonce`;
+    - un servidor OIDC falso con un JWKS propio, que es más fiel.
+11. **Rendimiento de la CTE.** No hay objetivo de latencia para `depth = 10`. La pregunta 12 de la spec original sigue abierta y esta corrida no agrega un test de carga.
+12. **Decisión 14 pendiente.** No está resuelto si el patrón BFF y los scopes incrementales pasan a estándar del workspace. No cambia esta spec.
