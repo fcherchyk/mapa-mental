@@ -95,13 +95,15 @@ describe('crear nodos', () => {
     expect(nodeElement('f')).toHaveClass('is-selected');
   });
 
-  it('Tab sobre un nodo del borde no crea un hijo que quedaría oculto', async () => {
+  it('Tab sobre un nodo del borde baja el foco un nivel y crea el hijo en edición', async () => {
     const api = sampleApi();
     api.depth = 1;
     const { user } = renderApp('/n/f', api);
     await selectNode('a');
     await user.keyboard('{Tab}');
-    expect(queryTitleInput()).not.toBeInTheDocument();
+    await waitFor(() => expect(currentPath()).toBe('/n/a'));
+    await waitFor(() => expect(queryTitleInput()).toHaveFocus());
+    expect(api.callsTo('POST', /children/)).toHaveLength(0);
   });
 });
 

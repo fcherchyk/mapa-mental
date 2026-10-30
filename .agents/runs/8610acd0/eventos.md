@@ -1,0 +1,40 @@
+- 01:59:18 · corrida creada en mapa-mental · rama agent/8610acd0 · flujo feature · complejidad S
+  > Hacer descubribles las acciones del mapa en la SPA (web/): hoy crear un hijo solo se puede con Tab y no hay nada en pantalla que lo diga. 1) Botón '+' visible en cada nodo (al pasar el mouse o cuando está seleccionado, y siempre en el foco) que crea un hijo en edición, igual que Tab. 2) Una ayuda de atajos visible: un botón '?' en el encabezado que abre un panel con los atajos (Tab, F2, Espacio, Supr, Enter, Retroceso, flechas, doble click) y una pista corta la primera vez que el mapa solo tiene la raíz ('Tocá + o Tab para agregar una idea'). 3) Que los atajos sigan funcionando después de hacer click en el lápiz o en un botón del nodo (devolver el foco al mapa al terminar). Accesible por teclado y con aria-label. Tests con Vitest; el backend no cambia.
+- 01:59:19 · paso spec
+- 02:00:16 · spec hecho por claude-readonly/claude-opus-5-5
+- 02:00:16 · gate enviado: Spec lista para revisar
+- 02:00:47 · 👤 aprobaste
+- 02:00:47 · paso implement
+- 02:06:14 · implement hecho por claude/claude-haiku-5-5
+- 02:06:14 · implement: ⚠ claude no pudo ejecutar 2 comandos: `ls -la .agents && cat .agents/project.yaml && echo ---PROGRESS--- && (cat .agents/progress.md 2>/dev/null || echo "(no …`, `pnpm --dir web exec vite build`
+- 02:06:14 · paso qa
+- 02:12:20 · qa hecho por antigravity/gemini-3.8-flash-high
+- 02:12:20 · paso setup
+- 02:12:20 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 02:12:20 · paso tests
+- 02:12:38 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.49%)
+- 02:12:38 · paso review
+- 02:12:58 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+- 02:12:58 · paso docs
+- 02:13:28 · docs hecho por claude/claude-haiku-5-5
+- 02:13:28 · paso merge
+- 02:13:28 · gate enviado: Listo para mergear
+- 02:15:59 · 👤 pediste cambios: 1. Foco al crear. Al apretar Enter en un título, la hermana nueva se crea pero el campo no recibe el foco: no hay cursor y a veces queda un nodo pendiente, sin ✎ ni “+”, que no se puede editar. El nodo nuevo (con Enter, Tab o “+”) tiene que quedar con el cursor en su título, listo para escribir, aunque React Flow lo muestre oculto hasta medirlo (por ejemplo, enfocar después de que el nodo sea visible, no solo con autoFocus). Test: Enter, Enter, Enter deja la tercera hermana en edición y con foco.
+2. Crear más allá del borde. Hoy Tab y “+” no hacen nada sobre un nodo del borde (el último nivel visible según la profundidad). En ese caso, el foco tiene que bajar un nivel, al hijo del foco actual en el camino hacia ese nodo, navegando a /n/:id como en la navegación normal, y recién ahí crear el hijo en edición. Así, si sigo profundizando, la vista baja un nivel cada vez. Mostrar el “+” también en los nodos del borde. Lo mismo para un nodo colapsado: expandirlo y crear el hijo. Tests de los dos casos.
+- 02:15:59 · paso implement
+- 02:20:22 · implement hecho por claude/claude-haiku-5-5
+- 02:20:22 · implement: ⚠ claude no pudo ejecutar 1 comandos: `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --di…`
+- 02:20:23 · paso qa
+- 02:25:57 · qa hecho por antigravity/gemini-3.8-flash-high
+- 02:25:57 · paso setup
+- 02:25:57 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 02:25:57 · paso tests
+- 02:26:16 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.33%)
+- 02:26:16 · paso review
+- 02:26:53 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+- 02:26:53 · paso docs
+- 02:27:25 · docs hecho por claude/claude-haiku-5-5
+- 02:27:25 · paso merge
+- 02:27:25 · gate enviado: Listo para mergear
+- 02:32:48 · 👤 aprobaste
+- 02:32:48 · merge de agent/8610acd0 en main

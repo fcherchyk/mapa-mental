@@ -3,8 +3,10 @@ import { ApiError, type NodeOut } from '../api/client';
 import { useSession } from '../session';
 import { cacheKey } from './viewCache';
 import {
+  childOfFocusToward,
   countDescendants,
   fromView,
+  hasLoadedChildren,
   hiddenChildCount,
   insertChild,
   isBorder,
@@ -21,6 +23,17 @@ export type ViewStatus = 'loading' | 'ready' | 'notFound' | 'error';
 
 const CONFLICT_NOTICE = 'El nodo cambió en otro lado: se deshizo el cambio y se recargó el mapa.';
 const FAILURE_NOTICE = 'No se pudo guardar el cambio: se deshizo.';
+
+/**
+ * Crear un hijo que espera a que llegue la ventana adecuada: el foco bajó un nivel hacia el nodo
+ * (`focusId`), o el nodo colapsado se está expandiendo (`expanding`).
+ */
+interface PendingCreate {
+  parentId: string;
+  focusId: string;
+  goTo: (id: string) => void;
+  expanding: boolean;
+}
 
 let temporaryIds = 0;
 
@@ -59,7 +72,7 @@ export interface MapView {
   editingId: string | null;
   notice: string | null;
   select: (id: string) => void;
-  startCreateChild: (parentId: string) => void;
+  startCreateChild: (parentId: string, goTo: (id: string) => void) => void;
   startEdit: (id: string) => void;
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;
@@ -82,6 +95,7 @@ export function useMapView(focusId: string, depth: number): MapView {
   const keyRef = useRef(key);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
   const resolvedIds = useRef(new Map<string, string>());
+  const pendingCreate = useRef<PendingCreate | null>(null);
 
   const commit = useCallback((next: MapState | null) => {
     stateRef.current = next;
@@ -123,6 +137,13 @@ export function useMapView(focusId: string, depth: number): MapView {
       cancelled = true;
     };
   }, [api, cache, commit, focusId, depth, key, reloads]);
+
+  // Navegar a otro foco cancela la creación pendiente que no sea de ese foco.
+  useEffect(() => {
+    if (pendingCreate.current && pendingCreate.current.focusId !== focusId) {
+      pendingCreate.current = null;
+    }
+  }, [focusId]);
 
   const reloadFromServer = useCallback(() => {
     cache.delete(keyRef.current);
@@ -177,15 +198,57 @@ export function useMapView(focusId: string, depth: number): MapView {
     setEditingId(node.id);
   };
 
-  const startCreateChild = (parentId: string) => {
+  /** Cambia `collapsed` en la API; al expandir, si faltan hijos en la ventana, se vuelven a pedir. */
+  const setCollapsed = (id: string, collapsing: boolean) => {
+    const current = stateRef.current;
+    const node = current?.nodes[id];
+    if (!current || !node) return;
+    const needsReload = !collapsing && !hasLoadedChildren(current, id);
+    mutate(
+      (state) => patchNode(state, id, { collapsed: collapsing }),
+      () => api.updateNode(id, { collapsed: collapsing, version: currentNode(id)?.version ?? 0 }),
+      (state, updated: NodeOut) => {
+        if (needsReload) queueMicrotask(reloadFromServer);
+        return patchNode(state, id, updated);
+      },
+    );
+  };
+
+  /**
+   * Crea un hijo en edición. Un hijo en el borde o dentro de un colapsado no se vería: en el borde
+   * el foco baja un nivel hacia el nodo, y en un colapsado el nodo se expande; recién entonces se crea.
+   */
+  const startCreateChild = (parentId: string, goTo: (id: string) => void) => {
     const current = stateRef.current;
     const parent = current?.nodes[parentId];
-    // El hijo de un nodo del borde o colapsado no se vería: hay que enfocarlo o expandirlo.
-    if (!current || !parent || parent.pending || parent.collapsed || isBorder(current, parentId)) {
+    if (!current || !parent || parent.pending) return;
+    if (isBorder(current, parentId)) {
+      const step = childOfFocusToward(current, parentId);
+      if (!step) return;
+      pendingCreate.current = { parentId, focusId: step, goTo, expanding: false };
+      goTo(step);
+    } else if (parent.collapsed) {
+      pendingCreate.current = { parentId, focusId: current.focusId, goTo, expanding: true };
+      setCollapsed(parentId, false);
+    } else {
+      startNewNode(parentId, null);
+    }
+  };
+
+  // Con la ventana que estaba esperando la creación, sigue con el hijo. Si la expansión falló
+  // (el nodo vuelve a estar colapsado), la creación se descarta.
+  useEffect(() => {
+    const pending = pendingCreate.current;
+    if (!pending || !state || state.focusId !== pending.focusId) return;
+    const parent = state.nodes[pending.parentId];
+    if (!parent || parent.pending || (pending.expanding && parent.collapsed)) {
+      pendingCreate.current = null;
       return;
     }
-    startNewNode(parentId, null);
-  };
+    if (pending.expanding && !hasLoadedChildren(state, parent.id)) return;
+    pendingCreate.current = null;
+    startCreateChild(parent.id, pending.goTo);
+  });
 
   const startEdit = (id: string) => {
     const node = currentNode(id);
@@ -263,16 +326,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     if (collapsing ? visibleChildren(current, id).length === 0 : hiddenChildCount(current, id) === 0) {
       return;
     }
-    // Al expandir, los hijos pueden no estar en la ventana: se vuelve a pedir.
-    const needsReload = !collapsing && (current.childIds[id]?.length ?? 0) < node.child_count;
-    mutate(
-      (state) => patchNode(state, id, { collapsed: collapsing }),
-      () => api.updateNode(id, { collapsed: collapsing, version: currentNode(id)?.version ?? 0 }),
-      (state, updated: NodeOut) => {
-        if (needsReload) queueMicrotask(reloadFromServer);
-        return patchNode(state, id, updated);
-      },
-    );
+    setCollapsed(id, collapsing);
   };
 
   const remove = (id: string, onFocusDeleted: (parentId: string) => void) => {
