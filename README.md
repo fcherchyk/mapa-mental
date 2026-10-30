@@ -2,6 +2,15 @@
 
 A web app that lets a person with a Google account build a single mind map of ideas and browse it by focusing one node at a time, seeing at most N levels down. The first slice has the FastAPI API on PostgreSQL (`api/`) and the React + TypeScript SPA with Vite and React Flow (`web/`), which talk to each other over `/api` from the same origin, `localhost:5173`.
 
+**Status: MVP.** What is built today is a minimum viable product: login, a single map, and creating, editing, navigating and deleting ideas. The rest of the vision is in the [Roadmap](#roadmap).
+
+### Vision
+
+The map is meant to become the hub for a person's ideas and work:
+
+- **Connected to their tools**: nodes linked to task managers, Google Docs, Google Calendar events, attachments and other services, so each idea carries its related material.
+- **Shared with an AI assistant**: the map can be shared with an assistant that uses it as context and has permission to edit it, so the assistant can add, reorganize and update ideas alongside the user.
+
 ## Features
 
 - Google login handled on the server (Authorization Code with `state` and `nonce`, scopes `openid email profile`); the browser only receives an `HttpOnly` cookie. The SPA shows a login screen when there is no session or it has expired; "Salir" (Log out) ends the session.
@@ -134,6 +143,13 @@ web/
 - [ ] Integrations with Google Calendar, Trello and GitHub
 - [ ] Mobile app that reuses the API, starting with a PWA
 - [ ] Deployment beyond local
+- [ ] Integrations with task management tools, Google Docs links, attachments and other services
+- [ ] Share the map with an AI assistant as context, with edit permissions
+- [ ] Better design and usability
+- [ ] Mobile-friendly view
+- [ ] Multi-language support
+- [ ] Filtered views: build cut-outs of the map from filters
+- [ ] Relate ideas across different branches of the tree
 
 ## License
 
