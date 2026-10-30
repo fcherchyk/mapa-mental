@@ -15,3 +15,9 @@
 - 09:44:35 · paso qa
 - 09:46:24 · qa hecho por claude/claude-sonnet-5-5 (rotaciones: reserva con la misma familia (anthropic))
 - 09:46:24 · qa: ⚠ claude no pudo ejecutar 2 comandos: `cat > api/tests/test_repo_docs.py <<'EOF' """Tests de la limpieza del repo (LICENSE, README en inglés, guía de OAuth, R…`, `python3 - <<'EOF' p="api/tests/test_repo_docs.py" s=open(p).read() s=s.replace(''' files -= {"api/tests/test_repo_docs.…`
+- 09:46:24 · paso setup
+- 09:46:24 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 09:46:24 · paso tests
+- 09:46:46 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.4%)
+- 09:46:46 · paso review
+- 09:47:31 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
