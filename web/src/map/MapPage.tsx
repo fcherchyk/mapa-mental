@@ -68,7 +68,7 @@ export function MapPage() {
   const actions: NodeActions = {
     select: view.select,
     open,
-    createChild: view.startCreateChild,
+    createChild: (id) => view.startCreateChild(id, goTo),
     startEdit: view.startEdit,
     commitEdit: view.commitEdit,
     cancelEdit: view.cancelEdit,
@@ -95,7 +95,7 @@ export function MapPage() {
     }
     switch (key) {
       case 'Tab':
-        view.startCreateChild(id);
+        view.startCreateChild(id, goTo);
         return true;
       case 'Enter':
         if (id !== state.focusId) open(id);

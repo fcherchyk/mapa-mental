@@ -3,7 +3,7 @@ import { useNodeActions, type NodeComponentProps } from './nodeActions';
 import { TitleEditor } from './TitleEditor';
 
 export function IdeaNode({ data }: NodeComponentProps) {
-  const { node, isFocus, selected, editing, hiddenCount, canAddChild } = data;
+  const { node, isFocus, selected, editing, hiddenCount } = data;
   const actions = useNodeActions();
   const classes = ['map-node', isFocus && 'is-focus', selected && 'is-selected']
     .filter(Boolean)
@@ -51,7 +51,6 @@ export function IdeaNode({ data }: NodeComponentProps) {
           type="button"
           className={addClasses}
           aria-label={`Agregar idea dentro de ${node.title}`}
-          disabled={!canAddChild}
           onClick={(event) => {
             event.stopPropagation();
             actions.createChild(node.id);

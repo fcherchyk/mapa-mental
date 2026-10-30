@@ -64,6 +64,20 @@ export function isRealRoot(state: MapState, id: string): boolean {
   return state.nodes[id]?.parent_id === null;
 }
 
+/** Hijos del nodo que ya llegaron a la ventana (en un colapsado o del borde pueden faltar). */
+export function hasLoadedChildren(state: MapState, id: string): boolean {
+  return (state.childIds[id]?.length ?? 0) >= (state.nodes[id]?.child_count ?? 0);
+}
+
+/** Hijo del foco que es el mismo nodo o su ancestro: adonde baja el foco para mostrar `id`. */
+export function childOfFocusToward(state: MapState, id: string): string | null {
+  let current: MapNode | undefined = state.nodes[id];
+  while (current && current.parent_id !== state.focusId) {
+    current = current.parent_id ? state.nodes[current.parent_id] : undefined;
+  }
+  return current?.id ?? null;
+}
+
 export function patchNode(state: MapState, id: string, patch: Partial<MapNode>): MapState {
   const node = state.nodes[id];
   if (!node) return state;

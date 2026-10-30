@@ -103,15 +103,15 @@ describe('criterio 2: botón + presente donde corresponde', () => {
     expect(nodeElement('a').querySelector('.map-node-add')).toBeNull();
   });
 
-  it('CA2: el + de un nodo colapsado o del borde aparece deshabilitado', async () => {
+  it('CA2: el + de un nodo colapsado o del borde está presente y habilitado', async () => {
     const api = sampleApi();
     api.nodes.get('a')!.collapsed = true;
     api.depth = 1;
     renderApp('/n/f', api);
     await screen.findByTestId('node-f');
     expect(addButton('Foco')).toBeEnabled();
-    expect(addButton('Idea A')).toBeDisabled();
-    expect(addButton('Idea B')).toBeDisabled();
+    expect(addButton('Idea A')).toBeEnabled();
+    expect(addButton('Idea B')).toBeEnabled();
   });
 });
 
@@ -366,6 +366,84 @@ describe('criterio 9: pista inicial', () => {
     renderApp('/n/x', api);
     await screen.findByTestId('node-x');
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+  });
+});
+
+describe('feedback: foco al crear hermanos', () => {
+  it('feedback 1: Enter, Enter, Enter deja la tercera hermana en edición y con foco', async () => {
+    const { user, api } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(addButton('Foco'));
+    await user.keyboard('Uno{Enter}Dos{Enter}Tres{Enter}');
+    expect(titleInput()).toHaveFocus();
+    expect(titleInput()).toHaveValue('');
+    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(3));
+    expect(api.callsTo('POST', '/api/nodes/f/children').map((call) => call.body)).toEqual([
+      { title: 'Uno' },
+      { title: 'Dos', after_sort_key: expect.any(String) },
+      { title: 'Tres', after_sort_key: expect.any(String) },
+    ]);
+  });
+});
+
+describe('feedback: crear más allá del borde o dentro de un colapsado', () => {
+  it('feedback 2: + sobre un nodo del borde baja el foco un nivel y crea el hijo en edición', async () => {
+    const api = sampleApi();
+    api.depth = 2;
+    const { user } = renderApp('/n/root', api);
+    await screen.findByTestId('node-root');
+    fireEvent.click(addButton('Idea A'));
+    await waitFor(() => expect(currentPath()).toBe('/n/f'));
+    await waitFor(() => expect(titleInput()).toHaveFocus());
+    await user.type(titleInput(), 'Hijo de A');
+    fireEvent.blur(titleInput());
+    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/a/children')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/nodes/a/children')[0].body).toEqual({ title: 'Hijo de A' });
+  });
+
+  it('feedback 2: Tab sobre un nodo del borde baja el foco un nivel y crea el hijo en edición', async () => {
+    const api = sampleApi();
+    api.depth = 2;
+    const { user } = renderApp('/n/root', api);
+    await selectNode('a');
+    await user.keyboard('{Tab}');
+    await waitFor(() => expect(currentPath()).toBe('/n/f'));
+    await waitFor(() => expect(titleInput()).toHaveFocus());
+    expect(api.callsTo('POST', /children/)).toHaveLength(0);
+  });
+
+  it('feedback 2: + sobre un nodo colapsado lo expande y después crea el hijo en edición', async () => {
+    const api = sampleApi();
+    api.nodes.get('a')!.collapsed = true;
+    const { user } = renderApp('/n/f', api);
+    await screen.findByTestId('node-f');
+    fireEvent.click(addButton('Idea A'));
+    await waitFor(() => expect(titleInput()).toHaveFocus());
+    expect(api.callsTo('PATCH', '/api/nodes/a')[0].body).toEqual({ collapsed: false, version: 1 });
+    expect(nodeElement('a1')).toBeInTheDocument();
+    await user.type(titleInput(), 'Hijo nuevo');
+    fireEvent.blur(titleInput());
+    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/a/children')).toHaveLength(1));
+    expect(api.callsTo('POST', '/api/nodes/a/children')[0].body).toEqual({ title: 'Hijo nuevo' });
+  });
+
+  it('feedback 2: si la expansión del + falla, no queda una creación pendiente que se dispare después', async () => {
+    const api = sampleApi();
+    api.nodes.get('a')!.collapsed = true;
+    api.failNext((call) => call.method === 'PATCH' && call.url === '/api/nodes/a', 500);
+    const { user } = renderApp('/n/f', api);
+    await screen.findByTestId('node-f');
+    fireEvent.click(addButton('Idea A'));
+    await screen.findByRole('alert');
+    expect(queryTitleInput()).not.toBeInTheDocument();
+    // Expandir a mano después no abre un hijo en edición por el + que falló.
+    fireEvent.click(nodeElement('a'));
+    screen.getByRole('main').focus();
+    await user.keyboard(' ');
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/nodes/a')).toHaveLength(2));
+    await waitFor(() => expect(nodeElement('a1')).toBeInTheDocument());
+    expect(queryTitleInput()).not.toBeInTheDocument();
+    expect(api.callsTo('POST', /children/)).toHaveLength(0);
   });
 });
 

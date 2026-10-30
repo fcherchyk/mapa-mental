@@ -17,3 +17,10 @@
 - 02:12:58 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
 - 02:12:58 · paso docs
 - 02:13:28 · docs hecho por claude/claude-haiku-5-5
+- 02:13:28 · paso merge
+- 02:13:28 · gate enviado: Listo para mergear
+- 02:15:59 · 👤 pediste cambios: 1. Foco al crear. Al apretar Enter en un título, la hermana nueva se crea pero el campo no recibe el foco: no hay cursor y a veces queda un nodo pendiente, sin ✎ ni “+”, que no se puede editar. El nodo nuevo (con Enter, Tab o “+”) tiene que quedar con el cursor en su título, listo para escribir, aunque React Flow lo muestre oculto hasta medirlo (por ejemplo, enfocar después de que el nodo sea visible, no solo con autoFocus). Test: Enter, Enter, Enter deja la tercera hermana en edición y con foco.
+2. Crear más allá del borde. Hoy Tab y “+” no hacen nada sobre un nodo del borde (el último nivel visible según la profundidad). En ese caso, el foco tiene que bajar un nivel, al hijo del foco actual en el camino hacia ese nodo, navegando a /n/:id como en la navegación normal, y recién ahí crear el hijo en edición. Así, si sigo profundizando, la vista baja un nivel cada vez. Mostrar el “+” también en los nodos del borde. Lo mismo para un nodo colapsado: expandirlo y crear el hijo. Tests de los dos casos.
+- 02:15:59 · paso implement
+- 02:20:22 · implement hecho por claude/claude-haiku-5-5
+- 02:20:22 · implement: ⚠ claude no pudo ejecutar 1 comandos: `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --di…`

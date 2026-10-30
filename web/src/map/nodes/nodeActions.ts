@@ -7,8 +7,6 @@ export type MapNodeData = {
   selected: boolean;
   editing: boolean;
   hiddenCount: number;
-  /** Falso en los nodos colapsados o del borde: un hijo nuevo quedaría oculto. */
-  canAddChild: boolean;
 };
 
 export interface NodeComponentProps {

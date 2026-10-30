@@ -1,32 +1,35 @@
 <!-- claude · claude-haiku-5-5 · familia anthropic -->
 
-Implementé la spec en `web/`: el "+" en cada nodo, la ayuda de atajos con su pista, y el foco que vuelve al mapa después de editar. El backend no cambió. Tests del frontend: 80 en verde con 99,5% de líneas. Backend: 104 en verde con 98%. No commiteé nada.
+Atendí el feedback de 'merge' (los dos puntos). Tests del frontend, backend, typecheck, lint y build pasan. No hice commit.
 
-**Archivos**
-- `web/src/map/nodes/IdeaNode.tsx`: botón "+" junto al lápiz, con `aria-label` "Agregar idea dentro de <título>". Se ve siempre en el foco y en el seleccionado; en los demás aparece con el mouse encima (CSS). Click y doble click no llegan al mapa.
-- `web/src/map/nodes/nodeActions.ts`: `createChild` en las acciones y `canAddChild` en los datos del nodo.
-- `web/src/map/MapCanvas.tsx`: calcula `canAddChild`.
-- `web/src/components/ShortcutsHelp.tsx` (nuevo): botón "?" con `aria-expanded` y panel `role="dialog"` con los ocho atajos. Escape cierra y devuelve el foco al "?".
-- `web/src/map/MapPage.tsx`: el mapa recibe foco (`tabIndex=-1`) al terminar una edición, la pista de raíz vacía, y los atajos quedan desactivados mientras la ayuda está abierta.
-- `web/src/styles.css`: estilos del "+", de la pista y del panel.
-- `web/src/actions.test.tsx` (nuevo): 15 tests, nombrados `CA1`…`CA9` según los criterios de la spec.
-- `.agents/progress.md`: sección nueva de esta corrida.
+**Archivos tocados** (todos en `web/`, el backend no cambió)
+- `src/map/nodes/TitleEditor.tsx`: el foco ya no depende de `autoFocus`. Reintenta `focus()` en frames (hasta 60) hasta que el campo lo tiene o se desmonta. React Flow oculta el nodo nuevo hasta medirlo, y un elemento oculto no recibe foco.
+- `src/map/useMapView.ts`: `startCreateChild(parentId, goTo)` decide según el nodo:
+  - Borde: el foco baja un nivel al hijo del foco que lleva al nodo (`goTo`). La creación queda pendiente y se completa cuando llega esa ventana.
+  - Colapsado: expande con PATCH y crea el hijo cuando llegan sus hijos.
+  - Si el PATCH falla, la pendiente se descarta. Si el usuario navega a otro foco, también se cancela.
+  - `setCollapsed` se extrajo de `toggleCollapse` para reutilizarlo.
+- `src/map/tree.ts`: `childOfFocusToward` y `hasLoadedChildren`.
+- `src/map/MapPage.tsx`, `MapCanvas.tsx`, `nodes/IdeaNode.tsx`, `nodes/nodeActions.ts`: pasan `goTo` y quitan `canAddChild`. El "+" queda habilitado en borde y colapsados.
+- Tests: `src/actions.test.tsx` (bloque "feedback", y el test de CA2 que ahora espera el "+" habilitado), `src/editing.test.tsx` (Tab sobre borde ahora baja un nivel) y el nuevo `src/map/nodes/TitleEditor.test.tsx`.
+- `.agents/progress.md` actualizado.
 
 **Decisiones**
-- **Foco al terminar una edición.** React Flow desmonta el editor un render después de que `editingId` vuelve a `null`, así que el chequeo inicial no alcanzaba. Ahora cuenta como foco perdido también el editor que todavía está en el mapa. Si el usuario hace click en otro lado, el foco no se fuerza.
-- **"+" en nodos colapsados o del borde.** Aparece en el DOM pero deshabilitado, porque ahí un hijo nuevo quedaría oculto. Así respondo la pregunta abierta de la spec: el "+" no enfoca el nodo primero.
-- **Pista "la primera vez".** La muestro mientras la raíz no tenga hijos, no una sola vez por persona. Sigue pendiente de confirmar, como dice la spec.
-- **Enter sobre un hijo recién creado** sigue abriendo un hermano en edición, como ya hacía.
+- Borde: cada "+" o Tab sobre el borde baja un nivel, así que la vista se mueve de a un nivel por vez.
+- Colapsado: el "+" expande el nodo y después crea el hijo. Si la expansión falla, no queda una creación pendiente que se dispare más tarde.
+- Pista "la primera vez": sigue como estado (se muestra mientras la raíz real no tenga hijos). Hay que confirmarlo con vos, porque el pedido dice "la primera vez".
 
-**Para validar a mano**
-- Después de cerrar la ayuda, el foco queda en el "?" (lo pide la spec). Un Tab o un atajo en ese momento no actúa sobre el mapa hasta hacer click en él. Conviene revisar si eso se siente bien.
-- El hover del "+" y el aspecto del panel no se pueden probar en jsdom.
-
-**Lo que no hice**
-- `pnpm --dir web exec vite build` fue rechazado por el arnés, igual que en la corrida anterior. Typecheck y lint sí pasan.
-- Los docs (`README.md` y la wiki) quedan para el paso `docs`.
+**Resultados**
+- Vitest: 100 en verde, 99,33% de líneas.
+- Backend (`pytest --cov-fail-under=80`): 104 en verde, 98%.
+- `tsc`, `eslint` y `vite build`: limpios.
+- El `test_command` con llaves fue rechazado por el arnés, así que corrí sus dos partes por separado.
 
 **Cómo probarlo**
-- `pnpm --dir web exec vitest run --coverage`
-- `pnpm --dir web exec tsc --noEmit && pnpm --dir web exec eslint .`
-- Backend: `uv run --directory api pytest -q --cov=app --cov-fail-under=80` (con Docker abierto).
+- `pnpm --dir web exec vitest run --coverage`.
+- Manual, con `docker compose up`: el "+" en un nodo del borde y en uno colapsado, y el foco del editor nuevo en un nodo recién creado. jsdom no reproduce el nodo oculto de React Flow, así que el reintento de foco solo lo cubre el test unitario.
+
+**Pendiente**
+- Validación manual en el navegador (hover, panel de ayuda, pista, foco).
+- Docs del paso `docs`: el README y la wiki todavía no mencionan que el "+" funciona en borde y colapsados.
+- Prettier no se pudo correr (rechazado en corridas anteriores).

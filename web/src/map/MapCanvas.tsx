@@ -4,7 +4,7 @@ import '@xyflow/react/dist/style.css';
 import { layoutTree } from './layout';
 import { useNodeActions } from './nodes/nodeActions';
 import { NodeRenderer, type MapFlowNode } from './nodes/NodeRenderer';
-import { hiddenChildCount, isBorder, visibleChildren, type MapState } from './tree';
+import { hiddenChildCount, visibleChildren, type MapState } from './tree';
 
 const NODE_TYPES = { renderer: NodeRenderer };
 
@@ -31,7 +31,6 @@ export function toFlowElements(
       selected: id === selectedId,
       editing: id === editingId,
       hiddenCount: hiddenChildCount(state, id),
-      canAddChild: !state.nodes[id].collapsed && !isBorder(state, id),
     },
   }));
   return {
