@@ -113,6 +113,13 @@ describe('criterio 2: botón + presente donde corresponde', () => {
     expect(addButton('Idea A')).toBeEnabled();
     expect(addButton('Idea B')).toBeEnabled();
   });
+
+  it('CA2: el nodo pendiente creado con el botón + no tiene el botón + en el DOM', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(addButton('Foco'));
+    expect(titleInput().closest('.map-node')?.querySelector('.map-node-add')).toBeNull();
+  });
 });
 
 describe('criterio 3: botón + no dispara otras acciones del nodo', () => {
@@ -187,6 +194,18 @@ describe('criterio 4: los atajos siguen andando después del lápiz', () => {
     await user.keyboard('{F2}');
     expect(titleInput()).toBeInTheDocument();
   });
+
+  it('CA4: cancelar la edición del lápiz con Escape permite colapsar con Espacio', async () => {
+    const api = sampleApi();
+    const { user } = renderApp('/n/f', api);
+    await selectNode('a');
+    fireEvent.click(screen.getByLabelText('Renombrar Idea A'));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('main')).toHaveFocus();
+    await user.keyboard(' ');
+    await waitFor(() => expect(api.callsTo('PATCH', '/api/nodes/a')).toHaveLength(1));
+    expect(api.callsTo('PATCH', '/api/nodes/a')[0].body).toEqual({ collapsed: true, version: 1 });
+  });
 });
 
 describe('criterio 5: los atajos siguen andando después del +', () => {
@@ -209,6 +228,19 @@ describe('criterio 5: los atajos siguen andando después del +', () => {
     expect(screen.getByRole('main')).toHaveFocus();
     await user.keyboard('{Tab}');
     expect(titleInput()).toHaveFocus();
+  });
+
+  it('CA5: tras crear un hijo con el botón +, Tab sobre el nuevo hijo crea un nieto en edición', async () => {
+    const { user, api } = renderApp('/n/f', sampleApi());
+    fireEvent.click(await screen.findByLabelText('Agregar idea dentro de Foco'));
+    await user.type(titleInput(), 'Hijo nuevo');
+    fireEvent.blur(titleInput());
+    await waitFor(() => expect(nodeElement('new-1')).toHaveTextContent('Hijo nuevo'));
+    expect(nodeElement('new-1')).toHaveClass('is-selected');
+    await user.keyboard('{Tab}');
+    expect(titleInput()).toHaveFocus();
+    await user.type(titleInput(), 'Nieto{Enter}');
+    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/new-1/children')).toHaveLength(1));
   });
 });
 
@@ -287,6 +319,16 @@ describe('criterio 7: la ayuda no dispara atajos del mapa', () => {
     await user.keyboard('{Backspace}');
     expect(currentPath()).toBe('/n/f');
   });
+
+  it('CA7: con el panel abierto, las flechas no cambian la selección', async () => {
+    const { user } = renderApp('/n/f', sampleApi());
+    await selectNode('a');
+    fireEvent.click(helpButton());
+    screen.getByRole('main').focus();
+    await user.keyboard('{ArrowDown}');
+    expect(nodeElement('a')).toHaveClass('is-selected');
+    expect(nodeElement('b')).not.toHaveClass('is-selected');
+  });
 });
 
 describe('criterio 8: se puede usar solo con teclado', () => {
@@ -310,6 +352,15 @@ describe('criterio 8: se puede usar solo con teclado', () => {
     addButton('Foco').focus();
     await user.keyboard(' ');
     expect(titleInput()).toHaveFocus();
+  });
+
+  it('CA8: con el foco en un botón, Tab no crea un hijo sino que navega al siguiente control interactivo', async () => {
+    const { user } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    helpButton().focus();
+    await user.tab();
+    expect(queryTitleInput()).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Niveles visibles')).toHaveFocus();
   });
 });
 
@@ -366,6 +417,21 @@ describe('criterio 9: pista inicial', () => {
     renderApp('/n/x', api);
     await screen.findByTestId('node-x');
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+  });
+
+  it('CA9: si se borra el único hijo de la raíz, la pista vuelve a aparecer', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const api = new FakeApi([
+      { id: 'root', parent_id: null, title: 'Mi mapa', sort_key: 'V' },
+      { id: 'child-1', parent_id: 'root', title: 'Único hijo', sort_key: 'V' },
+    ]);
+    const { user } = renderApp('/', api);
+    await screen.findByTestId('node-child-1');
+    expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+    await selectNode('child-1');
+    await user.keyboard('{Delete}');
+    await waitFor(() => expect(api.callsTo('DELETE', '/api/nodes/child-1')).toHaveLength(1));
+    await waitFor(() => expect(screen.getByText(HINT)).toBeInTheDocument());
   });
 });
 
