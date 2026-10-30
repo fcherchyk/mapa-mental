@@ -1,0 +1,24 @@
+- 02:37:55 · corrida creada en mapa-mental · rama agent/b94349ca · flujo feature · complejidad M
+  > Borrar nodos y hojas desde la SPA, con dos modos. Hoy Supr borra el nodo y su subárbol (con window.confirm si tiene descendientes) y no hay botón visible. 1) Botón de borrar visible en cada nodo (junto al ✎ y al +, con aria-label) además de Supr; la raíz del mapa no se puede borrar. 2) Hoja (sin hijos, ni visibles ni ocultos según child_count): se borra sin preguntar. 3) Nodo intermedio: un diálogo propio (no window.confirm), accesible por teclado, con tres opciones: 'Borrar todo a partir de acá' (el nodo y todo su subárbol, como hoy, indicando cuántos descendientes), 'Borrar solo este y subir sus hijos' (los hijos directos pasan al padre del nodo borrado, en el lugar que ocupaba y conservando su orden, con su propio subárbol intacto) y 'Cancelar'. 4) Backend: soportar el segundo modo en la API (por ejemplo DELETE /api/nodes/{id}?children=reparent, en una transacción, con sort_key válidos entre los hermanos del padre y respetando el aislamiento por usuario y el header X-CSRF), con tests pytest contra PostgreSQL. 5) Si el nodo borrado es el foco, navegar al padre como hoy. Tests con Vitest para hoja, subárbol, reparent y cancelar.
+- 02:37:55 · paso spec
+- 02:38:54 · spec hecho por claude-readonly/claude-opus-5-5
+- 02:38:54 · gate enviado: Spec lista para revisar
+- 09:04:43 · 👤 aprobaste
+- 09:04:43 · paso implement
+- 09:09:44 · implement hecho por claude/claude-sonnet-5-5
+- 09:09:44 · implement: ⚠ claude no pudo ejecutar 8 comandos: `python3 - <<'EOF' import re p='api/app/nodes/repository.py' s=open(p).read() s+=''' def previous_sibling_sort_key(db: S…`, `cat >> api/tests/test_nodes.py <<'EOF' def order_under(client: TestClient, parent_id: str) -> list[str]: return childre…`, `pnpm --dir web run gen:api 2>&1 | tail -5; git status --short; git diff --stat web/src/api/schema.ts; grep -n "children…`, `pnpm --dir web run gen:api`, `wc -l web/src/api/schema.ts; head -40 web/src/api/schema.ts; git check-ignore web/src/api/schema.ts` y 3 más
+- 09:09:44 · paso qa
+- 09:11:07 · qa hecho por claude/claude-sonnet-5-5 (rotaciones: antigravity/gemini-3.8-flash-high: sin cupo; reserva con la misma familia (anthropic))
+- 09:11:07 · qa: ⚠ claude no pudo ejecutar 3 comandos: `(uv run --directory api pytest -q tests/test_delete_modes.py 2>&1 | tail -25); (pnpm --dir web exec vitest run src/dele…`, `uv run --directory /Users/negro/hworkspace/projects/mapa-mental/api pytest -q tests/test_delete_modes.py`, `pnpm --dir /Users/negro/hworkspace/projects/mapa-mental/web exec vitest run src/deleteModes.test.tsx src/editing.test.t…`
+- 09:11:07 · paso setup
+- 09:11:07 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 09:11:07 · paso tests
+- 09:11:29 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.4%)
+- 09:11:29 · paso review
+- 09:14:06 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+- 09:14:06 · paso docs
+- 09:14:37 · docs hecho por claude/claude-haiku-5-5
+- 09:14:37 · paso merge
+- 09:14:37 · gate enviado: Listo para mergear
+- 09:23:58 · 👤 aprobaste
+- 09:23:58 · merge de agent/b94349ca en main

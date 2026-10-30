@@ -216,18 +216,20 @@ function treeWithSevenDescendants(): FakeNode[] {
 }
 
 describe('borrar', () => {
-  it('criterio_13: Supr pide confirmación con la cantidad de descendientes', async () => {
+  it('criterio_13: Supr abre el diálogo con la cantidad de descendientes', async () => {
     const api = new FakeApi(treeWithSevenDescendants());
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
+    const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/n/f', api);
     await selectNode('x');
     await user.keyboard('{Delete}');
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('7'));
+    expect(screen.getByRole('dialog')).toHaveTextContent('7');
+    expect(confirm).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(api.callsTo('DELETE', /nodes/)).toHaveLength(0);
     expect(nodeElement('x')).toBeInTheDocument();
 
-    confirm.mockReturnValueOnce(true);
     await user.keyboard('{Delete}');
+    await user.click(screen.getByRole('button', { name: 'Borrar todo a partir de acá' }));
     expect(queryNode('x')).not.toBeInTheDocument();
     expect(queryNode('x11')).not.toBeInTheDocument();
     await waitFor(() => expect(api.callsTo('DELETE', '/api/nodes/x')).toHaveLength(1));
@@ -236,14 +238,13 @@ describe('borrar', () => {
     expect(nodeElement('b')).toHaveClass('is-selected');
   });
 
-  it('criterio_13: si hay niveles sin cargar, la confirmación dice "al menos"', async () => {
+  it('criterio_13: si hay niveles sin cargar, el diálogo dice "al menos"', async () => {
     const api = new FakeApi(treeWithSevenDescendants());
     api.depth = 2;
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const { user } = renderApp('/n/f', api);
     await selectNode('x');
     await user.keyboard('{Delete}');
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('al menos 7'));
+    expect(screen.getByRole('dialog')).toHaveTextContent('al menos 7');
   });
 
   it('criterio_13: un nodo sin descendientes se borra sin confirmación', async () => {
@@ -270,10 +271,10 @@ describe('borrar', () => {
 
   it('borrar el foco lleva a su padre', async () => {
     const api = sampleApi();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const { user } = renderApp('/n/a', api);
     await screen.findByTestId('node-a');
     await user.keyboard('{Delete}');
+    await user.click(screen.getByRole('button', { name: 'Borrar todo a partir de acá' }));
     await waitFor(() => expect(currentPath()).toBe('/n/f'));
     expect(await screen.findByTestId('node-f')).toBeInTheDocument();
     expect(queryNode('a')).not.toBeInTheDocument();

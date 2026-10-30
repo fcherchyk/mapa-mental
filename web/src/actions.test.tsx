@@ -256,7 +256,7 @@ describe('criterio 6: abrir y cerrar la ayuda', () => {
       { key: 'Tab', desc: 'Con el mapa enfocado, agrega un hijo al nodo seleccionado y lo deja en edición.' },
       { key: 'F2', desc: 'Pone en edición el título del nodo seleccionado.' },
       { key: 'Espacio', desc: 'Colapsa o expande el nodo seleccionado.' },
-      { key: 'Supr', desc: 'Borra el nodo seleccionado y sus descendientes, previa confirmación.' },
+      { key: 'Supr', desc: 'Borra el nodo seleccionado. Si tiene hijos, pregunta si borrar todo el subárbol o solo el nodo y subir sus hijos.' },
       { key: 'Enter', desc: 'Enfoca el nodo seleccionado. Mientras editás un título, lo confirma y abre una idea hermana.' },
       { key: 'Retroceso', desc: 'Sube un nivel desde el nodo enfocado.' },
       { key: 'Flechas', desc: 'Mueven la selección: → al primer hijo, ← al padre, ↑ y ↓ entre hermanos.' },

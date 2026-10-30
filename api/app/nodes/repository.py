@@ -83,3 +83,16 @@ def next_sibling_sort_key(db: Session, parent_id: uuid.UUID, after: str) -> str 
         Node.parent_id == parent_id, Node.sort_key > after
     )
     return db.scalar(query)
+
+
+def previous_sibling_sort_key(db: Session, parent_id: uuid.UUID, before: str) -> str | None:
+    """Mayor `sort_key` de los hijos de `parent_id` que es menor que `before`."""
+    query = select(func.max(Node.sort_key)).where(
+        Node.parent_id == parent_id, Node.sort_key < before
+    )
+    return db.scalar(query)
+
+
+def ordered_children(db: Session, parent_id: uuid.UUID) -> list[Node]:
+    query = select(Node).where(Node.parent_id == parent_id).order_by(Node.sort_key, Node.id)
+    return list(db.scalars(query))

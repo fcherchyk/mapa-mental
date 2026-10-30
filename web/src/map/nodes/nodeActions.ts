@@ -18,6 +18,7 @@ export interface NodeActions {
   open: (id: string) => void;
   createChild: (id: string) => void;
   startEdit: (id: string) => void;
+  remove: (id: string) => void;
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;
 }
