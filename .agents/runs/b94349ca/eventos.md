@@ -10,3 +10,9 @@
 - 09:09:44 · paso qa
 - 09:11:07 · qa hecho por claude/claude-sonnet-5-5 (rotaciones: antigravity/gemini-3.8-flash-high: sin cupo; reserva con la misma familia (anthropic))
 - 09:11:07 · qa: ⚠ claude no pudo ejecutar 3 comandos: `(uv run --directory api pytest -q tests/test_delete_modes.py 2>&1 | tail -25); (pnpm --dir web exec vitest run src/dele…`, `uv run --directory /Users/negro/hworkspace/projects/mapa-mental/api pytest -q tests/test_delete_modes.py`, `pnpm --dir /Users/negro/hworkspace/projects/mapa-mental/web exec vitest run src/deleteModes.test.tsx src/editing.test.t…`
+- 09:11:07 · paso setup
+- 09:11:07 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 09:11:07 · paso tests
+- 09:11:29 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.4%)
+- 09:11:29 · paso review
+- 09:14:06 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
