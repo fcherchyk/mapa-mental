@@ -236,3 +236,45 @@ button {
   border: 1px dashed var(--muted);
   color: var(--muted);
 }
+
+.map-node-delete {
+  border: none;
+  background: none;
+  color: var(--muted);
+  opacity: 0;
+}
+
+.map-node:hover .map-node-delete,
+.is-focus .map-node-delete,
+.is-selected .map-node-delete,
+.map-node-delete:focus-visible {
+  opacity: 1;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.4);
+  z-index: 20;
+}
+
+.delete-dialog {
+  max-width: 24rem;
+  padding: 1.25rem;
+  border-radius: 8px;
+  background: var(--bg, #fff);
+  color: inherit;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+.delete-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.delete-dialog-actions .is-danger {
+  color: #b91c1c;
+}

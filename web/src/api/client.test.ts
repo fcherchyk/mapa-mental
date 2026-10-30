@@ -58,6 +58,15 @@ describe('cliente de la API', () => {
     await expect(createApiClient().deleteNode('n1')).resolves.toBeUndefined();
   });
 
+  it('deleteNode con reparent manda ?children=reparent y sin opciones no manda query', async () => {
+    const fetchMock = stubFetch(204);
+    const api = createApiClient();
+    await api.deleteNode('n1');
+    await api.deleteNode('n1', { children: 'reparent' });
+    expect(requestOf(fetchMock, 0).url).toBe('/api/nodes/n1');
+    expect(requestOf(fetchMock, 1).url).toBe('/api/nodes/n1?children=reparent');
+  });
+
   it('un 401 avisa a onUnauthorized y rechaza con ApiError', async () => {
     stubFetch(401, { detail: 'sesión inválida o vencida' });
     const onUnauthorized = vi.fn();

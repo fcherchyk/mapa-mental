@@ -60,6 +60,21 @@ export function IdeaNode({ data }: NodeComponentProps) {
           +
         </button>
       )}
+      {!editing && !node.pending && node.parent_id !== null && (
+        <button
+          type="button"
+          className="map-node-delete nodrag nopan"
+          aria-label={`Borrar ${node.title}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            actions.select(node.id);
+            actions.remove(node.id);
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+        >
+          🗑
+        </button>
+      )}
       {hiddenCount > 0 && (
         <span
           className={`map-node-hidden ${node.collapsed ? 'is-collapsed' : 'is-border'}`}

@@ -1,7 +1,7 @@
 """Endpoints de nodos: ventana visible, crear, editar y borrar."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
@@ -49,6 +49,12 @@ def update_node(node_id: uuid.UUID, patch: NodePatch, user: CurrentUser, db: Db)
 @router.delete(
     "/{node_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)]
 )
-def delete_node(node_id: uuid.UUID, user: CurrentUser, db: Db) -> Response:
-    service.delete_subtree(db, user.id, node_id)
+def delete_node(
+    node_id: uuid.UUID,
+    user: CurrentUser,
+    db: Db,
+    children: Annotated[Literal["cascade", "reparent"], Query()] = "cascade",
+) -> Response:
+    """`children=cascade` borra el subárbol; `reparent` sube los hijos directos al padre."""
+    service.delete_subtree(db, user.id, node_id, reparent=children == "reparent")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

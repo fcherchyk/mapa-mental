@@ -9,7 +9,8 @@ const SHORTCUTS: { keys: string; description: string }[] = [
   { keys: 'Espacio', description: 'Colapsa o expande el nodo seleccionado.' },
   {
     keys: 'Supr',
-    description: 'Borra el nodo seleccionado y sus descendientes, previa confirmación.',
+    description:
+      'Borra el nodo seleccionado. Si tiene hijos, pregunta si borrar todo el subárbol o solo el nodo y subir sus hijos.',
   },
   {
     keys: 'Enter',

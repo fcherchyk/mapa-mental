@@ -22,7 +22,12 @@ export class ApiError extends Error {
   }
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+/** `cascade` borra el subárbol; `reparent` sube los hijos directos al padre del nodo borrado. */
+export interface DeleteOptions {
+  children?: 'cascade' | 'reparent';
+}
+
+type Method ='GET' | 'POST' | 'PATCH' | 'DELETE';
 
 export interface ApiClient {
   getMe(): Promise<Me>;
@@ -31,7 +36,7 @@ export interface ApiClient {
   getView(nodeId: string, depth: number): Promise<NodeView>;
   createChild(parentId: string, data: NodeCreate): Promise<NodeOut>;
   updateNode(nodeId: string, patch: NodePatch): Promise<NodeOut>;
-  deleteNode(nodeId: string): Promise<void>;
+  deleteNode(nodeId: string, options?: DeleteOptions): Promise<void>;
 }
 
 /** Cliente de la API; `onUnauthorized` se llama ante cualquier 401 (sesión vencida). */
@@ -60,7 +65,8 @@ export function createApiClient(onUnauthorized: () => void = () => {}): ApiClien
     getView: (nodeId, depth) => request('GET', `${node(nodeId)}/view?depth=${depth}`),
     createChild: (parentId, data) => request('POST', `${node(parentId)}/children`, data),
     updateNode: (nodeId, patch) => request('PATCH', node(nodeId), patch),
-    deleteNode: (nodeId) => request('DELETE', node(nodeId)),
+    deleteNode: (nodeId, options) =>
+      request('DELETE', `${node(nodeId)}${options?.children === 'reparent' ? '?children=reparent' : ''}`),
   };
 }
 

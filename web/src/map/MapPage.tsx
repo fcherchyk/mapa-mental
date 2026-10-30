@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DeleteDialog } from '../components/DeleteDialog';
 import { NotFound } from '../components/NotFound';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { ShortcutsHelp } from '../components/ShortcutsHelp';
@@ -52,6 +53,14 @@ export function MapPage() {
     wasEditing.current = false;
   }, [editingId]);
 
+  // Al cerrarse el diálogo de borrado (cualquier opción) el foco vuelve al mapa.
+  const deleting = view.deleteRequest !== null;
+  const wasDeleting = useRef(false);
+  useEffect(() => {
+    if (!deleting && wasDeleting.current) canvasRef.current?.focus();
+    wasDeleting.current = deleting;
+  }, [deleting]);
+
   const goTo = (id: string) => navigate(pathFor(id, me.root_node_id));
 
   /** Doble click: enfoca el nodo; sobre el foco sube un nivel; en la raíz real no hace nada. */
@@ -70,6 +79,7 @@ export function MapPage() {
     open,
     createChild: (id) => view.startCreateChild(id, goTo),
     startEdit: view.startEdit,
+    remove: (id) => view.remove(id, goTo),
     commitEdit: view.commitEdit,
     cancelEdit: view.cancelEdit,
   };
@@ -82,7 +92,8 @@ export function MapPage() {
     (state.childIds[state.focusId] ?? []).length === 0;
 
   const handleKey = (event: KeyboardEvent) => {
-    if (!state || !selectedId || editingId || helpOpen || isInteractiveTarget(event.target)) return;
+    if (!state || !selectedId || editingId || helpOpen || view.deleteRequest) return;
+    if (isInteractiveTarget(event.target)) return;
     const handled = runShortcut(event.key, selectedId);
     if (handled) event.preventDefault();
   };
@@ -162,6 +173,13 @@ export function MapPage() {
         )}
         {rootIsEmpty && <p className="map-hint">Tocá + o Tab para agregar una idea</p>}
       </main>
+      {view.deleteRequest && (
+        <DeleteDialog
+          request={view.deleteRequest}
+          onChoose={view.confirmRemove}
+          onCancel={view.cancelRemove}
+        />
+      )}
     </div>
   );
 }

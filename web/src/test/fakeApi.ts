@@ -100,13 +100,16 @@ export class FakeApi {
       this.depth = (call.body as { depth: number }).depth;
       return json(200, { depth: this.depth });
     }
-    const match = url.match(/^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children)?$/);
+    const match = url.match(
+      /^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children|\?children=(cascade|reparent))?$/,
+    );
     const node = match && this.nodes.get(decodeURIComponent(match[1]));
     if (!match || !node) return json(404, { detail: 'nodo inexistente' });
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
     if (method === 'POST' && match[2] === '/children') return json(201, this.create(node, call));
     if (method === 'PATCH') return this.patch(node, call);
     if (method === 'DELETE') {
+      if (match[4] === 'reparent') this.reparentChildren(node);
       this.subtree(node.id).forEach((id) => this.nodes.delete(id));
       return new Response(null, { status: 204 });
     }
@@ -117,6 +120,18 @@ export class FakeApi {
     return [...this.nodes.values()]
       .filter((node) => node.parent_id === id)
       .sort((a, b) => (a.sort_key < b.sort_key ? -1 : 1));
+  }
+
+  /** Los hijos pasan al padre; la clave del nodo como prefijo los deja en su lugar y en orden. */
+  private reparentChildren(node: Required<FakeNode>): void {
+    for (const child of this.children(node.id)) {
+      this.nodes.set(child.id, {
+        ...child,
+        parent_id: node.parent_id,
+        sort_key: `${node.sort_key}${child.sort_key}`,
+        version: child.version + 1,
+      });
+    }
   }
 
   private subtree(id: string): string[] {

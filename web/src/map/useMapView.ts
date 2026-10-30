@@ -65,6 +65,17 @@ function failureNotice(error: unknown): string {
   return error instanceof ApiError && error.status === 409 ? CONFLICT_NOTICE : FAILURE_NOTICE;
 }
 
+export type DeleteMode = 'cascade' | 'reparent';
+
+/** Borrado de un nodo intermedio esperando la elección del usuario en el diálogo. */
+export interface DeleteRequest {
+  id: string;
+  title: string;
+  count: number;
+  exact: boolean;
+  onFocusDeleted: (parentId: string) => void;
+}
+
 export interface MapView {
   status: ViewStatus;
   state: MapState | null;
@@ -78,6 +89,9 @@ export interface MapView {
   cancelEdit: (id: string) => void;
   toggleCollapse: (id: string) => void;
   remove: (id: string, onFocusDeleted: (parentId: string) => void) => void;
+  deleteRequest: DeleteRequest | null;
+  confirmRemove: (mode: DeleteMode) => void;
+  cancelRemove: () => void;
   dismissNotice: () => void;
 }
 
@@ -90,6 +104,7 @@ export function useMapView(focusId: string, depth: number): MapView {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null);
   const [reloads, setReloads] = useState(0);
   const stateRef = useRef<MapState | null>(null);
   const keyRef = useRef(key);
@@ -329,20 +344,56 @@ export function useMapView(focusId: string, depth: number): MapView {
     setCollapsed(id, collapsing);
   };
 
+  /** Hoja: se borra sin preguntar. Intermedio: abre el diálogo y espera la elección. */
   const remove = (id: string, onFocusDeleted: (parentId: string) => void) => {
     const current = stateRef.current;
     const node = current?.nodes[id];
     if (!current || !node || node.pending || node.parent_id === null) return;
     const { count, exact } = countDescendants(current, id);
-    if (count > 0) {
-      const amount = exact ? `${count}` : `al menos ${count}`;
-      if (!window.confirm(`¿Borrar «${node.title}» y sus ${amount} descendientes?`)) return;
+    if (count === 0) {
+      deleteNode(id, 'cascade', onFocusDeleted);
+      return;
     }
+    setDeleteRequest({ id, title: node.title, count, exact, onFocusDeleted });
+  };
+
+  const confirmRemove = (mode: DeleteMode) => {
+    if (!deleteRequest) return;
+    setDeleteRequest(null);
+    deleteNode(deleteRequest.id, mode, deleteRequest.onFocusDeleted);
+  };
+
+  const cancelRemove = () => setDeleteRequest(null);
+
+  const deleteNode = (
+    id: string,
+    mode: DeleteMode,
+    onFocusDeleted: (parentId: string) => void,
+  ) => {
+    const current = stateRef.current;
+    const node = current?.nodes[id];
+    if (!current || !node || node.parent_id === null) return;
     const parentId = node.parent_id;
-    if (id === current.focusId) {
+    const isFocus = id === current.focusId;
+    const call = () => api.deleteNode(id, mode === 'reparent' ? { children: mode } : undefined);
+    if (mode === 'reparent') {
+      // Los nietos suben un nivel y pueden entrar en la ventana: se vuelve a pedir, sin optimismo.
+      const firstChild = current.childIds[id]?.[0];
+      setSelectedId(firstChild ?? selectionAfterDelete(current, id));
       mutate(
         (state) => state,
-        () => api.deleteNode(id),
+        call,
+        (state) => {
+          queueMicrotask(isFocus ? () => onFocusDeleted(parentId) : reloadFromServer);
+          return state;
+        },
+      );
+      return;
+    }
+    if (isFocus) {
+      mutate(
+        (state) => state,
+        call,
         (state) => {
           queueMicrotask(() => onFocusDeleted(parentId));
           return state;
@@ -353,7 +404,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     setSelectedId(selectionAfterDelete(current, id));
     mutate(
       (state) => removeSubtree(state, id),
-      () => api.deleteNode(id),
+      call,
       (state) => state,
     );
   };
@@ -371,6 +422,9 @@ export function useMapView(focusId: string, depth: number): MapView {
     cancelEdit,
     toggleCollapse,
     remove,
+    deleteRequest,
+    confirmRemove,
+    cancelRemove,
     dismissNotice: () => setNotice(null),
   };
 }
