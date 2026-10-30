@@ -12,9 +12,9 @@ App web para que una persona con cuenta de Google arme un único mapa mental de 
 - Lienzo con React Flow: árbol horizontal dispuesto automáticamente, zoom y desplazamiento.
 - Foco en la URL (`/` es la raíz, `/n/:nodeId` cualquier otro nodo); atrás, adelante y recarga funcionan.
 - Navegación: doble click enfoca un nodo, doble click en el foco sube un nivel; miga de pan; Enter enfoca el seleccionado y Retroceso sube.
-- Botón "+" en cada nodo: crea un hijo en edición, igual que Tab. Se ve en el nodo foco y en el seleccionado, y en los demás al pasar el mouse. No aparece mientras el nodo está en edición o pendiente, y queda deshabilitado en los colapsados y del borde.
+- Botón "+" en cada nodo: crea un hijo en edición, igual que Tab. Se ve en el nodo foco y en el seleccionado, y en los demás al pasar el mouse. No aparece mientras el nodo está en edición o pendiente. En un nodo del borde, el foco se mueve un nivel hacia él y el hijo se crea ahí; en un colapsado, primero se expande.
 - Botón "?" en el encabezado: abre un panel con los atajos de teclado. Escape o un nuevo click lo cierran y devuelven el foco al botón.
-- Pista "Tocá + o Tab para agregar una idea" mientras la raíz no tiene hijos.
+- Pista "Tocá + o Tab para agregar una idea" mientras el foco es la raíz y no tiene hijos.
 - Al terminar una edición (lápiz, "+", Tab o F2) el foco vuelve al mapa, así que los atajos siguen funcionando sin hacer click en otro lado.
 - Nodos del borde con indicador "+k" de hijos ocultos (se enfocan para verlos); los colapsados muestran "+k" con borde punteado.
 - Edición optimista con reversión y aviso si la API falla: Tab crea un hijo, Enter (editando) crea un hermano, F2 o el lápiz renombran, Espacio colapsa o expande, Supr borra (con confirmación si hay descendientes) y las flechas mueven la selección.
@@ -63,7 +63,7 @@ pnpm --dir web exec vitest run --coverage
 - Backend: levanta un PostgreSQL 16 efímero con `testcontainers`, lo migra con Alembic y simula a Google con un OIDC falso, así que no sale a la red ni usa la base de desarrollo.
 - Frontend: Vitest + Testing Library en jsdom contra una API en memoria (`web/src/test/fakeApi.ts`). Falla si la cobertura de líneas queda por debajo del 80%.
 
-Cada criterio de la spec tiene tests que lo nombran: `criterio_N` en el nombre, o `CAN:` al inicio de la descripción (`web/src/actions.test.tsx`).
+En el frontend, `web/src/actions.test.tsx` agrupa los tests en bloques `criterio N: …` y cada test empieza con `CAN:` (criterio N, caso N), para ubicar qué criterio de la spec cubre.
 
 ## Estructura
 
@@ -93,6 +93,7 @@ web/
   src/
     main.tsx, styles.css  arranque de React y estilos
     App.tsx, session.tsx  sesión (/api/me, login, logout, N) y rutas / y /n/:nodeId
+    actions.test.tsx      tests de las acciones del mapa (botón +, ayuda, foco tras editar, pista)
     api/                  cliente fetch con X-CSRF y tipos del OpenAPI (schema.ts)
     components/           login, "No encontrado", miga de pan, SettingsPanel, ShortcutsHelp (botón "?" y panel de atajos)
     map/
