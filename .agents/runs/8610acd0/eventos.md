@@ -15,3 +15,5 @@
 - 02:12:38 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.49%)
 - 02:12:38 · paso review
 - 02:12:58 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+- 02:12:58 · paso docs
+- 02:13:28 · docs hecho por claude/claude-haiku-5-5
