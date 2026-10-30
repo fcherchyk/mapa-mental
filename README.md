@@ -1,113 +1,140 @@
 # mapa-mental
 
-App web para que una persona con cuenta de Google arme un único mapa mental de ideas y lo recorra enfocando un nodo por vez, viendo como mucho N niveles hacia abajo. El primer corte tiene la API FastAPI sobre PostgreSQL (`api/`) y la SPA React + TypeScript con Vite y React Flow (`web/`), que se hablan por `/api` desde el mismo origen `localhost:5173`.
+A web app that lets a person with a Google account build a single mind map of ideas and browse it by focusing one node at a time, seeing at most N levels down. The first slice has the FastAPI API on PostgreSQL (`api/`) and the React + TypeScript SPA with Vite and React Flow (`web/`), which talk to each other over `/api` from the same origin, `localhost:5173`.
 
-## Funcionalidades
+## Features
 
-- Login con Google del lado del servidor (Authorization Code con `state` y `nonce`, scopes `openid email profile`); el navegador solo recibe una cookie `HttpOnly`. La SPA muestra una pantalla de login si no hay sesión o si vence; "Salir" cierra la sesión.
-- Primer login: crea el usuario, su mapa y el nodo raíz con su nombre.
-- `GET /api/me` con el usuario, sus preferencias y `root_node_id`; logout.
-- Preferencia `depth` (1 a 10, por defecto 3) con `PATCH /api/me/settings`, elegible desde el selector "Niveles visibles".
-- Ventana visible `GET /api/nodes/{id}/view?depth=N`: foco, ancestros y hasta N niveles con `child_count`, respetando `collapsed`. La SPA la cachea por `(nodo, N)`.
-- Lienzo con React Flow: árbol horizontal dispuesto automáticamente, zoom y desplazamiento.
-- Foco en la URL (`/` es la raíz, `/n/:nodeId` cualquier otro nodo); atrás, adelante y recarga funcionan.
-- Navegación: doble click enfoca un nodo, doble click en el foco sube un nivel; miga de pan; Enter enfoca el seleccionado y Retroceso sube.
-- Botón "+" en cada nodo: crea un hijo en edición, igual que Tab. Se ve en el nodo foco y en el seleccionado, y en los demás al pasar el mouse. No aparece mientras el nodo está en edición o pendiente. En un nodo del borde, el foco se mueve un nivel hacia él y el hijo se crea ahí; en un colapsado, primero se expande.
-- Botón 🗑 en cada nodo (con `aria-label` "Borrar …"), igual que el "+": se ve en el foco, en el seleccionado y al pasar el mouse. No aparece en la raíz real del mapa ni en nodos pendientes. Hace lo mismo que Supr.
-- Borrar una hoja (sin hijos visibles ni ocultos) no pide confirmación. Borrar un nodo con hijos abre un diálogo accesible por teclado, con el foco inicial en "Cancelar", y tres opciones: "Borrar todo a partir de acá" (el nodo y todo su subárbol, indicando cuántos descendientes hay), "Borrar solo este y subir sus hijos" (los hijos pasan al padre, en el lugar del nodo y en su orden, con sus subárboles intactos) o "Cancelar". Escape también cancela.
-- Botón "?" en el encabezado: abre un panel con los atajos de teclado. Escape o un nuevo click lo cierran y devuelven el foco al botón.
-- Pista "Tocá + o Tab para agregar una idea" mientras el foco es la raíz y no tiene hijos.
-- Al terminar una edición (lápiz, "+", Tab o F2) el foco vuelve al mapa, así que los atajos siguen funcionando sin hacer click en otro lado.
-- Nodos del borde con indicador "+k" de hijos ocultos (se enfocan para verlos); los colapsados muestran "+k" con borde punteado.
-- Edición optimista con reversión y aviso si la API falla: Tab crea un hijo, Enter (editando) crea un hermano, F2 o el lápiz renombran, Espacio colapsa o expande, Supr borra (una hoja sin preguntar; un nodo con hijos abre el diálogo de borrado) y las flechas mueven la selección.
-- Crear hijos (`POST /api/nodes/{id}/children`, con `after_sort_key` opcional), editar con control de versión (`PATCH /api/nodes/{id}`) y borrar (`DELETE /api/nodes/{id}`). Con `?children=cascade` (por defecto) se borra el subárbol; con `?children=reparent` se borra solo el nodo y sus hijos directos pasan al padre, en una transacción, con `sort_key` nuevos entre sus hermanos y el subárbol de cada hijo intacto. Otro valor responde `422`. Títulos de 1 a 200 caracteres, con los espacios de los extremos recortados.
-- Aislamiento por usuario: un nodo ajeno responde `404` y la SPA muestra "No encontrado".
-- Protección CSRF: toda mutación exige el header `X-CSRF: 1`. Los títulos se dibujan siempre como texto y la SPA se sirve con `Content-Security-Policy`.
+- Google login handled on the server (Authorization Code with `state` and `nonce`, scopes `openid email profile`); the browser only receives an `HttpOnly` cookie. The SPA shows a login screen when there is no session or it has expired; "Salir" (Log out) ends the session.
+- First login: creates the user, their map and the root node with their name.
+- `GET /api/me` returns the user, their preferences and `root_node_id`; logout.
+- `depth` preference (1 to 10, default 3) set with `PATCH /api/me/settings`, editable from the "Niveles visibles" (Visible levels) selector.
+- Visible window `GET /api/nodes/{id}/view?depth=N`: focus, ancestors and up to N levels down, with `child_count`, respecting `collapsed`. The SPA caches it by `(node, N)`.
+- React Flow canvas: horizontal tree laid out automatically, with zoom and pan.
+- Focus lives in the URL (`/` is the root, `/n/:nodeId` is any other node); back, forward and reload work.
+- Navigation: double-click focuses a node, and double-clicking the focus goes up one level; breadcrumb; Enter focuses the selected node and Backspace goes up.
+- "+" button on each node: creates a child in edit mode, same as Tab. It shows on the focused and selected nodes, and on the others when hovered. It does not show while the node is being edited or is pending. On a node at the edge, focus moves one level toward it and the child is created there; on a collapsed node, it is expanded first.
+- 🗑 button on each node (with the accessible label "Borrar …" (Delete …)), like the "+" button: it shows on the focus, on the selected node and on hover. It does not show on the real root of the map or on pending nodes. It does the same as Delete.
+- Deleting a leaf (no visible or hidden children) asks for no confirmation. Deleting a node with children opens a dialog that is accessible by keyboard, with the initial focus on "Cancelar" (Cancel), and three options: "Borrar todo a partir de acá" (Delete everything from here down), which removes the node and its whole subtree and shows how many descendants there are; "Borrar solo este y subir sus hijos" (Delete only this one and move its children up), where the children move to the parent, in the node's place and order, with their subtrees intact; or "Cancelar" (Cancel). Escape also cancels.
+- "?" button in the header: opens a panel with the keyboard shortcuts. Escape or another click closes it and returns focus to the button.
+- Hint "Tocá + o Tab para agregar una idea" (Tap + or Tab to add an idea) while the focus is on the root and it has no children.
+- When an edit ends (pencil, "+", Tab or F2), focus goes back to the map, so the shortcuts keep working without clicking anywhere else.
+- Edge nodes show a "+k" indicator with the number of hidden children (focus them to see those); collapsed nodes show "+k" with a dotted border.
+- Optimistic editing with rollback and a notice if the API fails: Tab creates a child, Enter (while editing) creates a sibling, F2 or the pencil renames, Space collapses or expands, Delete removes (a leaf without asking; a node with children opens the delete dialog), and the arrow keys move the selection.
+- Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), edit with version control (`PATCH /api/nodes/{id}`) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed.
+- User isolation: a node that belongs to someone else returns `404`, and the SPA shows "No encontrado" (Not found).
+- CSRF protection: every mutation requires the `X-CSRF: 1` header. Titles are always rendered as text, and the SPA is served with a `Content-Security-Policy`.
 
-## Instalación
+## Installation
 
-Requisitos: Docker (OrbStack en la Mac), `uv`, Node 22+ y `pnpm` 10.
+Requirements: Docker (OrbStack on the Mac), `uv`, Node 22+ and `pnpm` 10.
 
-1. Crear credenciales OAuth en Google Cloud (tipo "Aplicación web", pantalla de consentimiento en modo *Testing*) y dar de alta como usuarios de prueba las cuentas que van a entrar.
-2. Registrar el redirect URI `http://localhost:5173/api/auth/callback` (es el valor por defecto de `GOOGLE_REDIRECT_URI`).
-3. `cp .env.example .env` y completar `POSTGRES_PASSWORD`, `DATABASE_URL` (con la misma contraseña), `SESSION_SECRET`, `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. Dejar `POST_LOGIN_REDIRECT=/` para volver a la SPA después del login.
-4. Para desarrollar fuera de Docker: `uv sync --directory api` y `pnpm --dir web install --frozen-lockfile`.
+### Google OAuth setup
 
-## Uso
+1. **Create a Google Cloud project.** Go to the [Google Cloud Console](https://console.cloud.google.com/), open the project selector and click **New project**.
+2. **Configure the OAuth consent screen in *Testing* mode.** Open **APIs & Services → OAuth consent screen** (Google also calls this area Google Auth Platform), fill in the app details and keep the publishing status at **Testing**. Then, under **Test users**, add the Google accounts that will sign in. While the app is in Testing, only those accounts can log in.
+3. **Create an OAuth client of type "Web application".** Go to **APIs & Services → Credentials → Create credentials → OAuth client ID**, choose **Web application** and, under **Authorized redirect URIs**, add exactly `http://localhost:5173/api/auth/callback`.
+4. **Copy the client ID and secret into `.env`.** Run `cp .env.example .env` and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to the values of the client you just created. `.env` holds secrets and is listed in `.gitignore`: **never commit it.**
+5. **Generate the secrets.**
+   - `SESSION_SECRET`: run `python -c "import secrets; print(secrets.token_urlsafe(32))"` and paste the output.
+   - `POSTGRES_PASSWORD`: choose a password and write the same value into `DATABASE_URL`, which has the form `postgresql+psycopg://mapa:<password>@db:5432/mapa`. Use only letters and digits, so the URL does not need escaping.
+6. **Start everything with Docker.** From the project folder, run `docker compose up --build`. From another folder, run `docker compose --project-directory <path> up --build`. Then open `http://localhost:5173` and sign in with Google.
+
+Local data lives in the Docker volume `db-data`. `docker compose down` keeps it, but **`docker compose down -v` deletes the volume and all local data.**
+
+To develop outside Docker: `uv sync --directory api` and `pnpm --dir web install --frozen-lockfile`.
+
+## Usage
 
 ```sh
 docker compose up --build
 ```
 
-- `db`: PostgreSQL 16 con el volumen `db-data`.
-- `api`: aplica las migraciones y levanta FastAPI con recarga en `http://127.0.0.1:8000`. La documentación OpenAPI queda en `http://127.0.0.1:8000/docs`.
-- `web`: Vite en `http://localhost:5173`, con proxy de `/api` hacia `api:8000`. Sus `node_modules` viven en el volumen `web-node-modules` (binarios de Linux).
+- `db`: PostgreSQL 16 with the `db-data` volume.
+- `api`: applies the migrations and runs FastAPI with reload at `http://127.0.0.1:8000`. The OpenAPI docs are at `http://127.0.0.1:8000/docs`.
+- `web`: Vite at `http://localhost:5173`, proxying `/api` to `api:8000`. Its `node_modules` live in the `web-node-modules` volume (Linux binaries).
 
-Abrir `http://localhost:5173` y entrar con Google. Todos los puertos se publican solo en `127.0.0.1`.
+Open `http://localhost:5173` and sign in with Google. All ports are published only on `127.0.0.1`.
 
-Teclado (con el mapa enfocado, fuera de edición): Tab crea un hijo, F2 renombra, Espacio colapsa o expande, Supr borra, Enter enfoca, Retroceso sube y las flechas mueven la selección. Doble click enfoca, y sobre el foco sube un nivel. Editando un título: Enter confirma y crea un hermano, Escape cancela.
+Keyboard (with the map focused, not editing): Tab creates a child, F2 renames, Space collapses or expands, Delete removes, Enter focuses, Backspace goes up, and the arrow keys move the selection. Double-click focuses a node, and double-clicking the focus goes up one level. While editing a title: Enter confirms and creates a sibling, and Escape cancels.
 
-Con el mouse o el teclado también se llega a las acciones desde el nodo: el "+" crea un hijo, el 🗑 borra el nodo (con el diálogo si tiene hijos) y el "?" del encabezado muestra la lista de atajos. Con el foco en un botón, Tab recorre los controles del navegador y no crea un hijo.
+With the mouse or the keyboard you can also reach the actions from the node: the "+" creates a child, the 🗑 deletes the node (with the dialog if it has children), and the "?" in the header shows the list of shortcuts. With focus on a button, Tab moves between the browser's controls and does not create a child.
 
-Para correr la SPA fuera de Docker con la API local: `pnpm --dir web dev` (el proxy apunta a `http://127.0.0.1:8000`, o a `API_PROXY_TARGET`).
+To run the SPA outside Docker against a local API: `pnpm --dir web dev` (the proxy points to `http://127.0.0.1:8000`, or to `API_PROXY_TARGET`).
 
-Los tipos del cliente (`web/src/api/schema.ts`) siguen el OpenAPI de la API. Para regenerarlos: `pnpm --dir web gen:api`, que exporta `web/openapi.json` con `api/scripts/export_openapi.py` (sin levantar el servidor) y corre `openapi-typescript`.
+The client types (`web/src/api/schema.ts`) follow the API's OpenAPI. To regenerate them, run `pnpm --dir web gen:api`, which exports `web/openapi.json` with `api/scripts/export_openapi.py` (without starting the server) and then runs `openapi-typescript`.
 
 ## Tests
 
-Con Docker abierto:
+With Docker running:
 
 ```sh
 uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
 pnpm --dir web exec vitest run --coverage
 ```
 
-- Backend: levanta un PostgreSQL 16 efímero con `testcontainers`, lo migra con Alembic y simula a Google con un OIDC falso, así que no sale a la red ni usa la base de desarrollo.
-- Frontend: Vitest + Testing Library en jsdom contra una API en memoria (`web/src/test/fakeApi.ts`). Falla si la cobertura de líneas queda por debajo del 80%.
+- Backend: starts an ephemeral PostgreSQL 16 with `testcontainers`, migrates it with Alembic and simulates Google with a fake OIDC provider, so it does not reach the network or use the development database.
+- Frontend: Vitest + Testing Library on jsdom, against an in-memory API (`web/src/test/fakeApi.ts`). It fails if line coverage drops below 80%.
 
-Los tests de borrado cubren los dos modos: `api/tests/test_delete_modes.py` (cascade, reparent, atomicidad, CSRF, aislamiento, validación) y `web/src/deleteModes.test.tsx` (botón, hoja, diálogo, reparent, cancelar y foco).
+The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus).
 
-En el frontend, `web/src/actions.test.tsx` agrupa los tests en bloques `criterio N: …` y cada test empieza con `CAN:` (criterio N, caso N), para ubicar qué criterio de la spec cubre.
+In the frontend, `web/src/actions.test.tsx` groups the tests into blocks named `criterio N: …` (criterion N of the spec), and each test starts with `CAN:` (criterion N, case N), so you can see which spec criterion it covers.
 
-## Estructura
+## Structure
 
 ```
-docker-compose.yml        servicios db, api y web (puertos solo en 127.0.0.1)
-.env.example              variables de entorno, sin valores reales
+docker-compose.yml        services db, api and web (ports only on 127.0.0.1)
+.env.example              environment variables, without real values
 api/
-  pyproject.toml, uv.lock entorno uv (pytest, pytest-cov, testcontainers en dev)
+  pyproject.toml, uv.lock uv environment (pytest, pytest-cov, testcontainers in dev)
   Dockerfile
-  alembic.ini, migrations/ migraciones (0001: users, sessions, maps, nodes)
-  scripts/export_openapi.py  escribe el OpenAPI sin levantar el servidor
+  alembic.ini, migrations/ migrations (0001: users, sessions, maps, nodes)
+  scripts/export_openapi.py  writes the OpenAPI without starting the server
   app/
-    main.py               create_app: middleware, routers con prefijo /api
-    config.py             variables de entorno
+    main.py               create_app: middleware, routers with the /api prefix
+    config.py             environment variables
     db.py, models.py      SQLAlchemy 2
-    auth/                 OAuth con Google, sesiones, CSRF, /me
-    settings/             preferencias del usuario (depth)
-    nodes/                ventana (CTE recursiva), crear, editar, borrar (cascade o reparent), sort_keys
-    node_types/           registro de tipos (idea) y validación de props
-    integrations/         vacío en el primer corte
-  tests/                  pytest + httpx contra PostgreSQL de testcontainers
+    auth/                 Google OAuth, sessions, CSRF, /me
+    settings/             user preferences (depth)
+    nodes/                window (recursive CTE), create, edit, delete (cascade or reparent), sort_keys
+    node_types/           node type registry (idea) and props validation
+    integrations/         empty in the first slice
+  tests/                  pytest + httpx against a testcontainers PostgreSQL
 web/
-  package.json, pnpm-lock.yaml  pnpm (solo esbuild puede correr scripts de instalación)
-  Dockerfile              Node 22 + pnpm con corepack
-  index.html              entrada de la SPA
-  vite.config.ts          servidor (proxy /api, CSP) y configuración de Vitest (umbral 80% de líneas)
+  package.json, pnpm-lock.yaml  pnpm (only esbuild may run install scripts)
+  Dockerfile              Node 22 + pnpm with corepack
+  index.html              SPA entry point
+  vite.config.ts          server (/api proxy, CSP) and Vitest config (80% line threshold)
   src/
-    main.tsx, styles.css  arranque de React y estilos
-    App.tsx, session.tsx  sesión (/api/me, login, logout, N) y rutas / y /n/:nodeId
-    actions.test.tsx      tests de las acciones del mapa (botón +, ayuda, foco tras editar, pista)
-    deleteModes.test.tsx  tests de borrado (botón 🗑, hoja, diálogo, reparent, cancelar, foco)
-    api/                  cliente fetch con X-CSRF y tipos del OpenAPI (schema.ts)
-    components/           login, "No encontrado", miga de pan, SettingsPanel, ShortcutsHelp (botón "?" y panel de atajos), DeleteDialog (borrar nodos con hijos)
+    main.tsx, styles.css  React bootstrap and styles
+    App.tsx, session.tsx  session (/api/me, login, logout, N) and the / and /n/:nodeId routes
+    actions.test.tsx      tests for the map actions (+ button, help, focus after editing, hint)
+    deleteModes.test.tsx  delete tests (🗑 button, leaf, dialog, reparent, cancel, focus)
+    api/                  fetch client with X-CSRF and the OpenAPI types (schema.ts)
+    components/           login, not-found page ("No encontrado"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children)
     map/
-      tree.ts             ventana normalizada y operaciones puras (insertar, borrar, flechas)
-      layout.ts           disposición en árbol horizontal
-      viewCache.ts        caché de ventanas por (nodo, N)
-      useMapView.ts       carga y mutaciones optimistas
-      MapPage.tsx         página del mapa, atajos de teclado, pista inicial y foco tras editar
+      tree.ts             normalized window and pure operations (insert, delete, arrows)
+      layout.ts           horizontal tree layout
+      viewCache.ts        window cache by (node, N)
+      useMapView.ts       loading and optimistic mutations
+      MapPage.tsx         map page, keyboard shortcuts, first-use hint and focus after editing
       MapCanvas.tsx       React Flow
-      nodes/              NodeRenderer (elige por kind), IdeaNode, TitleEditor, nodeActions.ts
-    test/                 setup de jsdom, API simulada (fakeApi.ts) y helpers
+      nodes/              NodeRenderer (picks the component by kind), IdeaNode, TitleEditor, nodeActions.ts
+    test/                 jsdom setup, the fake API (fakeApi.ts) and helpers
 ```
+
+## Roadmap
+
+- [x] Google login
+- [x] Single map per user, with focus navigation and N visible levels
+- [x] Create, edit, collapse and expand nodes
+- [x] Discoverable actions and keyboard shortcuts help ("+" button, "?" panel, first-use hint)
+- [x] Delete nodes, either the whole subtree or moving the children up to the parent
+- [ ] Move and reorder nodes by dragging (uses `sort_key`)
+- [ ] Other node kinds: Google Drive documents, spreadsheets, calendar events, tasks, repositories or projects
+- [ ] Integrations with Google Calendar, Trello and GitHub
+- [ ] Mobile app that reuses the API, starting with a PWA
+- [ ] Deployment beyond local
+
+## License
+
+MIT, see LICENSE
