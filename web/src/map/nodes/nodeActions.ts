@@ -7,6 +7,8 @@ export type MapNodeData = {
   selected: boolean;
   editing: boolean;
   hiddenCount: number;
+  /** Falso en los nodos colapsados o del borde: un hijo nuevo quedaría oculto. */
+  canAddChild: boolean;
 };
 
 export interface NodeComponentProps {
@@ -16,6 +18,7 @@ export interface NodeComponentProps {
 export interface NodeActions {
   select: (id: string) => void;
   open: (id: string) => void;
+  createChild: (id: string) => void;
   startEdit: (id: string) => void;
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;

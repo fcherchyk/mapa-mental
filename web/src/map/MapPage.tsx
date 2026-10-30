@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { NotFound } from '../components/NotFound';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { ShortcutsHelp } from '../components/ShortcutsHelp';
 import { pathFor, useSession } from '../session';
 import { MapCanvas } from './MapCanvas';
 import { NodeActionsContext, type NodeActions } from './nodes/nodeActions';
@@ -19,6 +20,16 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   );
 }
 
+/**
+ * El foco no está en ningún elemento vivo, o quedó en el editor del mapa que se acaba de cerrar.
+ * React Flow desmonta el editor un render después, así que todavía puede estar enfocado.
+ */
+function isFocusLost(canvas: HTMLElement | null): boolean {
+  const active = document.activeElement;
+  if (!active || active === document.body || !active.isConnected) return true;
+  return active instanceof HTMLInputElement && canvas !== null && canvas.contains(active);
+}
+
 export function MapPage() {
   const { me, depth, setDepth, logout } = useSession();
   const { nodeId } = useParams();
@@ -26,6 +37,20 @@ export function MapPage() {
   const navigate = useNavigate();
   const view = useMapView(focusId, depth);
   const { state, selectedId, editingId } = view;
+  const [helpOpen, setHelpOpen] = useState(false);
+  const canvasRef = useRef<HTMLElement>(null);
+  const wasEditing = useRef(false);
+
+  // Al terminar una edición (lápiz, +, Tab o F2) el foco vuelve al mapa para que los atajos sigan
+  // andando. Si la edición abre un hermano (Enter), el foco no vuelve hasta que no quede ninguna.
+  useEffect(() => {
+    if (editingId) {
+      wasEditing.current = true;
+      return;
+    }
+    if (wasEditing.current && isFocusLost(canvasRef.current)) canvasRef.current?.focus();
+    wasEditing.current = false;
+  }, [editingId]);
 
   const goTo = (id: string) => navigate(pathFor(id, me.root_node_id));
 
@@ -43,13 +68,21 @@ export function MapPage() {
   const actions: NodeActions = {
     select: view.select,
     open,
+    createChild: view.startCreateChild,
     startEdit: view.startEdit,
     commitEdit: view.commitEdit,
     cancelEdit: view.cancelEdit,
   };
 
+  // Sin hijos cargados ni hijos en el servidor: la pista invita a agregar la primera idea.
+  const rootIsEmpty =
+    state !== null &&
+    isRealRoot(state, state.focusId) &&
+    state.nodes[state.focusId].child_count === 0 &&
+    (state.childIds[state.focusId] ?? []).length === 0;
+
   const handleKey = (event: KeyboardEvent) => {
-    if (!state || !selectedId || editingId || isInteractiveTarget(event.target)) return;
+    if (!state || !selectedId || editingId || helpOpen || isInteractiveTarget(event.target)) return;
     const handled = runShortcut(event.key, selectedId);
     if (handled) event.preventDefault();
   };
@@ -103,6 +136,7 @@ export function MapPage() {
           />
         )}
         <div className="map-header-actions">
+          <ShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
           <SettingsPanel depth={depth} onDepthChange={setDepth} />
           <span className="user-name">{me.name}</span>
           <button type="button" onClick={logout}>
@@ -118,7 +152,7 @@ export function MapPage() {
           </button>
         </div>
       )}
-      <main className="map-canvas">
+      <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
         {view.status === 'error' && <p role="alert">No se pudo cargar el mapa.</p>}
         {!state && view.status === 'loading' && <p>Cargando…</p>}
         {state && (
@@ -126,6 +160,7 @@ export function MapPage() {
             <MapCanvas state={state} selectedId={selectedId} editingId={editingId} />
           </NodeActionsContext.Provider>
         )}
+        {rootIsEmpty && <p className="map-hint">Tocá + o Tab para agregar una idea</p>}
       </main>
     </div>
   );

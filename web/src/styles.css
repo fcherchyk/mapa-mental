@@ -103,8 +103,62 @@ button {
 }
 
 .map-canvas {
+  position: relative;
   flex: 1;
   min-height: 0;
+}
+
+/* El contenedor recibe el foco al terminar una edición; el nodo seleccionado ya marca dónde está. */
+.map-canvas:focus {
+  outline: none;
+}
+
+.map-hint {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.shortcuts {
+  position: relative;
+}
+
+.shortcuts-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 10;
+  width: min(22rem, 90vw);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.shortcuts-panel dl {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.shortcuts-panel dl > div {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 0.5rem;
+}
+
+.shortcuts-panel dd {
+  margin: 0;
+  color: var(--muted);
 }
 
 .map-node {
@@ -146,6 +200,25 @@ button {
   border: none;
   background: none;
   color: var(--muted);
+}
+
+.map-node-add {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  opacity: 0;
+}
+
+.map-node:hover .map-node-add,
+.map-node-add.is-visible,
+.map-node-add:focus-visible {
+  opacity: 1;
+}
+
+.map-node-add:disabled {
+  color: var(--muted);
+  cursor: default;
 }
 
 .map-node-hidden {

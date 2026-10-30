@@ -2,3 +2,8 @@
   > Hacer descubribles las acciones del mapa en la SPA (web/): hoy crear un hijo solo se puede con Tab y no hay nada en pantalla que lo diga. 1) Botón '+' visible en cada nodo (al pasar el mouse o cuando está seleccionado, y siempre en el foco) que crea un hijo en edición, igual que Tab. 2) Una ayuda de atajos visible: un botón '?' en el encabezado que abre un panel con los atajos (Tab, F2, Espacio, Supr, Enter, Retroceso, flechas, doble click) y una pista corta la primera vez que el mapa solo tiene la raíz ('Tocá + o Tab para agregar una idea'). 3) Que los atajos sigan funcionando después de hacer click en el lápiz o en un botón del nodo (devolver el foco al mapa al terminar). Accesible por teclado y con aria-label. Tests con Vitest; el backend no cambia.
 - 01:59:19 · paso spec
 - 02:00:16 · spec hecho por claude-readonly/claude-opus-5-5
+- 02:00:16 · gate enviado: Spec lista para revisar
+- 02:00:47 · 👤 aprobaste
+- 02:00:47 · paso implement
+- 02:06:14 · implement hecho por claude/claude-haiku-5-5
+- 02:06:14 · implement: ⚠ claude no pudo ejecutar 2 comandos: `ls -la .agents && cat .agents/project.yaml && echo ---PROGRESS--- && (cat .agents/progress.md 2>/dev/null || echo "(no …`, `pnpm --dir web exec vite build`

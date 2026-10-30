@@ -62,3 +62,48 @@
 - Extra: borrar el foco (no la raíz) navega a su padre después del `DELETE`.
 - Extra: React Flow con `panActivationKeyCode`, `deleteKeyCode` y demás teclas en `null` y `zoomOnDoubleClick` apagado,
   para que el teclado y el doble click los maneje la app.
+
+# Progreso · corrida: acciones del mapa visibles en la SPA
+
+Spec: "acciones del mapa visibles en la SPA" (solo `web/`, backend sin cambios).
+
+## Hecho (esta corrida)
+
+- [x] `+` en cada `IdeaNode` (`map-node-add`): crea un hijo en edición con `startCreateChild`, igual que Tab. Visible
+      siempre en el foco y en el seleccionado (clase `is-visible`); en los demás, con hover por CSS. Tiene
+      `aria-label` "Agregar idea dentro de <título>", `stopPropagation` en click y doble click.
+- [x] `NodeActions.createChild` y `MapNodeData.canAddChild` (falso en colapsados y del borde).
+- [x] `web/src/components/ShortcutsHelp.tsx`: botón "?" (`aria-label`, `aria-expanded`) y panel `role="dialog"` con
+      Tab, F2, Espacio, Supr, Enter, Retroceso, Flechas y Doble click. Escape cierra y devuelve el foco al "?".
+- [x] Pista "Tocá + o Tab para agregar una idea" con la raíz real sin hijos cargados ni `child_count`.
+- [x] Foco al mapa al terminar una edición: `main` con `tabIndex=-1`; efecto en `MapPage` sobre `editingId`.
+- [x] Guarda: `handleKey` ignora las teclas con el panel de ayuda abierto.
+- [x] Estilos en `web/src/styles.css` (`.map-node-add`, `.map-hint`, `.shortcuts-panel`, `.map-canvas:focus`).
+- [x] Tests: `web/src/actions.test.tsx`, 15 casos con prefijo `CA1`…`CA9` (criterios 1 a 9 de la spec).
+- [x] `tsc --noEmit` y `eslint .` limpios. Vitest: 80 tests en verde, 99,49% de líneas.
+- [x] Backend: `uv run --directory api pytest -q --cov=app --cov-fail-under=80`: 104 en verde, 98%.
+
+## Falta
+
+- [ ] `pnpm --dir web exec vite build`: rechazado por el arnés (igual que en la corrida anterior). Hay que correrlo a mano.
+- [ ] Validación manual en el navegador: hover del "+", el panel de ayuda y la pista (CSS no se prueba en jsdom).
+- [ ] Docs (paso `docs`): `README.md` (Funcionalidades y Uso) y `.agents/memory/wiki/index.md`. No los toco acá.
+- [ ] Prettier (pendiente desde la corrida anterior): el código usa comillas simples, como el resto del repo.
+
+## Comandos rechazados
+
+- `pnpm --dir web exec vite build`
+- Comandos compuestos con `&&` que incluyen `ls`/`cat` al principio: el arnés pidió aprobación. Se corrieron por separado.
+
+## Decisiones tomadas en esta corrida
+
+1. Foco al terminar la edición: el efecto no mira solo a `body`, porque React Flow desmonta el editor un render después
+   de que `editingId` ya es `null`. Cuenta como "foco perdido" también el campo del editor que todavía está en el mapa.
+   Con blur (clic en otro lado) el foco no se fuerza, salvo que quede en `body`.
+2. "+" en nodos colapsados o del borde: aparece en el DOM pero `disabled`, porque `startCreateChild` no crearía nada
+   visible. Así se resuelve la pregunta abierta de la spec: el "+" no enfoca el nodo primero.
+3. Pista "la primera vez": se muestra mientras la raíz real no tenga hijos (estado, no una vez por persona). Sigue
+   pendiente confirmar esto con el usuario, como dice la spec.
+4. Después de cerrar la ayuda, el foco queda en el "?" (lo pide la spec). Un Tab o una tecla de atajo ahí no actúa
+   sobre el mapa hasta hacer clic en él. Revisar en la validación manual si conviene cambiarlo.
+5. Enter sobre un hijo recién creado sigue abriendo un hermano en edición (comportamiento existente de `commitEdit`).
