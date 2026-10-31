@@ -18,3 +18,9 @@
 - 14:11:53 · paso qa
 - 14:13:16 · qa hecho por claude/claude-sonnet-5-5 (rotaciones: antigravity/gemini-3.8-flash-high: sin cupo; reserva con la misma familia (anthropic))
 - 14:13:16 · qa: ⚠ claude no pudo ejecutar 1 comandos: `python3 - <<'E' p="api/tests/test_translation.py" s=open(p).read() s=s.replace(''' for number, line in enumerate(path.r…`
+- 14:13:16 · paso setup
+- 14:13:16 · `uv sync --directory api && { [ ! -d web ] || pnpm --dir web install --frozen-lockfile; }` pasó
+- 14:13:16 · paso tests
+- 14:13:38 · `uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80 && { [ ! -d web ] || pnpm --dir web exec vitest run --coverage; }` pasó (cobertura 98% · 99.4%)
+- 14:13:38 · paso review
+- 14:14:09 · review hecho por openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
