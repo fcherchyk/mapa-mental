@@ -86,11 +86,25 @@ def test_criterio_1_compose_config_con_archivo_env_copiado(tmp_path: Path) -> No
     ]
 
 
-def test_criterio_1_env_example_sin_valores_reales_y_env_fuera_del_repo() -> None:
+def in_git_repo() -> bool:
+    if shutil.which("git") is None:
+        return False
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"], cwd=REPO_DIR, capture_output=True, text=True
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+def test_criterio_1_env_example_sin_valores_reales() -> None:
     values = read_env_example()
 
     assert REQUIRED_VARIABLES <= set(values)
     assert all(values[name] == "" for name in SECRET_VARIABLES)
+
+
+# Mira qué archivos versiona git; fuera de un repo (por ejemplo, un zip de `git archive`) se saltea.
+@pytest.mark.skipif(not in_git_repo(), reason="not inside a git repository")
+def test_criterio_1_env_fuera_del_repo() -> None:
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=REPO_DIR, capture_output=True, text=True, check=True
     ).stdout.splitlines()
