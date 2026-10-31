@@ -1,0 +1,12 @@
+- 13:56:28 · corrida creada en mapa-mental · rama agent/b95e394c · flujo feature · complejidad L
+  > Translate everything "live" in the repo from Spanish to English, with no behavior changes:
+  > - **UI**: every user-visible string in `web/src` (labels, buttons, `aria-label`s, dialogs, hints, the shortcuts help, empty and error states, the login screen, document title).
+  > - **Code**: comments, docstrings, log and error messages, and any remaining Spanish identifiers in `api/` and `web/` (including Alembic migration comments; do not rename or edit applied migration revision ids).
+  > - **Tests**: test names, `describe` blocks and comments (e.g. `test_criterio_1_…` → `test_criterion_1_…`, `criterio N:` blocks), and update assertions that match UI text so they match the new English strings.
+  > - **Config and docs in the repo**: `.env.example` comments, `docker-compose.yml` comments, Dockerfile comments, `pyproject.toml`/`package.json` descriptions, and `README.md` wherever it quotes UI text or test names.
+  > - **Leave in Spanish (history)**: past commits, `.agents/memory/specs/`, `.agents/memory/adr/`, `.agents/runs/`, `.agents/log.md`.
+  > 
+  > Done when grep for Spanish accents/ñ/¿/¡ in `api/`, `web/src`, `.env.example`, `docker-compose.yml` and the Dockerfiles only finds proper names, the backend and frontend test suites pass with their coverage thresholds, and the app works the same in the browser.
+- 13:56:28 · paso spec
+- 13:57:23 · spec hecho por claude-readonly/claude-opus-5-5
+- 13:57:23 · spec: ⚠ claude-readonly no pudo ejecutar 1 comandos: `cd /Users/negro/hworkspace/projects/mapa-mental; ls; ls .agents .agents/memory; grep -rlE '[áéíóúñÁÉÍÓÚÑ¿¡]' api web/sr…`
