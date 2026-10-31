@@ -21,12 +21,12 @@ import {
 
 export type ViewStatus = 'loading' | 'ready' | 'notFound' | 'error';
 
-const CONFLICT_NOTICE = 'El nodo cambió en otro lado: se deshizo el cambio y se recargó el mapa.';
-const FAILURE_NOTICE = 'No se pudo guardar el cambio: se deshizo.';
+const CONFLICT_NOTICE = 'The idea changed elsewhere: the change was undone and the map reloaded.';
+const FAILURE_NOTICE = 'Could not save the change: it was undone.';
 
 /**
- * Crear un hijo que espera a que llegue la ventana adecuada: el foco bajó un nivel hacia el nodo
- * (`focusId`), o el nodo colapsado se está expandiendo (`expanding`).
+ * Creating a child that waits for the right window to arrive: the focus moved one level down
+ * towards the node (`focusId`), or the collapsed node is being expanded (`expanding`).
  */
 interface PendingCreate {
   parentId: string;
@@ -54,7 +54,7 @@ function newPendingNode(parentId: string, afterId: string | null): MapNode {
   };
 }
 
-/** La caché no guarda nodos que todavía no existen en la API. */
+/** The cache does not store nodes that do not exist in the API yet. */
 function withoutPending(state: MapState): MapState {
   return Object.values(state.nodes)
     .filter((node) => node.pending)
@@ -67,7 +67,7 @@ function failureNotice(error: unknown): string {
 
 export type DeleteMode = 'cascade' | 'reparent';
 
-/** Borrado de un nodo intermedio esperando la elección del usuario en el diálogo. */
+/** Deletion of an inner node waiting for the user's choice in the dialog. */
 export interface DeleteRequest {
   id: string;
   title: string;
@@ -95,7 +95,7 @@ export interface MapView {
   dismissNotice: () => void;
 }
 
-/** Ventana del foco con edición optimista; los cambios a la API van de a uno, en orden. */
+/** The focus's window with optimistic editing; API changes go one at a time, in order. */
 export function useMapView(focusId: string, depth: number): MapView {
   const { api, cache } = useSession();
   const key = cacheKey(focusId, depth);
@@ -153,7 +153,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     };
   }, [api, cache, commit, focusId, depth, key, reloads]);
 
-  // Navegar a otro foco cancela la creación pendiente que no sea de ese foco.
+  // Navigating to another focus cancels any pending creation that is not for that focus.
   useEffect(() => {
     if (pendingCreate.current && pendingCreate.current.focusId !== focusId) {
       pendingCreate.current = null;
@@ -165,7 +165,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     setReloads((count) => count + 1);
   }, [cache]);
 
-  /** Aplica el cambio al instante y lo manda; si la API falla, lo revierte y recarga. */
+  /** Applies the change right away and sends it; if the API fails, reverts it and reloads. */
   const mutate = useCallback(
     <T>(
       apply: (state: MapState) => MapState,
@@ -213,7 +213,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     setEditingId(node.id);
   };
 
-  /** Cambia `collapsed` en la API; al expandir, si faltan hijos en la ventana, se vuelven a pedir. */
+  /** Changes `collapsed` in the API; when expanding, if children are missing, fetches them again. */
   const setCollapsed = (id: string, collapsing: boolean) => {
     const current = stateRef.current;
     const node = current?.nodes[id];
@@ -230,8 +230,9 @@ export function useMapView(focusId: string, depth: number): MapView {
   };
 
   /**
-   * Crea un hijo en edición. Un hijo en el borde o dentro de un colapsado no se vería: en el borde
-   * el foco baja un nivel hacia el nodo, y en un colapsado el nodo se expande; recién entonces se crea.
+   * Creates a child in edit mode. A child on the border or inside a collapsed node would not show:
+   * on the border the focus moves one level down towards the node, and a collapsed node expands;
+   * only then is the child created.
    */
   const startCreateChild = (parentId: string, goTo: (id: string) => void) => {
     const current = stateRef.current;
@@ -250,8 +251,8 @@ export function useMapView(focusId: string, depth: number): MapView {
     }
   };
 
-  // Con la ventana que estaba esperando la creación, sigue con el hijo. Si la expansión falló
-  // (el nodo vuelve a estar colapsado), la creación se descarta.
+  // Once the window the creation was waiting for arrives, go on with the child. If expanding
+  // failed (the node is collapsed again), the creation is dropped.
   useEffect(() => {
     const pending = pendingCreate.current;
     if (!pending || !state || state.focusId !== pending.focusId) return;
@@ -270,7 +271,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     if (node && !node.pending) setEditingId(id);
   };
 
-  /** sort_key del hermano anterior, ya creado en la API cuando le llega el turno en la cola. */
+  /** sort_key of the previous sibling, already created in the API when its turn in the queue comes. */
   const afterSortKey = (afterId: string | null | undefined): string | undefined => {
     if (!afterId) return undefined;
     const node = currentNode(resolvedIds.current.get(afterId) ?? afterId);
@@ -344,7 +345,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     setCollapsed(id, collapsing);
   };
 
-  /** Hoja: se borra sin preguntar. Intermedio: abre el diálogo y espera la elección. */
+  /** Leaf: deleted without asking. Inner node: opens the dialog and waits for the choice. */
   const remove = (id: string, onFocusDeleted: (parentId: string) => void) => {
     const current = stateRef.current;
     const node = current?.nodes[id];
@@ -377,7 +378,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     const isFocus = id === current.focusId;
     const call = () => api.deleteNode(id, mode === 'reparent' ? { children: mode } : undefined);
     if (mode === 'reparent') {
-      // Los nietos suben un nivel y pueden entrar en la ventana: se vuelve a pedir, sin optimismo.
+      // Grandchildren move up a level and may enter the window: fetch it again, no optimism.
       const firstChild = current.childIds[id]?.[0];
       setSelectedId(firstChild ?? selectionAfterDelete(current, id));
       mutate(

@@ -1,4 +1,4 @@
-"""Modelo de datos del primer corte: users, sessions, maps y nodes."""
+"""Data model of the first slice: users, sessions, maps and nodes."""
 
 import uuid
 from datetime import datetime
@@ -40,7 +40,7 @@ class User(Base):
 
 
 class UserSession(Base):
-    """Sesión de login; `id` es el hash SHA-256 del token que lleva la cookie."""
+    """Login session; `id` is the SHA-256 hash of the token the cookie carries."""
 
     __tablename__ = "sessions"
 
@@ -79,7 +79,7 @@ class Node(Base):
     )
     kind: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
-    # Collation "C": el orden de la base coincide con el de los índices fraccionarios.
+    # Collation "C": the database ordering matches the fractional index ordering.
     sort_key: Mapped[str] = mapped_column(Text(collation="C"))
     collapsed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     props: Mapped[dict[str, Any]] = mapped_column(
@@ -91,5 +91,5 @@ class Node(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # SQLAlchemy incrementa `version` en cada UPDATE y falla si otro lo cambió antes.
+    # SQLAlchemy bumps `version` on every UPDATE and fails if someone else changed it first.
     __mapper_args__ = {"version_id_col": version}

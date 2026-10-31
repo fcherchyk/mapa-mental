@@ -1,4 +1,4 @@
-"""Endpoints de login con Google, logout y `GET /me`."""
+"""Google login, logout and `GET /me` endpoints."""
 
 import uuid
 from datetime import timedelta
@@ -47,22 +47,22 @@ def app_config(request: Request) -> Config:
 
 @auth_router.get("/login", status_code=status.HTTP_302_FOUND)
 async def login(request: Request) -> RedirectResponse:
-    """Redirige a Google; Authlib guarda `state` y `nonce` en la cookie firmada del flujo."""
+    """Redirects to Google; Authlib stores `state` and `nonce` in the signed flow cookie."""
     google = request.app.state.oauth.google
     return await google.authorize_redirect(request, app_config(request).google_redirect_uri)
 
 
 @auth_router.get("/callback", status_code=status.HTTP_303_SEE_OTHER)
 async def callback(request: Request) -> RedirectResponse:
-    """Valida `state`, canjea el código y el `id_token` (con `nonce`) y abre la sesión."""
+    """Validates `state`, exchanges the code and `id_token` (with `nonce`), opens the session."""
     config = app_config(request)
     try:
         token = await request.app.state.oauth.google.authorize_access_token(request)
-    except (AuthlibBaseError, JoseError):  # `state`, código, firma o `nonce` inválidos
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "login con Google inválido") from None
+    except (AuthlibBaseError, JoseError):  # invalid `state`, code, signature or `nonce`
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid Google login") from None
     claims = token.get("userinfo")
     if not claims or not claims.get("sub"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Google no devolvió la identidad")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Google did not return the identity")
     session_token = await run_in_threadpool(
         sign_in,
         request.app.state.session_factory,

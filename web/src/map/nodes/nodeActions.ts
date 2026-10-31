@@ -27,6 +27,6 @@ export const NodeActionsContext = createContext<NodeActions | null>(null);
 
 export function useNodeActions(): NodeActions {
   const actions = useContext(NodeActionsContext);
-  if (!actions) throw new Error('useNodeActions fuera de NodeActionsContext');
+  if (!actions) throw new Error('useNodeActions outside NodeActionsContext');
   return actions;
 }

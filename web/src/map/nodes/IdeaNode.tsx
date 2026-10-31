@@ -8,7 +8,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
   const classes = ['map-node', isFocus && 'is-focus', selected && 'is-selected']
     .filter(Boolean)
     .join(' ');
-  // El "+" se ve siempre en el foco y en el seleccionado; en los demás, con el mouse encima (CSS).
+  // The "+" always shows on the focus and the selected node; on the rest, on mouse hover (CSS).
   const addClasses = ['map-node-add', 'nodrag', 'nopan', (isFocus || selected) && 'is-visible']
     .filter(Boolean)
     .join(' ');
@@ -27,7 +27,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
           onCancel={() => actions.cancelEdit(node.id)}
         />
       ) : (
-        // Siempre como texto: React escapa el título (nunca dangerouslySetInnerHTML).
+        // Always as text: React escapes the title (never dangerouslySetInnerHTML).
         <span className="map-node-title" title={node.title}>
           {node.title}
         </span>
@@ -36,7 +36,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
         <button
           type="button"
           className="map-node-edit nodrag nopan"
-          aria-label={`Renombrar ${node.title}`}
+          aria-label={`Rename ${node.title}`}
           onClick={(event) => {
             event.stopPropagation();
             actions.startEdit(node.id);
@@ -50,7 +50,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
         <button
           type="button"
           className={addClasses}
-          aria-label={`Agregar idea dentro de ${node.title}`}
+          aria-label={`Add an idea inside ${node.title}`}
           onClick={(event) => {
             event.stopPropagation();
             actions.createChild(node.id);
@@ -64,7 +64,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
         <button
           type="button"
           className="map-node-delete nodrag nopan"
-          aria-label={`Borrar ${node.title}`}
+          aria-label={`Delete ${node.title}`}
           onClick={(event) => {
             event.stopPropagation();
             actions.select(node.id);
@@ -78,7 +78,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
       {hiddenCount > 0 && (
         <span
           className={`map-node-hidden ${node.collapsed ? 'is-collapsed' : 'is-border'}`}
-          aria-label={`${hiddenCount} hijos ocultos`}
+          aria-label={`${hiddenCount} hidden children`}
         >
           +{hiddenCount}
         </span>

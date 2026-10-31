@@ -1,1 +1,1 @@
-"""API del mapa mental."""
+"""Mind map API."""

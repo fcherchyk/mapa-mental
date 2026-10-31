@@ -1,4 +1,4 @@
-"""Sesiones de login: la cookie lleva un token aleatorio y la base guarda solo su hash."""
+"""Login sessions: the cookie carries a random token and the database stores only its hash."""
 
 import hashlib
 import secrets
@@ -20,7 +20,7 @@ def hash_token(token: str) -> str:
 
 
 def create_session(db: Session, user_id: uuid.UUID, ttl: timedelta) -> str:
-    """Crea la fila en `sessions` y devuelve el token para la cookie (sin commit)."""
+    """Creates the `sessions` row and returns the cookie token (without committing)."""
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(UTC) + ttl
     db.add(UserSession(id=hash_token(token), user_id=user_id, expires_at=expires_at))

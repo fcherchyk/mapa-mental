@@ -1,4 +1,4 @@
-"""Criterios 3 a 9: login con Google, cookie, `state`, sesión, CSRF y logout."""
+"""Criteria 3 to 9: Google login, cookie, `state`, session, CSRF and logout."""
 
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -34,7 +34,7 @@ def session_cookie_header(response) -> str:
     return cookies[0]
 
 
-def test_criterio_3_login_redirige_a_google_con_scopes_minimos_state_y_nonce(
+def test_criterion_3_login_redirects_to_google_with_minimal_scopes_state_and_nonce(
     app: FastAPI,
 ) -> None:
     params = start_login(TestClient(app))
@@ -45,7 +45,7 @@ def test_criterio_3_login_redirige_a_google_con_scopes_minimos_state_y_nonce(
     assert params["response_type"] == "code"
 
 
-def test_criterio_3_login_genera_state_y_nonce_diferentes_por_pedido(app: FastAPI) -> None:
+def test_criterion_3_login_generates_different_state_and_nonce_per_request(app: FastAPI) -> None:
     client = TestClient(app)
     params1 = start_login(client)
     params2 = start_login(client)
@@ -54,10 +54,10 @@ def test_criterio_3_login_genera_state_y_nonce_diferentes_por_pedido(app: FastAP
     assert params1["nonce"] != params2["nonce"]
 
 
-def test_criterio_4_primer_login_crea_user_map_y_raiz(
+def test_criterion_4_first_login_creates_user_map_and_root(
     login: Callable[..., TestClient], db: Session
 ) -> None:
-    client = login(sub="sub-nueva", name="Ana Pérez")
+    client = login(sub="sub-new", name="Ana Pérez")
 
     me = client.get("/api/me")
     assert me.status_code == 200
@@ -71,35 +71,35 @@ def test_criterio_4_primer_login_crea_user_map_y_raiz(
     assert (count(db, "users"), count(db, "maps"), count(db, "nodes")) == (1, 1, 1)
 
 
-def test_criterio_4_reingreso_mantiene_un_solo_user_y_map(
+def test_criterion_4_signing_in_again_keeps_a_single_user_and_map(
     login: Callable[..., TestClient], db: Session
 ) -> None:
-    first = login(sub="sub-repetida").get("/api/me").json()
-    second = login(sub="sub-repetida", name="Ana Renombrada").get("/api/me").json()
+    first = login(sub="sub-repeated").get("/api/me").json()
+    second = login(sub="sub-repeated", name="Ana Renamed").get("/api/me").json()
 
     assert second["root_node_id"] == first["root_node_id"]
-    assert second["name"] == "Ana Renombrada"
+    assert second["name"] == "Ana Renamed"
     assert (count(db, "users"), count(db, "maps"), count(db, "sessions")) == (1, 1, 2)
 
 
-def test_criterio_4_nombre_espacios_o_vacio_o_largo_se_normaliza(
+def test_criterion_4_name_with_spaces_empty_or_long_is_normalized(
     login: Callable[..., TestClient], db: Session
 ) -> None:
-    c1 = login(sub="sub-espacios", name="   Juan    Carlos   ")
+    c1 = login(sub="sub-spaces", name="   Juan    Carlos   ")
     root_id1 = c1.get("/api/me").json()["root_node_id"]
     title1 = db.execute(
         text("SELECT title FROM nodes WHERE id = :id"), {"id": root_id1}
     ).scalar_one()
     assert title1 == "Juan Carlos"
 
-    c2 = login(sub="sub-vacio", name="   ")
+    c2 = login(sub="sub-empty", name="   ")
     root_id2 = c2.get("/api/me").json()["root_node_id"]
     title2 = db.execute(
         text("SELECT title FROM nodes WHERE id = :id"), {"id": root_id2}
     ).scalar_one()
     assert title2 == DEFAULT_ROOT_TITLE
 
-    c3 = login(sub="sub-largo", name="L" * 300)
+    c3 = login(sub="sub-long", name="L" * 300)
     root_id3 = c3.get("/api/me").json()["root_node_id"]
     title3 = db.execute(
         text("SELECT title FROM nodes WHERE id = :id"), {"id": root_id3}
@@ -108,7 +108,7 @@ def test_criterio_4_nombre_espacios_o_vacio_o_largo_se_normaliza(
     assert title3 == "L" * 200
 
 
-def test_criterio_5_cookie_httponly_samesite_lax_sin_secure_por_defecto(
+def test_criterion_5_cookie_httponly_samesite_lax_without_secure_by_default(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     response = complete_login(TestClient(app), fake_google)
@@ -123,7 +123,7 @@ def test_criterio_5_cookie_httponly_samesite_lax_sin_secure_por_defecto(
     assert token not in session_ids
 
 
-def test_criterio_5_cookie_secure_si_la_variable_lo_activa(
+def test_criterion_5_cookie_secure_when_the_variable_enables_it(
     make_app: Callable[..., FastAPI], fake_google: FakeGoogle
 ) -> None:
     app = make_app(cookie_secure=True, google_redirect_uri="https://testserver/api/auth/callback")
@@ -135,7 +135,7 @@ def test_criterio_5_cookie_secure_si_la_variable_lo_activa(
     assert "secure" in session_cookie_header(response).lower()
 
 
-def test_criterio_5_ningun_token_de_google_en_respuestas_ni_tablas(
+def test_criterion_5_no_google_token_in_responses_or_tables(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -153,7 +153,7 @@ def test_criterio_5_ningun_token_de_google_en_respuestas_ni_tablas(
         assert field not in me.text
 
 
-def test_criterio_6_callback_sin_state_se_rechaza_sin_crear_filas(
+def test_criterion_6_callback_without_state_is_rejected_without_creating_rows(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -169,7 +169,7 @@ def test_criterio_6_callback_sin_state_se_rechaza_sin_crear_filas(
     assert (count(db, "users"), count(db, "sessions")) == (0, 0)
 
 
-def test_criterio_6_callback_con_state_distinto_se_rechaza_sin_crear_filas(
+def test_criterion_6_callback_with_different_state_is_rejected_without_creating_rows(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -178,7 +178,7 @@ def test_criterio_6_callback_con_state_distinto_se_rechaza_sin_crear_filas(
 
     response = client.get(
         "/api/auth/callback",
-        params={"code": fake_google.code, "state": "state-inventado"},
+        params={"code": fake_google.code, "state": "made-up-state"},
         follow_redirects=False,
     )
 
@@ -187,12 +187,12 @@ def test_criterio_6_callback_con_state_distinto_se_rechaza_sin_crear_filas(
     assert (count(db, "users"), count(db, "sessions")) == (0, 0)
 
 
-def test_criterio_6_callback_con_nonce_distinto_se_rechaza(
+def test_criterion_6_callback_with_different_nonce_is_rejected(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
     params = start_login(client)
-    fake_google.prepare("nonce-de-otro-flujo", "sub-x", "X", "x@example.com")
+    fake_google.prepare("nonce-from-another-flow", "sub-x", "X", "x@example.com")
 
     response = client.get(
         "/api/auth/callback",
@@ -204,16 +204,16 @@ def test_criterio_6_callback_con_nonce_distinto_se_rechaza(
     assert (count(db, "users"), count(db, "sessions")) == (0, 0)
 
 
-def test_criterio_6_callback_sin_cookie_de_flujo_se_rechaza(
+def test_criterion_6_callback_without_flow_cookie_is_rejected(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
-    """Un pedido al callback sin haber iniciado login (sin cookie de sesión oauth) se rechaza."""
+    """A callback request without a started login (no oauth session cookie) is rejected."""
     client = TestClient(app)
     fake_google.prepare("nonce-x", "sub-x", "X", "x@example.com")
 
     response = client.get(
         "/api/auth/callback",
-        params={"code": fake_google.code, "state": "cualquier-state"},
+        params={"code": fake_google.code, "state": "any-state"},
         follow_redirects=False,
     )
 
@@ -226,14 +226,14 @@ PROTECTED_REQUESTS = [
     ("GET", "/api/me", None),
     ("PATCH", "/api/me/settings", {"depth": 5}),
     ("GET", "/api/nodes/{root}/view", None),
-    ("POST", "/api/nodes/{root}/children", {"title": "hijo"}),
-    ("PATCH", "/api/nodes/{root}", {"title": "otro", "version": 1}),
+    ("POST", "/api/nodes/{root}/children", {"title": "child"}),
+    ("PATCH", "/api/nodes/{root}", {"title": "other", "version": 1}),
     ("DELETE", "/api/nodes/{root}", None),
 ]
 
 
 def assert_all_unauthorized(app: FastAPI, root_id: str, cookie: str | None) -> None:
-    """Pide cada endpoint protegido desde un cliente sin cookies guardadas."""
+    """Requests every protected endpoint from a client with no stored cookies."""
     headers = dict(CSRF)
     if cookie is not None:
         headers["Cookie"] = f"{SESSION_COOKIE}={cookie}"
@@ -241,19 +241,20 @@ def assert_all_unauthorized(app: FastAPI, root_id: str, cookie: str | None) -> N
     for method, path, body in PROTECTED_REQUESTS:
         response = anonymous.request(method, path.format(root=root_id), json=body, headers=headers)
         assert response.status_code == 401, (method, path)
+        assert response.json()["detail"] == "invalid or expired session", (method, path)
 
 
-def test_criterio_7_sin_cookie_o_cookie_inventada_responde_401(
+def test_criterion_7_no_cookie_or_made_up_cookie_returns_401(
     app: FastAPI, client: TestClient
 ) -> None:
     root_id = client.get("/api/me").json()["root_node_id"]
 
     assert_all_unauthorized(app, root_id, cookie=None)
     assert_all_unauthorized(app, root_id, cookie="")
-    assert_all_unauthorized(app, root_id, cookie="cookie-inventada")
+    assert_all_unauthorized(app, root_id, cookie="made-up-cookie")
 
 
-def test_criterio_7_sesion_vencida_responde_401(
+def test_criterion_7_expired_session_returns_401(
     app: FastAPI, client: TestClient, db: Session
 ) -> None:
     root_id = client.get("/api/me").json()["root_node_id"]
@@ -264,28 +265,29 @@ def test_criterio_7_sesion_vencida_responde_401(
     assert client.get("/api/me").status_code == 401
 
 
-def test_criterio_8_patch_settings_sin_header_csrf_responde_403(client: TestClient) -> None:
+def test_criterion_8_patch_settings_without_csrf_header_returns_403(client: TestClient) -> None:
     response = client.patch("/api/me/settings", json={"depth": 5})
 
     assert response.status_code == 403
+    assert response.json()["detail"] == "missing header X-CSRF: 1"
     assert client.get("/api/me").json()["settings"]["depth"] == 3
 
 
-def test_criterio_8_header_csrf_con_valor_incorrecto_responde_403(client: TestClient) -> None:
+def test_criterion_8_csrf_header_with_wrong_value_returns_403(client: TestClient) -> None:
     response = client.patch("/api/me/settings", json={"depth": 5}, headers={"X-CSRF": "0"})
 
     assert response.status_code == 403
     assert client.get("/api/me").json()["settings"]["depth"] == 3
 
 
-def test_criterio_8_patch_settings_con_header_csrf_vacio_responde_403(client: TestClient) -> None:
+def test_criterion_8_patch_settings_with_empty_csrf_header_returns_403(client: TestClient) -> None:
     response = client.patch("/api/me/settings", json={"depth": 5}, headers={"X-CSRF": ""})
 
     assert response.status_code == 403
     assert client.get("/api/me").json()["settings"]["depth"] == 3
 
 
-def test_criterio_9_logout_invalida_la_sesion(
+def test_criterion_9_logout_invalidates_the_session(
     app: FastAPI, client: TestClient, db: Session
 ) -> None:
     token = client.cookies[SESSION_COOKIE]
@@ -298,7 +300,7 @@ def test_criterio_9_logout_invalida_la_sesion(
     assert reused.status_code == 401
 
 
-def test_criterio_9_logout_borra_cookie_en_respuesta(client: TestClient) -> None:
+def test_criterion_9_logout_clears_the_cookie_in_the_response(client: TestClient) -> None:
     response = client.post("/api/auth/logout", headers=CSRF)
 
     assert response.status_code == 204
@@ -307,22 +309,22 @@ def test_criterio_9_logout_borra_cookie_en_respuesta(client: TestClient) -> None
     ]
     assert len(set_cookies) == 1
     cookie = set_cookies[0].lower()
-    # Debe expirar la cookie (max-age=0 o valor vacío)
+    # The cookie must expire (max-age=0 or an empty value)
     assert "max-age=0" in cookie or 'sid=""' in cookie or "sid=;" in cookie
 
 
-def test_criterio_9_logout_sin_sesion_activa_responde_204(app: FastAPI) -> None:
+def test_criterion_9_logout_without_active_session_returns_204(app: FastAPI) -> None:
     anonymous = TestClient(app)
     response = anonymous.post("/api/auth/logout", headers=CSRF)
     assert response.status_code == 204
 
 
-def test_criterio_9_logout_exige_header_csrf(client: TestClient, db: Session) -> None:
+def test_criterion_9_logout_requires_csrf_header(client: TestClient, db: Session) -> None:
     assert client.post("/api/auth/logout").status_code == 403
     assert count(db, "sessions") == 1
 
 
-def test_titulo_de_raiz_normaliza_espacios_y_tiene_valor_por_defecto() -> None:
+def test_root_title_normalizes_spaces_and_has_a_default_value() -> None:
     def identity(name: str) -> GoogleIdentity:
         return GoogleIdentity(sub="s", email="", name=name, avatar_url=None)
 

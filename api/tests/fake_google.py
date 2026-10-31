@@ -1,7 +1,7 @@
-"""Google OIDC falso: metadata, endpoint de token y JWKS propios, sin salir a la red.
+"""Fake Google OIDC: its own metadata, token endpoint and JWKS, without reaching the network.
 
-Firma el `id_token` con una clave RSA propia, así que Authlib valida de verdad la firma,
-`iss`, `aud` y `nonce`.
+It signs the `id_token` with its own RSA key, so Authlib really validates the signature,
+`iss`, `aud` and `nonce`.
 """
 
 import base64
@@ -52,7 +52,7 @@ def public_jwks() -> dict:
 
 
 class FakeGoogle:
-    """Simula a Google; `prepare` fija quién entra y con qué `nonce` antes del callback."""
+    """Simulates Google; `prepare` sets who signs in and with which `nonce` before the callback."""
 
     def __init__(self, client_id: str) -> None:
         self.client_id = client_id
@@ -73,7 +73,7 @@ class FakeGoogle:
             return httpx.Response(200, json=public_jwks(), request=request)
         if url == TOKEN_URL and request.method == "POST":
             return self.token_response(request)
-        raise RuntimeError(f"los tests no salen a la red: {request.method} {request.url}")
+        raise RuntimeError(f"tests do not reach the network: {request.method} {request.url}")
 
     def metadata(self) -> dict:
         return {

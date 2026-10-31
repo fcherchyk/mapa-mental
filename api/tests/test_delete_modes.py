@@ -1,4 +1,4 @@
-"""Borrado de nodos con dos modos: `children=cascade` (por defecto) y `children=reparent`."""
+"""Node deletion with two modes: `children=cascade` (the default) and `children=reparent`."""
 
 from collections.abc import Callable
 
@@ -19,12 +19,12 @@ def reparent(client: TestClient, node: dict):
     return client.delete(f"/api/nodes/{node['id']}", params={"children": "reparent"}, headers=CSRF)
 
 
-def test_ca1_cascade_explicito_y_por_defecto_borran_el_subarbol(client: TestClient) -> None:
+def test_ac1_explicit_and_default_cascade_delete_the_subtree(client: TestClient) -> None:
     root = root_id(client)
     for params in ({}, {"children": "cascade"}):
         n = add(client, root, "N")
         child = add(client, n["id"], "h")
-        grandchild = add(client, child["id"], "nieto")
+        grandchild = add(client, child["id"], "grandchild")
 
         response = client.delete(f"/api/nodes/{n['id']}", params=params, headers=CSRF)
 
@@ -33,14 +33,14 @@ def test_ca1_cascade_explicito_y_por_defecto_borran_el_subarbol(client: TestClie
             assert client.get(f"/api/nodes/{gone['id']}/view").status_code == 404
 
 
-def test_ca2_reparent_en_el_medio_conserva_posicion_y_orden(client: TestClient) -> None:
+def test_ac2_reparent_in_the_middle_keeps_position_and_order(client: TestClient) -> None:
     root = root_id(client)
     a = add(client, root, "A")
     n = add(client, root, "N", after_sort_key=a["sort_key"])
     add(client, root, "B")
     kids = [add(client, n["id"], f"c{i}") for i in (1, 2, 3)]
-    deep = add(client, kids[0]["id"], "profundo")
-    add(client, deep["id"], "mas")
+    deep = add(client, kids[0]["id"], "deep")
+    add(client, deep["id"], "more")
     before = view(client, kids[0]["id"], depth=5)["nodes"]
 
     assert reparent(client, n).status_code == 204
@@ -52,7 +52,7 @@ def test_ca2_reparent_en_el_medio_conserva_posicion_y_orden(client: TestClient) 
     assert view(client, kids[0]["id"], depth=5)["nodes"] == before
 
 
-def test_ca2_reparent_como_primer_hijo(client: TestClient) -> None:
+def test_ac2_reparent_as_first_child(client: TestClient) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     add(client, root, "B")
@@ -64,7 +64,7 @@ def test_ca2_reparent_como_primer_hijo(client: TestClient) -> None:
     assert order_under(client, root) == ["c1", "c2", "B"]
 
 
-def test_ca2_reparent_como_ultimo_hijo(client: TestClient) -> None:
+def test_ac2_reparent_as_last_child(client: TestClient) -> None:
     root = root_id(client)
     add(client, root, "A")
     n = add(client, root, "N")
@@ -76,7 +76,7 @@ def test_ca2_reparent_como_ultimo_hijo(client: TestClient) -> None:
     assert order_under(client, root) == ["A", "c1", "c2"]
 
 
-def test_ca2_reparent_sube_la_version_de_los_hijos_movidos(client: TestClient) -> None:
+def test_ac2_reparent_bumps_the_version_of_moved_children(client: TestClient) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     child = add(client, n["id"], "c")
@@ -88,15 +88,15 @@ def test_ca2_reparent_sube_la_version_de_los_hijos_movidos(client: TestClient) -
     assert moved["version"] > child["version"]
 
 
-def test_ca2_reparent_de_hoja_solo_la_borra(client: TestClient) -> None:
+def test_ac2_reparent_of_a_leaf_just_deletes_it(client: TestClient) -> None:
     root = root_id(client)
-    leaf = add(client, root, "hoja")
+    leaf = add(client, root, "leaf")
 
     assert reparent(client, leaf).status_code == 204
     assert order_under(client, root) == []
 
 
-def test_reparent_de_muchos_hijos_mantiene_claves_cortas(client: TestClient) -> None:
+def test_reparent_of_many_children_keeps_keys_short(client: TestClient) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     add(client, root, "B")
@@ -110,14 +110,14 @@ def test_reparent_de_muchos_hijos_mantiene_claves_cortas(client: TestClient) -> 
     assert max(len(k) for k in keys) < 20
 
 
-def test_ca3_reparent_es_atomico(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ac3_reparent_is_atomic(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     add(client, n["id"], "c1")
     add(client, n["id"], "c2")
 
     def boom(*_args: object) -> None:
-        raise RuntimeError("fallo simulado")
+        raise RuntimeError("simulated failure")
 
     monkeypatch.setattr(service, "remove_row", boom)
     with pytest.raises(RuntimeError):
@@ -128,7 +128,7 @@ def test_ca3_reparent_es_atomico(client: TestClient, monkeypatch: pytest.MonkeyP
     assert order_under(client, n["id"]) == ["c1", "c2"]
 
 
-def test_ca4_reparent_sin_csrf_responde_403(client: TestClient) -> None:
+def test_ac4_reparent_without_csrf_returns_403(client: TestClient) -> None:
     n = add(client, root_id(client), "N")
     add(client, n["id"], "c")
 
@@ -138,7 +138,7 @@ def test_ca4_reparent_sin_csrf_responde_403(client: TestClient) -> None:
     assert order_under(client, n["id"]) == ["c"]
 
 
-def test_ca4_reparent_de_nodo_ajeno_responde_404(login: Callable[..., TestClient]) -> None:
+def test_ac4_reparent_of_someone_elses_node_returns_404(login: Callable[..., TestClient]) -> None:
     owner = login(sub="sub-o", name="O")
     n = add(owner, root_id(owner), "N")
     add(owner, n["id"], "c")
@@ -148,7 +148,7 @@ def test_ca4_reparent_de_nodo_ajeno_responde_404(login: Callable[..., TestClient
     assert order_under(owner, n["id"]) == ["c"]
 
 
-def test_ca4_reparent_de_la_raiz_responde_422(client: TestClient) -> None:
+def test_ac4_reparent_of_the_root_returns_422(client: TestClient) -> None:
     root = root_id(client)
     add(client, root, "h")
 
@@ -156,7 +156,7 @@ def test_ca4_reparent_de_la_raiz_responde_422(client: TestClient) -> None:
     assert order_under(client, root) == ["h"]
 
 
-def test_ca4_valor_invalido_de_children_responde_422(client: TestClient) -> None:
+def test_ac4_invalid_children_value_returns_422(client: TestClient) -> None:
     n = add(client, root_id(client), "N")
 
     response = client.delete(f"/api/nodes/{n['id']}", params={"children": "foo"}, headers=CSRF)

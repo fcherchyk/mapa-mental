@@ -9,7 +9,7 @@ export type NodePatch = components['schemas']['NodePatch'];
 
 export const API_PREFIX = '/api';
 export const LOGIN_URL = `${API_PREFIX}/auth/login`;
-// La API rechaza toda mutación sin este header (ADR 0006).
+// The API rejects every mutation without this header (ADR 0006).
 export const CSRF_HEADERS = { 'X-CSRF': '1' } as const;
 
 export class ApiError extends Error {
@@ -22,7 +22,7 @@ export class ApiError extends Error {
   }
 }
 
-/** `cascade` borra el subárbol; `reparent` sube los hijos directos al padre del nodo borrado. */
+/** `cascade` deletes the subtree; `reparent` moves the direct children up to the deleted node's parent. */
 export interface DeleteOptions {
   children?: 'cascade' | 'reparent';
 }
@@ -39,7 +39,7 @@ export interface ApiClient {
   deleteNode(nodeId: string, options?: DeleteOptions): Promise<void>;
 }
 
-/** Cliente de la API; `onUnauthorized` se llama ante cualquier 401 (sesión vencida). */
+/** API client; `onUnauthorized` is called on any 401 (expired session). */
 export function createApiClient(onUnauthorized: () => void = () => {}): ApiClient {
   async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = method === 'GET' ? {} : { ...CSRF_HEADERS };

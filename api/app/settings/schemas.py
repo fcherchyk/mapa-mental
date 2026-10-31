@@ -1,4 +1,4 @@
-"""Esquemas de las preferencias del usuario."""
+"""User preference schemas."""
 
 from typing import Annotated
 

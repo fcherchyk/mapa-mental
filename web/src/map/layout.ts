@@ -14,8 +14,8 @@ export interface Layout {
 }
 
 /**
- * Árbol horizontal: la x crece con el nivel y cada hoja ocupa su propia franja vertical, en
- * orden; un padre queda centrado entre su primer y su último hijo, así los subárboles no se pisan.
+ * Horizontal tree: x grows with the level and each leaf takes its own vertical band, in order;
+ * a parent is centered between its first and last child, so subtrees never overlap.
  */
 export function layoutTree(rootId: string, childrenOf: (id: string) => string[]): Layout {
   const positions: Record<string, Position> = {};

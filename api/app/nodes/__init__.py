@@ -1,1 +1,1 @@
-"""Árbol de nodos del mapa: ventana visible, crear, editar y borrar."""
+"""The map's node tree: visible window, create, edit and delete."""

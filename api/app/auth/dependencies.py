@@ -1,4 +1,4 @@
-"""Dependencias de FastAPI: usuario de la sesión y header anti-CSRF."""
+"""FastAPI dependencies: the session's user and the anti-CSRF header."""
 
 from typing import Annotated
 
@@ -17,11 +17,11 @@ def current_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> U
     token = request.cookies.get(SESSION_COOKIE)
     user = find_session_user(db, token) if token else None
     if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "sesión inválida o vencida")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid or expired session")
     return user
 
 
 def require_csrf(x_csrf: Annotated[str | None, Header(alias=CSRF_HEADER)] = None) -> None:
-    """Un formulario de otro sitio no puede mandar headers propios sin preflight de CORS."""
+    """A form on another site cannot send custom headers without a CORS preflight."""
     if x_csrf != CSRF_VALUE:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"falta el header {CSRF_HEADER}: 1")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"missing header {CSRF_HEADER}: 1")

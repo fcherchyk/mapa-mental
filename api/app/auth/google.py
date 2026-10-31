@@ -1,4 +1,4 @@
-"""Cliente OAuth de Google (Authorization Code con `state` y `nonce`, vía Authlib)."""
+"""Google OAuth client (Authorization Code with `state` and `nonce`, via Authlib)."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -8,7 +8,7 @@ from authlib.integrations.starlette_client import OAuth
 from app.config import Config
 
 GOOGLE_METADATA_URL = "https://accounts.google.com/.well-known/openid-configuration"
-# Solo identidad; Drive se pide de forma incremental en el corte 2 (ADR 0007).
+# Identity only; Drive is requested incrementally in slice 2 (ADR 0007).
 GOOGLE_SCOPES = "openid email profile"
 
 
@@ -21,7 +21,7 @@ class GoogleIdentity:
 
     @classmethod
     def from_claims(cls, claims: dict[str, Any]) -> "GoogleIdentity":
-        """Toma solo la identidad del `id_token` ya validado; los tokens se descartan."""
+        """Takes only the identity from the already validated `id_token`; tokens are dropped."""
         email = claims.get("email") or ""
         return cls(
             sub=str(claims["sub"]),

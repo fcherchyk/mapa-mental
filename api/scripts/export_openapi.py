@@ -1,6 +1,6 @@
-"""Escribe el OpenAPI de la API en un archivo, sin levantar el servidor ni conectarse a la base.
+"""Writes the API's OpenAPI to a file, without starting the server or connecting to the database.
 
-Uso: uv run --directory api python scripts/export_openapi.py ../web/openapi.json
+Usage: uv run --directory api python scripts/export_openapi.py ../web/openapi.json
 """
 
 import json
@@ -10,7 +10,7 @@ from pathlib import Path
 from app.config import Config
 from app.main import create_app
 
-# El esquema no depende de la configuración; create_app no abre conexiones al armarse.
+# The schema does not depend on the configuration; create_app opens no connections when built.
 PLACEHOLDER_CONFIG = Config(
     database_url="postgresql+psycopg://openapi:openapi@localhost:5432/openapi",
     session_secret="openapi",

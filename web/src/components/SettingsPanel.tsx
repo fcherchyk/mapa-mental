@@ -8,11 +8,11 @@ interface SettingsPanelProps {
   onDepthChange: (depth: number) => void;
 }
 
-/** Preferencia N de niveles visibles (ADR 0010). */
+/** Preference N of visible levels (ADR 0010). */
 export function SettingsPanel({ depth, onDepthChange }: SettingsPanelProps) {
   return (
     <label className="settings-panel">
-      Niveles visibles
+      Visible levels
       <select value={depth} onChange={(event) => onDepthChange(Number(event.target.value))}>
         {DEPTH_OPTIONS.map((value) => (
           <option key={value} value={value}>

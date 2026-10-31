@@ -13,7 +13,7 @@ import { useMapView } from './useMapView';
 
 const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 
-/** Teclas sobre campos, botones o enlaces siguen su comportamiento normal. */
+/** Keys on fields, buttons or links keep their normal behavior. */
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -22,8 +22,8 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * El foco no está en ningún elemento vivo, o quedó en el editor del mapa que se acaba de cerrar.
- * React Flow desmonta el editor un render después, así que todavía puede estar enfocado.
+ * Focus is not on any live element, or it stayed on the map editor that was just closed.
+ * React Flow unmounts the editor one render later, so it may still be focused.
  */
 function isFocusLost(canvas: HTMLElement | null): boolean {
   const active = document.activeElement;
@@ -42,8 +42,8 @@ export function MapPage() {
   const canvasRef = useRef<HTMLElement>(null);
   const wasEditing = useRef(false);
 
-  // Al terminar una edición (lápiz, +, Tab o F2) el foco vuelve al mapa para que los atajos sigan
-  // andando. Si la edición abre un hermano (Enter), el foco no vuelve hasta que no quede ninguna.
+  // When an edit ends (pencil, +, Tab or F2) focus returns to the map so the shortcuts keep
+  // working. If the edit opens a sibling (Enter), focus does not return until no edit is left.
   useEffect(() => {
     if (editingId) {
       wasEditing.current = true;
@@ -53,7 +53,7 @@ export function MapPage() {
     wasEditing.current = false;
   }, [editingId]);
 
-  // Al cerrarse el diálogo de borrado (cualquier opción) el foco vuelve al mapa.
+  // When the delete dialog closes (any option) focus returns to the map.
   const deleting = view.deleteRequest !== null;
   const wasDeleting = useRef(false);
   useEffect(() => {
@@ -63,7 +63,7 @@ export function MapPage() {
 
   const goTo = (id: string) => navigate(pathFor(id, me.root_node_id));
 
-  /** Doble click: enfoca el nodo; sobre el foco sube un nivel; en la raíz real no hace nada. */
+  /** Double click: focuses the node; on the focus it goes up one level; on the real root, nothing. */
   const open = (id: string) => {
     if (!state || state.nodes[id]?.pending) return;
     if (id !== state.focusId) {
@@ -84,7 +84,7 @@ export function MapPage() {
     cancelEdit: view.cancelEdit,
   };
 
-  // Sin hijos cargados ni hijos en el servidor: la pista invita a agregar la primera idea.
+  // No loaded children and none on the server: the hint invites adding the first idea.
   const rootIsEmpty =
     state !== null &&
     isRealRoot(state, state.focusId) &&
@@ -128,7 +128,7 @@ export function MapPage() {
     }
   };
 
-  // El listener se reemplaza en cada render para ver el estado actual.
+  // The listener is replaced on every render so it sees the current state.
   useEffect(() => {
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -151,27 +151,27 @@ export function MapPage() {
           <SettingsPanel depth={depth} onDepthChange={setDepth} />
           <span className="user-name">{me.name}</span>
           <button type="button" onClick={logout}>
-            Salir
+            Sign out
           </button>
         </div>
       </header>
       {view.notice && (
         <div role="alert" className="notice">
           {view.notice}
-          <button type="button" aria-label="Cerrar aviso" onClick={view.dismissNotice}>
+          <button type="button" aria-label="Dismiss notice" onClick={view.dismissNotice}>
             ×
           </button>
         </div>
       )}
       <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
-        {view.status === 'error' && <p role="alert">No se pudo cargar el mapa.</p>}
-        {!state && view.status === 'loading' && <p>Cargando…</p>}
+        {view.status === 'error' && <p role="alert">Could not load the map.</p>}
+        {!state && view.status === 'loading' && <p>Loading…</p>}
         {state && (
           <NodeActionsContext.Provider value={actions}>
             <MapCanvas state={state} selectedId={selectedId} editingId={editingId} />
           </NodeActionsContext.Provider>
         )}
-        {rootIsEmpty && <p className="map-hint">Tocá + o Tab para agregar una idea</p>}
+        {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
       </main>
       {view.deleteRequest && (
         <DeleteDialog

@@ -1,11 +1,11 @@
-"""Entorno de Alembic: migra contra `sqlalchemy.url` o, si no está, `DATABASE_URL`."""
+"""Alembic environment: migrates against `sqlalchemy.url` or, if unset, `DATABASE_URL`."""
 
 import os
 
 from alembic import context
 from sqlalchemy import create_engine
 
-from app import models  # noqa: F401  (registra las tablas en el metadata)
+from app import models  # noqa: F401  (registers the tables in the metadata)
 from app.db import Base
 
 

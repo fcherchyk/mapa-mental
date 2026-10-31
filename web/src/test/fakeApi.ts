@@ -25,7 +25,7 @@ const json = (status: number, body: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-/** API en memoria con la misma forma que la real; registra cada pedido que recibe. */
+/** In-memory API with the same shape as the real one; records every request it gets. */
 export class FakeApi {
   readonly nodes = new Map<string, Required<FakeNode>>();
   readonly calls: RecordedCall[] = [];
@@ -55,7 +55,7 @@ export class FakeApi {
     };
   }
 
-  /** La próxima respuesta que cumpla `match` es `response` (por ejemplo, un error). */
+  /** The next request that satisfies `match` gets a `status` error response. */
   failNext(match: (call: RecordedCall) => boolean, status: number): void {
     const override: Override = (call) => {
       if (!match(call)) return undefined;
@@ -94,7 +94,7 @@ export class FakeApi {
       this.loggedIn = false;
       return new Response(null, { status: 204 });
     }
-    if (!this.loggedIn) return json(401, { detail: 'sesión inválida o vencida' });
+    if (!this.loggedIn) return json(401, { detail: 'invalid or expired session' });
     if (method === 'GET' && url === '/api/me') return json(200, this.me());
     if (method === 'PATCH' && url === '/api/me/settings') {
       this.depth = (call.body as { depth: number }).depth;
@@ -104,7 +104,7 @@ export class FakeApi {
       /^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children|\?children=(cascade|reparent))?$/,
     );
     const node = match && this.nodes.get(decodeURIComponent(match[1]));
-    if (!match || !node) return json(404, { detail: 'nodo inexistente' });
+    if (!match || !node) return json(404, { detail: 'node not found' });
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
     if (method === 'POST' && match[2] === '/children') return json(201, this.create(node, call));
     if (method === 'PATCH') return this.patch(node, call);
@@ -113,7 +113,7 @@ export class FakeApi {
       this.subtree(node.id).forEach((id) => this.nodes.delete(id));
       return new Response(null, { status: 204 });
     }
-    return json(405, { detail: 'método no soportado' });
+    return json(405, { detail: 'method not supported' });
   }
 
   children(id: string): Required<FakeNode>[] {
@@ -122,7 +122,7 @@ export class FakeApi {
       .sort((a, b) => (a.sort_key < b.sort_key ? -1 : 1));
   }
 
-  /** Los hijos pasan al padre; la clave del nodo como prefijo los deja en su lugar y en orden. */
+  /** Children move to the parent; the node's key as a prefix keeps them in place and in order. */
   private reparentChildren(node: Required<FakeNode>): void {
     for (const child of this.children(node.id)) {
       this.nodes.set(child.id, {
@@ -181,7 +181,7 @@ export class FakeApi {
 
   private patch(node: Required<FakeNode>, call: RecordedCall): Response {
     const body = call.body as { version: number; title?: string; collapsed?: boolean };
-    if (body.version !== node.version) return json(409, { detail: 'el nodo cambió' });
+    if (body.version !== node.version) return json(409, { detail: 'the node changed' });
     const updated = {
       ...node,
       title: body.title ?? node.title,

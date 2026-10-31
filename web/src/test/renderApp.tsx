@@ -12,13 +12,13 @@ function HistoryProbe() {
     <div>
       <output data-testid="location">{location.pathname}</output>
       <button type="button" onClick={() => navigate(-1)}>
-        historial-atras
+        history-back
       </button>
     </div>
   );
 }
 
-/** Monta la SPA en `path` contra una API simulada. */
+/** Mounts the SPA at `path` against a simulated API. */
 export function renderApp(path: string, api: FakeApi) {
   vi.stubGlobal('fetch', api.fetch);
   const user = userEvent.setup();
@@ -37,11 +37,11 @@ export const nodeElement = (id: string) => screen.getByTestId(`node-${id}`);
 
 export const queryNode = (id: string) => screen.queryByTestId(`node-${id}`);
 
-/** Mapa de ejemplo: raíz › F › (A › A1, A2), B. */
+/** Sample map: root › F › (A › A1, A2), B. */
 export function sampleTree(): FakeNode[] {
   return [
-    { id: 'root', parent_id: null, title: 'Mi mapa', sort_key: 'V' },
-    { id: 'f', parent_id: 'root', title: 'Foco', sort_key: 'V' },
+    { id: 'root', parent_id: null, title: 'My map', sort_key: 'V' },
+    { id: 'f', parent_id: 'root', title: 'Focus', sort_key: 'V' },
     { id: 'a', parent_id: 'f', title: 'Idea A', sort_key: 'F' },
     { id: 'b', parent_id: 'f', title: 'Idea B', sort_key: 'Q' },
     { id: 'a1', parent_id: 'a', title: 'Idea A1', sort_key: 'F' },

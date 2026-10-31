@@ -58,7 +58,7 @@ export function App() {
         setMeDepth(next);
         api.patchSettings({ depth: next }).catch(() => {
           setMeDepth(depth);
-          setNotice('No se pudo guardar la cantidad de niveles.');
+          setNotice('Could not save the number of levels.');
         });
       },
       logout: () => {
@@ -69,10 +69,10 @@ export function App() {
     };
   }, [api, cache, session, setMeDepth]);
 
-  if (session.status === 'loading') return <p className="centered-screen">Cargando…</p>;
+  if (session.status === 'loading') return <p className="centered-screen">Loading…</p>;
   if (session.status === 'anonymous') return <LoginScreen />;
   if (session.status === 'unavailable' || !contextValue) {
-    return <p className="centered-screen">No se pudo conectar con la API.</p>;
+    return <p className="centered-screen">Could not connect to the API.</p>;
   }
 
   return (

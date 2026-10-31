@@ -3,26 +3,26 @@ import { useEffect, useRef } from 'react';
 const SHORTCUTS: { keys: string; description: string }[] = [
   {
     keys: 'Tab',
-    description: 'Con el mapa enfocado, agrega un hijo al nodo seleccionado y lo deja en edición.',
+    description: 'With the map focused, adds a child to the selected idea and starts editing it.',
   },
-  { keys: 'F2', description: 'Pone en edición el título del nodo seleccionado.' },
-  { keys: 'Espacio', description: 'Colapsa o expande el nodo seleccionado.' },
+  { keys: 'F2', description: 'Starts editing the title of the selected idea.' },
+  { keys: 'Space', description: 'Collapses or expands the selected idea.' },
   {
-    keys: 'Supr',
+    keys: 'Delete',
     description:
-      'Borra el nodo seleccionado. Si tiene hijos, pregunta si borrar todo el subárbol o solo el nodo y subir sus hijos.',
+      'Deletes the selected idea. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
   },
   {
     keys: 'Enter',
     description:
-      'Enfoca el nodo seleccionado. Mientras editás un título, lo confirma y abre una idea hermana.',
+      'Focuses the selected idea. While you edit a title, confirms it and opens a sibling idea.',
   },
-  { keys: 'Retroceso', description: 'Sube un nivel desde el nodo enfocado.' },
+  { keys: 'Backspace', description: 'Goes up one level from the focused idea.' },
   {
-    keys: 'Flechas',
-    description: 'Mueven la selección: → al primer hijo, ← al padre, ↑ y ↓ entre hermanos.',
+    keys: 'Arrows',
+    description: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.',
   },
-  { keys: 'Doble click', description: 'Enfoca el nodo; sobre el nodo enfocado, sube un nivel.' },
+  { keys: 'Double click', description: 'Focuses the idea; on the focused idea, goes up one level.' },
 ];
 
 interface ShortcutsHelpProps {
@@ -30,7 +30,7 @@ interface ShortcutsHelpProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Botón "?" y panel con los atajos del mapa; Escape lo cierra y devuelve el foco al botón. */
+/** "?" button and panel with the map's shortcuts; Escape closes it and returns focus to the button. */
 export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -59,7 +59,7 @@ export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
       <button
         ref={buttonRef}
         type="button"
-        aria-label="Atajos de teclado"
+        aria-label="Keyboard shortcuts"
         aria-expanded={open}
         aria-controls="shortcuts-panel"
         onClick={onButtonClick}
@@ -70,7 +70,7 @@ export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
         <section
           id="shortcuts-panel"
           role="dialog"
-          aria-label="Atajos de teclado"
+          aria-label="Keyboard shortcuts"
           className="shortcuts-panel"
         >
           <dl>

@@ -1,4 +1,4 @@
-"""Reglas de la API de nodos sobre el repositorio."""
+"""Nodes API rules on top of the repository."""
 
 import uuid
 
@@ -14,8 +14,8 @@ from app.nodes import repository
 from app.nodes.schemas import NodeCreate, NodeOut, NodePatch, NodeView, WindowNode
 from app.nodes.sort_keys import key_between
 
-NOT_FOUND = "nodo inexistente"
-VERSION_CONFLICT = "el nodo cambió; volvé a pedirlo"
+NOT_FOUND = "node not found"
+VERSION_CONFLICT = "the node changed; fetch it again"
 
 
 def not_found() -> HTTPException:
@@ -74,7 +74,7 @@ def create_child(
 
 
 def new_child_sort_key(db: Session, parent_id: uuid.UUID, after: str | None) -> str:
-    """Clave justo después de `after`, o al final si no viene."""
+    """Key right after `after`, or at the end if it is not given."""
     if after is None:
         return key_between(repository.last_child_sort_key(db, parent_id), None)
     return key_between(after, repository.next_sibling_sort_key(db, parent_id, after))
@@ -97,12 +97,12 @@ def update_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, patch: Nod
 
 def apply_patch(node: Node, patch: NodePatch) -> None:
     if patch.kind is not None and patch.kind != node.kind:
-        raise unprocessable("el tipo de un nodo no se puede cambiar")
+        raise unprocessable("a node's kind cannot be changed")
     if patch.props is not None:
         try:
             node.props = validate_props(node.kind, patch.props)
         except ValidationError as exc:
-            raise unprocessable(f"props inválidos para {node.kind}: {exc}") from None
+            raise unprocessable(f"invalid props for {node.kind}: {exc}") from None
     if patch.title is not None:
         node.title = patch.title
     if patch.collapsed is not None:
@@ -114,12 +114,12 @@ def apply_patch(node: Node, patch: NodePatch) -> None:
 def delete_subtree(
     db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, reparent: bool = False
 ) -> None:
-    """Borra el nodo; con `reparent` sus hijos suben al padre, si no caen en cascada."""
+    """Deletes the node; with `reparent` its children move up to the parent, else they cascade."""
     node = repository.get_owned_node(db, owner_id, node_id)
     if node is None:
         raise not_found()
     if node.parent_id is None:
-        raise unprocessable("la raíz del mapa no se puede borrar")
+        raise unprocessable("the map's root cannot be deleted")
     try:
         if reparent:
             move_children_to_parent(db, node)
@@ -135,7 +135,7 @@ def remove_row(db: Session, node: Node) -> None:
 
 
 def move_children_to_parent(db: Session, node: Node) -> None:
-    """Pasa los hijos al padre de `node`, entre sus hermanos y conservando su orden."""
+    """Moves the children to `node`'s parent, among its siblings and keeping their order."""
     assert node.parent_id is not None
     children = repository.ordered_children(db, node.id)
     lower = repository.previous_sibling_sort_key(db, node.parent_id, node.sort_key)
@@ -147,7 +147,7 @@ def move_children_to_parent(db: Session, node: Node) -> None:
 
 
 def spread_keys(lower: str | None, upper: str | None, count: int) -> list[str]:
-    """`count` claves crecientes entre `lower` y `upper`, bisectando para no alargarlas."""
+    """`count` increasing keys between `lower` and `upper`, bisecting to keep them short."""
     if count == 0:
         return []
     middle = count // 2

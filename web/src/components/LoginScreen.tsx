@@ -1,13 +1,13 @@
 import { LOGIN_URL } from '../api/client';
 
-/** El login es una navegación completa: el backend hace el OAuth con Google (ADR 0006). */
+/** Login is a full navigation: the backend does the OAuth with Google (ADR 0006). */
 export function LoginScreen() {
   return (
     <main className="centered-screen">
-      <h1>Mapa mental</h1>
-      <p>Entrá con tu cuenta de Google para ver tu mapa.</p>
+      <h1>Mind Map</h1>
+      <p>Sign in with your Google account to see your map.</p>
       <a className="button" href={LOGIN_URL}>
-        Entrar con Google
+        Sign in with Google
       </a>
     </main>
   );

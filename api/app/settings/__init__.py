@@ -1,1 +1,1 @@
-"""Preferencias del usuario (ADR 0010)."""
+"""User preferences (ADR 0010)."""

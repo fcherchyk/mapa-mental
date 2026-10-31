@@ -14,7 +14,7 @@ interface MapCanvasProps {
   editingId: string | null;
 }
 
-/** Pasa la ventana a nodos y aristas de React Flow con la disposición en árbol (ADR 0003). */
+/** Turns the window into React Flow nodes and edges with the tree layout (ADR 0003). */
 export function toFlowElements(
   state: MapState,
   selectedId: string | null,
@@ -48,7 +48,7 @@ export function MapCanvas({ state, selectedId, editingId }: MapCanvasProps) {
 
   return (
     <ReactFlow
-      // Cada foco o N nuevo vuelve a encuadrar el árbol.
+      // Every new focus or N fits the tree into view again.
       key={`${state.focusId}:${state.depth}`}
       nodes={nodes}
       edges={edges}
@@ -61,7 +61,7 @@ export function MapCanvas({ state, selectedId, editingId }: MapCanvasProps) {
       nodesConnectable={false}
       elementsSelectable={false}
       zoomOnDoubleClick={false}
-      // El teclado lo maneja MapPage: React Flow no debe borrar ni desplazar con Espacio.
+      // MapPage handles the keyboard: React Flow must not delete, nor pan with Space.
       deleteKeyCode={null}
       selectionKeyCode={null}
       multiSelectionKeyCode={null}

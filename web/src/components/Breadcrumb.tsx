@@ -10,7 +10,7 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ ancestors, focusTitle, rootId }: BreadcrumbProps) {
   return (
-    <nav aria-label="Miga de pan" className="breadcrumb">
+    <nav aria-label="Breadcrumb" className="breadcrumb">
       <ol>
         {ancestors.map((ancestor) => (
           <li key={ancestor.id}>

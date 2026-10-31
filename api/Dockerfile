@@ -3,7 +3,7 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /srv/api
-# El entorno vive fuera de /srv/api para que el volumen del código no lo tape.
+# The environment lives outside /srv/api so the code volume does not hide it.
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy

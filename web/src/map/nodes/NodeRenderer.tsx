@@ -5,7 +5,7 @@ import type { MapNodeData, NodeComponentProps } from './nodeActions';
 
 export type MapFlowNode = Node<MapNodeData, 'renderer'>;
 
-/** Componente de cada `kind`; los tipos futuros (documento, tarea…) se suman acá (ADR 0002). */
+/** Component for each `kind`; future kinds (document, task…) are added here (ADR 0002). */
 export const NODE_COMPONENTS: Record<string, ComponentType<NodeComponentProps>> = {
   idea: IdeaNode,
 };

@@ -47,14 +47,14 @@ export interface components {
       child_count: number;
     };
     WindowNode: components['schemas']['NodeOut'] & {
-      /** Distancia al foco: 1 son sus hijos directos. */
+      /** Distance to the focus: 1 means its direct children. */
       level: number;
     };
     NodeView: {
       focus: components['schemas']['NodeOut'];
-      /** De la raíz al padre del foco. */
+      /** From the root to the focus's parent. */
       ancestors: components['schemas']['NodeOut'][];
-      /** Por nivel; los hermanos, por sort_key. */
+      /** By level; siblings by sort_key. */
       nodes: components['schemas']['WindowNode'][];
     };
   };

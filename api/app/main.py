@@ -1,4 +1,4 @@
-"""Armado de la app FastAPI. Se levanta con `uvicorn --factory app.main:create_app`."""
+"""FastAPI app assembly. Start it with `uvicorn --factory app.main:create_app`."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -13,7 +13,7 @@ from app.db import build_engine, build_session_factory
 from app.nodes.router import router as nodes_router
 from app.settings.router import router as settings_router
 
-# Cookie firmada que solo guarda `state` y `nonce` mientras dura el flujo con Google.
+# Signed cookie that only holds `state` and `nonce` while the Google flow lasts.
 OAUTH_FLOW_COOKIE = "oauth_flow"
 OAUTH_FLOW_MAX_AGE = 600
 
@@ -45,7 +45,7 @@ def create_app(config: Config | None = None) -> FastAPI:
 
 
 def build_api_router() -> APIRouter:
-    # Prefijo /api: el proxy de Vite lo reenvía tal cual, sin reescribir rutas.
+    # /api prefix: the Vite proxy forwards it as is, without rewriting paths.
     api = APIRouter(prefix="/api")
     api.include_router(auth_router)
     api.include_router(me_router)
