@@ -111,7 +111,7 @@ api/
     nodes/                window (recursive CTE), create, edit, delete (cascade or reparent), sort_keys
     node_types/           node type registry (idea) and props validation
     integrations/         empty in the first slice
-  tests/                  pytest + httpx against a testcontainers PostgreSQL
+  tests/                  pytest + httpx against an ephemeral PostgreSQL
 web/
   package.json, pnpm-lock.yaml  pnpm (only esbuild may run install scripts)
   Dockerfile              Node 22 + pnpm with corepack
