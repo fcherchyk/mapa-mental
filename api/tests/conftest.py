@@ -1,9 +1,18 @@
-"""Fixtures: PostgreSQL 16 efímero (testcontainers), app de tests y Google falso."""
+"""Fixtures: PostgreSQL 16 efímero, app de tests y Google falso.
 
+La base de tests se elige en este orden: `TEST_DATABASE_URL`, testcontainers si Docker responde,
+o un PostgreSQL embebido con `pgserver`. Si no hay ninguna, se saltean solo los tests que la usan.
+"""
+
+import importlib.util
+import os
+import tempfile
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+import docker
 import httpx
 import pytest
 from alembic import command
@@ -29,13 +38,73 @@ def migrate(database_url: str) -> None:
     command.upgrade(alembic_config, "head")
 
 
+def docker_available() -> bool:
+    try:
+        client = docker.from_env(timeout=3)
+        try:
+            return bool(client.ping())
+        finally:
+            client.close()
+    except Exception:
+        return False
+
+
+def database_backend() -> str | None:
+    """De dónde sale la base de tests: "url", "docker", "pgserver" o None si no hay ninguna."""
+    if os.environ.get("TEST_DATABASE_URL"):
+        return "url"
+    if docker_available():
+        return "docker"
+    if importlib.util.find_spec("pgserver") is not None:
+        return "pgserver"
+    return None
+
+
+def pytest_report_header() -> str:
+    backend = database_backend()
+    labels = {
+        "url": "TEST_DATABASE_URL",
+        "docker": "testcontainers (Docker)",
+        "pgserver": "embedded PostgreSQL (pgserver)",
+    }
+    return f"test database: {labels.get(backend, 'none, database tests will be skipped')}"
+
+
+@contextmanager
+def embedded_postgres() -> Iterator[str]:
+    """PostgreSQL 16 de pgserver en una carpeta temporal, por socket Unix; se borra al terminar."""
+    import pgserver
+
+    with tempfile.TemporaryDirectory(prefix="mapa-pg-") as pgdata:
+        server = pgserver.get_server(pgdata, cleanup_mode="delete")
+        try:
+            yield server.get_uri().replace("postgresql://", "postgresql+psycopg://", 1)
+        finally:
+            server.cleanup()
+
+
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
     """Un PostgreSQL 16 por sesión de tests, migrado con Alembic; nunca la base de desarrollo."""
-    with PostgresContainer("postgres:16", driver="psycopg") as postgres:
-        url = postgres.get_connection_url()
+    backend = database_backend()
+    if backend == "url":
+        # Tiene que ser una base vacía y descartable: los tests truncan sus tablas.
+        url = os.environ["TEST_DATABASE_URL"]
         migrate(url)
         yield url
+    elif backend == "docker":
+        with PostgresContainer("postgres:16", driver="psycopg") as postgres:
+            url = postgres.get_connection_url()
+            migrate(url)
+            yield url
+    elif backend == "pgserver":
+        with embedded_postgres() as url:
+            migrate(url)
+            yield url
+    else:
+        pytest.skip(
+            "No PostgreSQL available: set TEST_DATABASE_URL, start Docker or install pgserver"
+        )
 
 
 def make_config(postgres_url: str, **overrides: object) -> Config:

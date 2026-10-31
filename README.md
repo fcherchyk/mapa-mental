@@ -74,14 +74,18 @@ The client types (`web/src/api/schema.ts`) follow the API's OpenAPI. To regenera
 
 ## Tests
 
-With Docker running:
+Docker is not required:
 
 ```sh
 uv run --directory api pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
 pnpm --dir web exec vitest run --coverage
 ```
 
-- Backend: starts an ephemeral PostgreSQL 16 with `testcontainers`, migrates it with Alembic and simulates Google with a fake OIDC provider, so it does not reach the network or use the development database.
+- Backend: runs against a real, ephemeral PostgreSQL 16, migrates it with Alembic and simulates Google with a fake OIDC provider, so it does not reach the network or use the development database. The database is picked in this order (the first line of the pytest header says which one):
+  1. `TEST_DATABASE_URL`, if set: an empty, disposable database (the tests truncate its tables), for example `postgresql+psycopg://user:pass@localhost:5432/mapa_test`.
+  2. `testcontainers`, if Docker is running.
+  3. An embedded PostgreSQL from `pgserver` (a dev dependency that ships the binaries; Python 3.12 or older), started in a temporary folder and deleted afterwards.
+  4. None: the tests that need the database are skipped and the rest still run. The two tests that validate `docker-compose.yml` are skipped when the Docker CLI is not installed.
 - Frontend: Vitest + Testing Library on jsdom, against an in-memory API (`web/src/test/fakeApi.ts`). It fails if line coverage drops below 80%.
 
 The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus).
