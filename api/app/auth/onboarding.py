@@ -1,4 +1,4 @@
-"""Entrada de un usuario de Google: el primer login crea su user, su mapa y la raíz (ADR 0008)."""
+"""Google user sign-in: the first login creates the user, their map and the root (ADR 0008)."""
 
 from datetime import timedelta
 
@@ -12,13 +12,13 @@ from app.node_types import DEFAULT_KIND
 from app.nodes.schemas import TITLE_MAX_LENGTH
 from app.nodes.sort_keys import key_between
 
-DEFAULT_ROOT_TITLE = "Mi mapa"
+DEFAULT_ROOT_TITLE = "My map"
 
 
 def sign_in(
     session_factory: sessionmaker[Session], identity: GoogleIdentity, ttl: timedelta
 ) -> str:
-    """Crea o actualiza el usuario, abre una sesión y devuelve el token de la cookie."""
+    """Creates or updates the user, opens a session and returns the cookie token."""
     with session_factory() as db:
         user = db.scalar(select(User).where(User.google_sub == identity.sub))
         if user is None:

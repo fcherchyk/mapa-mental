@@ -1,7 +1,7 @@
 [project]
 name = "mapa-mental-api"
 version = "0.1.0"
-description = "API del mapa mental: login con Google, un mapa por usuario y ventana de N niveles."
+description = "Mind map API: Google login, one map per user and an N-level window."
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.13",
@@ -18,7 +18,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "cryptography>=43",
-    # PostgreSQL embebido para correr los tests sin Docker; no hay wheels para 3.13+.
+    # Embedded PostgreSQL to run the tests without Docker; there are no wheels for 3.13+.
     "pgserver>=0.1.4; python_version < '3.13'",
     "pytest>=8",
     "pytest-cov>=5",

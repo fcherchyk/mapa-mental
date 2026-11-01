@@ -1,4 +1,4 @@
-"""Consultas del árbol. Todas filtran por `maps.owner_id` para evitar IDOR (ADR 0012)."""
+"""Tree queries. All of them filter by `maps.owner_id` to prevent IDOR (ADR 0012)."""
 
 import uuid
 from typing import Any
@@ -13,7 +13,7 @@ NODE_COLUMNS = """
     (SELECT count(*) FROM nodes k WHERE k.parent_id = n.id) AS child_count
 """
 
-# Baja desde el foco hasta `depth` niveles; un nodo colapsado no expande a sus hijos.
+# Walks down from the focus up to `depth` levels; a collapsed node does not expand its children.
 WINDOW_SQL = text(f"""
 WITH RECURSIVE window_nodes AS (
     SELECT n.id, n.collapsed, 0 AS level
@@ -29,7 +29,7 @@ FROM window_nodes w JOIN nodes n ON n.id = w.id
 ORDER BY w.level, n.parent_id, n.sort_key, n.id
 """)
 
-# Sube desde el padre del foco hasta la raíz; se devuelve de la raíz hacia abajo.
+# Walks up from the focus's parent to the root; returned from the root downwards.
 ANCESTORS_SQL = text(f"""
 WITH RECURSIVE chain AS (
     SELECT p.id, p.parent_id, 1 AS distance
@@ -50,7 +50,7 @@ ORDER BY c.distance DESC
 def fetch_window(
     db: Session, owner_id: uuid.UUID, focus_id: uuid.UUID, depth: int
 ) -> list[dict[str, Any]]:
-    """Foco (nivel 0) y descendientes hasta `depth`; vacío si el foco no es del usuario."""
+    """Focus (level 0) and descendants down to `depth`; empty if the user does not own the focus."""
     params = {"focus_id": focus_id, "owner_id": owner_id, "depth": depth}
     return [dict(row) for row in db.execute(WINDOW_SQL, params).mappings()]
 
@@ -78,7 +78,7 @@ def last_child_sort_key(db: Session, parent_id: uuid.UUID) -> str | None:
 
 
 def next_sibling_sort_key(db: Session, parent_id: uuid.UUID, after: str) -> str | None:
-    """Menor `sort_key` de los hijos de `parent_id` que es mayor que `after`."""
+    """Smallest `sort_key` among the children of `parent_id` that is greater than `after`."""
     query = select(func.min(Node.sort_key)).where(
         Node.parent_id == parent_id, Node.sort_key > after
     )
@@ -86,7 +86,7 @@ def next_sibling_sort_key(db: Session, parent_id: uuid.UUID, after: str) -> str 
 
 
 def previous_sibling_sort_key(db: Session, parent_id: uuid.UUID, before: str) -> str | None:
-    """Mayor `sort_key` de los hijos de `parent_id` que es menor que `before`."""
+    """Largest `sort_key` among the children of `parent_id` that is less than `before`."""
     query = select(func.max(Node.sort_key)).where(
         Node.parent_id == parent_id, Node.sort_key < before
     )

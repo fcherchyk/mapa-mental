@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 const MAX_FOCUS_FRAMES = 60;
 
 /**
- * React Flow oculta un nodo nuevo hasta medirlo, y un elemento oculto no recibe el foco: se reintenta
- * en los frames siguientes hasta que el campo lo tenga o se desmonte.
+ * React Flow hides a new node until it measures it, and a hidden element cannot take focus: retry
+ * on the following frames until the field has it or unmounts.
  */
 function focusWhenVisible(input: HTMLInputElement): () => void {
   let frame = 0;
@@ -25,7 +25,7 @@ interface TitleEditorProps {
   onCancel: () => void;
 }
 
-/** Campo de edición del título; las teclas actúan sobre el texto y no sobre el mapa. */
+/** Title editing field; keys act on the text and not on the map. */
 export function TitleEditor({ initialTitle, onCommit, onCancel }: TitleEditorProps) {
   const [value, setValue] = useState(initialTitle);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +43,7 @@ export function TitleEditor({ initialTitle, onCommit, onCancel }: TitleEditorPro
     <input
       className="map-node-input nodrag nopan"
       ref={inputRef}
-      aria-label="Título"
+      aria-label="Title"
       maxLength={200}
       value={value}
       onChange={(event) => setValue(event.target.value)}

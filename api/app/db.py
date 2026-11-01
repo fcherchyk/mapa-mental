@@ -1,4 +1,4 @@
-"""Conexión a PostgreSQL y sesión de base de datos por pedido."""
+"""PostgreSQL connection and a database session per request."""
 
 from collections.abc import Iterator
 
@@ -20,6 +20,6 @@ def build_session_factory(engine: Engine) -> sessionmaker[Session]:
 
 
 def get_db(request: Request) -> Iterator[Session]:
-    """Sesión de base para un pedido; cada servicio hace su propio commit."""
+    """Database session for one request; each service commits on its own."""
     with request.app.state.session_factory() as db:
         yield db

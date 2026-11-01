@@ -1,0 +1,89 @@
+<!-- claude-readonly · claude-opus-5-5 · familia anthropic -->
+
+Checked where the Spanish text is and whether the frontend depends on API error texts. It doesn't: it branches only on the HTTP status. Writing the spec now.
+
+# Spec: translate the live repo from Spanish to English
+
+## 1. Context
+
+The workspace rule (2026-10-31) says everything versioned must be in English, because the repos are public and shared with people who don't read Spanish. `mapa-mental` still has Spanish UI text, comments, docstrings, error messages, identifiers and test names in `api/`, `web/` and the config files. This change translates all of it with no change in behavior, for anyone who reads or uses the repo without knowing Spanish.
+
+## 2. Scope
+
+**Included**
+- **UI (`web/`)**: every user-visible string in `web/src`. This covers labels, buttons, `aria-label`/`title`, `DeleteDialog`, `ShortcutsHelp`, the hint "Tocá + o Tab…", the notices in `useMapView` (`CONFLICT_NOTICE`, `FAILURE_NOTICE`), empty and error states, and `LoginScreen`. It also covers `web/index.html`: `<title>Mapa mental</title>` and `lang="es"` → `lang="en"`.
+- **Backend (`api/`)**:
+  - Comments, docstrings and log messages in `api/app`, `api/scripts`, `api/migrations` (`env.py` and the comments in `versions/*.py`).
+  - The `detail` messages of `HTTPException` in `auth/dependencies.py`, `auth/router.py` and `nodes/service.py`, including the `NOT_FOUND` and `VERSION_CONFLICT` constants.
+  - The `Field(description=…)` texts in `nodes/schemas.py`.
+- **Generated client**: regenerate `web/src/api/schema.ts` with `pnpm --dir web gen:api` so it carries the OpenAPI descriptions in English. Don't edit it by hand.
+- **Spanish identifiers**: rename variables, functions, constants and fixtures in `api/` and `web/`. Spanish test file names are renamed too (e.g. `api/tests/test_entorno.py` → `test_environment.py`).
+- **Tests**:
+  - Test names, `describe`/`it` blocks and comments, e.g. `test_criterio_1_…` → `test_criterion_1_…` and `criterio N:` → `criterion N:`.
+  - Assertions that look up UI text are updated to the new English strings.
+  - The error messages in `web/src/test/fakeApi.ts`, `api/tests/fake_google.py` and `conftest.py`.
+- **Config**: comments in `.env.example`, `docker-compose.yml`, `api/Dockerfile`, `web/Dockerfile` and `web/vite.config.ts`, plus the descriptions in `api/pyproject.toml` and `web/package.json`.
+- **`README.md`**: wherever it quotes UI text, test names or file names that change.
+
+**Out of scope**
+- Any change in behavior, API contract (routes, fields, status codes, header names, cookie names, env var names), styles or layout.
+- Migration revision ids and the schema (table, column and `kind` names), which are already in English.
+- Dependency upgrades or refactors beyond renaming identifiers.
+- History, which stays in Spanish: commits, `.agents/memory/specs/`, `.agents/memory/adr/`, `.agents/runs/` and `.agents/log.md`.
+
+## 3. Acceptance criteria
+
+1. **No accented Spanish characters in live files**
+   - Given the repo after the change,
+   - when you run `rg '[áéíóúüñÁÉÍÓÚÜÑ¿¡]'` over `api/` (excluding `.venv`), `web/src`, `web/index.html`, `web/vite.config.ts`, `web/package.json`, `api/pyproject.toml`, `.env.example`, `docker-compose.yml` and both Dockerfiles,
+   - then every match is a proper name, and each one is listed in the run's report with a justification.
+2. **No common Spanish words in live files**
+   - Given the same set of files,
+   - when you search case-insensitively for Spanish words without accents (`\b(nodo|nodos|borrar|hijos?|padre|raíz|raiz|criterio|sesion|mapa|idea[s]? nueva|cancelar|atajos|editar|enfocar|niveles|falta|devuelve|vencida|inexistente|que|para|con|los|las|del)\b`),
+   - then no matches remain in comments, strings or identifiers, except proper names and the brand name if question 1 decides to keep it.
+3. **The UI shows English**
+   - Given the SPA running against `fakeApi`,
+   - when the login screen, the map with the root focused and no children, the shortcuts panel and the delete dialog of a node with children are rendered,
+   - then the visible texts and `aria-label`s are in English, for example: the hint "Tap + or Tab to add an idea", the buttons "Delete everything from here", "Delete only this one and move its children up" and "Cancel".
+   - Frontend tests with RTL assert these texts.
+4. **The API returns errors in English without changing statuses**
+   - Given the backend under tests,
+   - when a request comes in without a session, a mutation without `X-CSRF`, a node that doesn't exist, or a stale `version`,
+   - then the responses are 401, 403, 404 and 409 respectively (same as before), and `detail` is in English.
+   - The backend tests assert the status and the new `detail`.
+5. **`schema.ts` matches the OpenAPI**
+   - Given the backend translated,
+   - when you run `pnpm --dir web gen:api`,
+   - then `git diff` on `web/src/api/schema.ts` shows no changes, meaning the committed file is already regenerated and in English.
+6. **Test suites and coverage**
+   - Given the repo after the change,
+   - when you run the `test_command` from `.agents/project.yaml` (backend `pytest --cov-fail-under=80` and frontend `vitest run --coverage` with `thresholds.lines: 80`),
+   - then both pass and meet their thresholds.
+   - The total number of tests is the same as before the change, so no test was lost in the renames.
+7. **No changes outside the scope**
+   - Given the diff of the run,
+   - when you inspect the changed files,
+   - then:
+     - nothing under `.agents/memory/specs/`, `.agents/memory/adr/`, `.agents/runs/` or `.agents/log.md` changed;
+     - no `revision`/`down_revision` value in `api/migrations/versions/` changed;
+     - no route, field name, env var or status code changed.
+8. **Static checks are clean**
+   - Given the code after the renames,
+   - when you run `ruff check`, `ruff format --check`, `tsc --noEmit` and ESLint,
+   - then they report no new errors compared to `main`, which covers imports or references broken by renames.
+9. **The app works the same in the browser**
+   - Given `docker compose up --build`,
+   - when someone logs in and creates, renames, collapses, focuses and deletes ideas (both delete modes), and opens the shortcuts panel,
+   - then everything behaves as before, with the texts in English.
+   - This is checked manually and recorded in QA.
+
+## 4. Risks and open questions
+
+1. **App name**: should "Mapa mental" (`<title>`, login screen, `package.json`/`pyproject.toml`) become "Mind map", or stay as a proper/brand name? The repo is called `mapa-mental`. Proposal: translate the visible title to "Mind Map" and leave the repo and package name alone.
+2. **Live docs under `.agents/memory/` that the request doesn't list**: `wiki/index.md`, `arquitectura.md`, `estandares-propuestos.md`, `progress.md`, `specs/README.md` and `adr/README.md` are not history. The 2026-10-31 standard says agent artifacts go in English. Are they translated in this run (the `docs` step would at least update the wiki), or left for another one? I'm not resolving this here.
+3. **Accepted ADR titles and file names in Spanish** (e.g. `0009-navegacion-doble-click.md`): the request marks them as history. That is consistent with "history is not rewritten", but it leaves code references to ADRs pointing at Spanish names. I'm noting it without changing anything.
+4. **Keyboard key names**: ADR 0009 talks about "Supr", "Retroceso" and "Espacio". Should the shortcuts panel use the English names ("Delete", "Backspace", "Space")? Proposal: yes. The handled keys (`event.key`) don't change.
+5. **API `detail` messages**: the SPA can show them through `ApiError` (`client.ts:76`), but it never compares them (it branches on `status`). So translating them doesn't change behavior. Still, any external client that compared them would break. There isn't one today.
+6. **The accent grep alone isn't enough**: a lot of Spanish has no accents. Criterion 2 adds a word list, but it can produce false positives (`con`, `que`) and miss words. The reviewer should do a manual pass over the diff.
+7. **Test renames**: renaming test files or functions can hide a lost test. Criterion 6 counts tests before and after.
+8. **Wording of UI texts**: there's no defined glossary. Proposal: "idea" stays "idea", "nodo" becomes "node" (only in code; the UI says "idea"), "foco" becomes "focus", and "borde +k" stays "+k".

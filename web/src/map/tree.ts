@@ -1,13 +1,13 @@
 import type { NodeOut, NodeView } from '../api/client';
 
-/** Nodo de la ventana; `pending` marca uno creado en el cliente que todavía no existe en la API. */
+/** A window node; `pending` marks one created on the client that does not exist in the API yet. */
 export interface MapNode extends NodeOut {
   pending?: boolean;
-  /** Para un nodo nuevo creado con Enter: el hermano tras el cual va. */
+  /** For a new node created with Enter: the sibling it goes after. */
   afterId?: string | null;
 }
 
-/** Ventana visible normalizada: nodos por id e hijos cargados, en orden. */
+/** Normalized visible window: nodes by id and loaded children, in order. */
 export interface MapState {
   focusId: string;
   depth: number;
@@ -26,7 +26,7 @@ export function fromView(view: NodeView, depth: number): MapState {
     childIds: { [view.focus.id]: [] },
     levels: { [view.focus.id]: 0 },
   };
-  // La API devuelve los nodos por nivel y los hermanos por sort_key.
+  // The API returns nodes by level and siblings by sort_key.
   for (const { level, ...node } of view.nodes) {
     state.nodes[node.id] = node;
     state.childIds[node.id] = [];
@@ -40,21 +40,21 @@ export function isBorder(state: MapState, id: string): boolean {
   return state.levels[id] >= state.depth;
 }
 
-/** Hijos que se dibujan: ninguno si el nodo está colapsado o en el borde. */
+/** Children that get drawn: none if the node is collapsed or on the border. */
 export function visibleChildren(state: MapState, id: string): string[] {
   const node = state.nodes[id];
   if (!node || node.collapsed || isBorder(state, id)) return [];
   return state.childIds[id] ?? [];
 }
 
-/** Cantidad de hijos ocultos para el indicador "+k". */
+/** Number of hidden children for the "+k" indicator. */
 export function hiddenChildCount(state: MapState, id: string): number {
   const node = state.nodes[id];
   if (!node) return 0;
   return node.collapsed || isBorder(state, id) ? node.child_count : 0;
 }
 
-/** Padre dentro de la ventana; null para el foco. */
+/** Parent within the window; null for the focus. */
 export function windowParent(state: MapState, id: string): string | null {
   if (id === state.focusId) return null;
   return state.nodes[id]?.parent_id ?? null;
@@ -64,12 +64,12 @@ export function isRealRoot(state: MapState, id: string): boolean {
   return state.nodes[id]?.parent_id === null;
 }
 
-/** Hijos del nodo que ya llegaron a la ventana (en un colapsado o del borde pueden faltar). */
+/** The node's children already in the window (they may be missing on a collapsed or border node). */
 export function hasLoadedChildren(state: MapState, id: string): boolean {
   return (state.childIds[id]?.length ?? 0) >= (state.nodes[id]?.child_count ?? 0);
 }
 
-/** Hijo del foco que es el mismo nodo o su ancestro: adonde baja el foco para mostrar `id`. */
+/** The focus's child that is the node itself or its ancestor: where focus moves to show `id`. */
 export function childOfFocusToward(state: MapState, id: string): string | null {
   let current: MapNode | undefined = state.nodes[id];
   while (current && current.parent_id !== state.focusId) {
@@ -84,7 +84,7 @@ export function patchNode(state: MapState, id: string, patch: Partial<MapNode>):
   return { ...state, nodes: { ...state.nodes, [id]: { ...node, ...patch } } };
 }
 
-/** Agrega un hijo al final o, con `afterId`, justo después de ese hermano. */
+/** Adds a child at the end or, with `afterId`, right after that sibling. */
 export function insertChild(
   state: MapState,
   parentId: string,
@@ -107,7 +107,7 @@ export function insertChild(
   };
 }
 
-/** Cambia el id de un nodo (el temporal por el que asignó la API) conservando su lugar. */
+/** Changes a node's id (the temporary one for the one the API assigned), keeping its place. */
 export function replaceNode(state: MapState, oldId: string, node: MapNode): MapState {
   const current = state.nodes[oldId];
   if (!current) return state;
@@ -152,8 +152,8 @@ export function removeSubtree(state: MapState, id: string): MapState {
 }
 
 /**
- * Descendientes conocidos: los cargados más los `child_count` de los nodos cuyos hijos no
- * llegaron. Si alguno de esos tiene hijos, puede haber más niveles: el número es un mínimo.
+ * Known descendants: the loaded ones plus the `child_count` of nodes whose children did not
+ * arrive. If any of those has children there may be more levels, so the number is a minimum.
  */
 export function countDescendants(state: MapState, id: string): { count: number; exact: boolean } {
   let count = 0;
@@ -169,7 +169,7 @@ export function countDescendants(state: MapState, id: string): { count: number; 
 
 export type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
 
-/** Nodo al que se mueve la selección; el mismo si la flecha no lleva a un nodo visible. */
+/** Node the selection moves to; the same one if the arrow does not lead to a visible node. */
 export function moveSelection(state: MapState, id: string, key: ArrowKey): string {
   if (key === 'ArrowRight') return visibleChildren(state, id)[0] ?? id;
   const parent = windowParent(state, id);
@@ -179,7 +179,7 @@ export function moveSelection(state: MapState, id: string, key: ArrowKey): strin
   return siblings[index] ?? id;
 }
 
-/** Selección después de borrar: el hermano anterior o, si no hay, el padre. */
+/** Selection after deleting: the previous sibling or, if there is none, the parent. */
 export function selectionAfterDelete(state: MapState, id: string): string {
   const parent = state.nodes[id]?.parent_id;
   if (!parent) return state.focusId;

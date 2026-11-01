@@ -2,11 +2,11 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// Dentro de docker compose el proxy apunta a `api:8000`; fuera, a la API local.
+// Inside docker compose the proxy points at `api:8000`; outside, at the local API.
 const apiTarget = process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:8000';
 
-// El servidor de desarrollo necesita 'unsafe-inline' en script-src por el preámbulo de React
-// Refresh, y el WebSocket del HMR en connect-src. Nada de 'unsafe-eval' ni orígenes externos.
+// The dev server needs 'unsafe-inline' in script-src for the React Refresh preamble, and the
+// HMR WebSocket in connect-src. No 'unsafe-eval' and no external origins.
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
@@ -28,7 +28,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     headers: securityHeaders,
-    // Sin changeOrigin: el Host sigue siendo localhost:5173 y la cookie queda en ese origen.
+    // No changeOrigin: the Host stays localhost:5173 and the cookie stays on that origin.
     proxy: { '/api': { target: apiTarget } },
   },
   preview: { headers: securityHeaders },

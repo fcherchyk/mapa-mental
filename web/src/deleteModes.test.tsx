@@ -7,24 +7,24 @@ const selectNode = async (id: string) => {
   expect(nodeElement(id)).toHaveClass('is-selected');
 };
 
-const deleteButton = (title: string) => screen.getByLabelText(`Borrar ${title}`);
+const deleteButton = (title: string) => screen.getByLabelText(`Delete ${title}`);
 const option = (name: string) => screen.getByRole('button', { name });
-const ALL = 'Borrar todo a partir de acá';
-const REPARENT = 'Borrar solo este y subir sus hijos';
+const ALL = 'Delete everything from here';
+const REPARENT = 'Delete only this one and move its children up';
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('borrar: botón visible', () => {
-  it('CA5: cada nodo no raíz tiene botón de borrar y la raíz real no', async () => {
+describe('delete: visible button', () => {
+  it('AC5: every non-root node has a delete button and the real root does not', async () => {
     renderApp('/', sampleApi());
     await screen.findByTestId('node-f');
-    expect(deleteButton('Foco')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Borrar Mi mapa')).not.toBeInTheDocument();
+    expect(deleteButton('Focus')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Delete My map')).not.toBeInTheDocument();
   });
 
-  it('CA5: activar el botón equivale a seleccionar y pulsar Supr', async () => {
+  it('AC5: activating the button is the same as selecting and pressing Delete', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     await user.click(deleteButton('Idea B'));
@@ -33,8 +33,8 @@ describe('borrar: botón visible', () => {
   });
 });
 
-describe('borrar: hoja', () => {
-  it('CA6: una hoja se borra sin diálogo ni window.confirm, en modo cascade', async () => {
+describe('delete: leaf', () => {
+  it('AC6: a leaf is deleted without a dialog or window.confirm, in cascade mode', async () => {
     const confirm = vi.spyOn(window, 'confirm');
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a2');
@@ -45,7 +45,7 @@ describe('borrar: hoja', () => {
     await waitFor(() => expect(api.callsTo('DELETE', '/api/nodes/a2')).toHaveLength(1));
   });
 
-  it('CA6: una hoja con el botón también se borra sin preguntar', async () => {
+  it('AC6: a leaf deleted with the button is also deleted without asking', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-a2');
     await user.click(deleteButton('Idea A2'));
@@ -54,8 +54,8 @@ describe('borrar: hoja', () => {
   });
 });
 
-describe('borrar: nodo intermedio', () => {
-  it('CA7: abre un diálogo accesible con tres opciones y el foco adentro', async () => {
+describe('delete: inner node', () => {
+  it('AC7: opens an accessible dialog with three options and focus inside', async () => {
     const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/n/f', sampleApi());
     await selectNode('a');
@@ -63,30 +63,30 @@ describe('borrar: nodo intermedio', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveAccessibleName(/Idea A/);
-    expect(dialog).toHaveTextContent('2');
+    expect(dialog).toHaveTextContent('It has 2 descendants. What should we do with them?');
     expect(option(ALL)).toBeInTheDocument();
     expect(option(REPARENT)).toBeInTheDocument();
-    expect(option('Cancelar')).toHaveFocus();
+    expect(option('Cancel')).toHaveFocus();
     expect(confirm).not.toHaveBeenCalled();
-    // Tab y Shift+Tab recorren las opciones sin salir del diálogo.
+    // Tab and Shift+Tab cycle through the options without leaving the dialog.
     await user.tab();
     expect(option(ALL)).toHaveFocus();
     await user.tab({ shift: true });
-    expect(option('Cancelar')).toHaveFocus();
+    expect(option('Cancel')).toHaveFocus();
     await user.tab({ shift: true });
     expect(option(REPARENT)).toHaveFocus();
   });
 
-  it('CA7: un nodo con hijos solo ocultos (child_count > 0) también pregunta', async () => {
+  it('AC7: a node with only hidden children (child_count > 0) also asks', async () => {
     const api = sampleApi();
     api.depth = 1;
     const { user } = renderApp('/n/f', api);
     await selectNode('a');
     await user.keyboard('{Delete}');
-    expect(screen.getByRole('dialog')).toHaveTextContent('al menos 2');
+    expect(screen.getByRole('dialog')).toHaveTextContent('at least 2');
   });
 
-  it('CA8: «Borrar todo a partir de acá» borra el subárbol y cierra el diálogo', async () => {
+  it('AC8: "Delete everything from here" deletes the subtree and closes the dialog', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -97,7 +97,7 @@ describe('borrar: nodo intermedio', () => {
     await waitFor(() => expect(api.callsTo('DELETE', '/api/nodes/a')).toHaveLength(1));
   });
 
-  it('CA9: «subir sus hijos» usa children=reparent y pide la ventana de nuevo', async () => {
+  it('AC9: "move its children up" uses children=reparent and fetches the window again', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -109,23 +109,23 @@ describe('borrar: nodo intermedio', () => {
     await waitFor(() => expect(queryNode('a')).not.toBeInTheDocument());
     expect(nodeElement('a1')).toBeInTheDocument();
     expect(nodeElement('a2')).toBeInTheDocument();
-    // a1 y a2 son hijos de f, en el lugar de a (antes de b) y en su orden.
+    // a1 and a2 are children of f, in a's place (before b) and in their order.
     expect([...api.nodes.values()].filter((n) => n.parent_id === 'f').length).toBe(3);
     expect(api.children('f').map((n) => n.id)).toEqual(['a1', 'a2', 'b']);
   });
 
-  it('CA10: Cancelar no borra nada y devuelve el foco al mapa', async () => {
+  it('AC10: Cancel deletes nothing and returns focus to the map', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
-    await user.click(option('Cancelar'));
+    await user.click(option('Cancel'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(api.callsTo('DELETE', /nodes/)).toHaveLength(0);
     expect(nodeElement('a')).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveFocus();
   });
 
-  it('CA10: Esc cancela y devuelve el foco al mapa', async () => {
+  it('AC10: Esc cancels and returns focus to the map', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -135,7 +135,7 @@ describe('borrar: nodo intermedio', () => {
     expect(screen.getByRole('main')).toHaveFocus();
   });
 
-  it('CA11: borrar el foco intermedio con cualquier modo navega a su padre', async () => {
+  it('AC11: deleting the inner focus with either mode navigates to its parent', async () => {
     for (const choice of [ALL, REPARENT]) {
       const { user, unmount } = renderApp('/n/a', sampleApi());
       await screen.findByTestId('node-a');

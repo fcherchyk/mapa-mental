@@ -11,22 +11,22 @@ const config = viteConfig as UserConfig & {
   test: { coverage: { thresholds: { lines: number } } };
 };
 
-/** Bloque del servicio `name` dentro de docker-compose.yml (hasta el siguiente servicio). */
+/** Block of the `name` service inside docker-compose.yml (up to the next service). */
 function composeService(name: string): string {
   const compose = repoFile('docker-compose.yml');
   const match = compose.match(new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  \\w[\\w-]*:\\n|\\nvolumes:)`));
   return match?.[1] ?? '';
 }
 
-describe('entorno', () => {
-  it('criterio_1: docker compose publica web solo en 127.0.0.1:5173 con proxy hacia la api', () => {
+describe('environment', () => {
+  it('criterion_1: docker compose publishes web only on 127.0.0.1:5173 with a proxy to the api', () => {
     const web = composeService('web');
     expect(web).toContain('"127.0.0.1:5173:5173"');
     expect(web).toContain('API_PROXY_TARGET: http://api:8000');
     expect(web).toMatch(/node_modules/);
   });
 
-  it('criterio_1: Vite escucha en 0.0.0.0:5173 y reenvía /api sin reescribir', () => {
+  it('criterion_1: Vite listens on 0.0.0.0:5173 and forwards /api without rewriting', () => {
     expect(config.server?.host).toBe('0.0.0.0');
     expect(config.server?.port).toBe(5173);
     const proxy = config.server?.proxy as Record<string, { target: string; rewrite?: unknown }>;
@@ -34,12 +34,12 @@ describe('entorno', () => {
     expect(proxy['/api'].rewrite).toBeUndefined();
   });
 
-  it('criterio_1: se versiona pnpm-lock.yaml y no node_modules', () => {
+  it('criterion_1: pnpm-lock.yaml is versioned and node_modules is not', () => {
     expect(existsSync(resolve(webDir, 'pnpm-lock.yaml'))).toBe(true);
     expect(repoFile('.gitignore').split('\n')).toContain('node_modules/');
   });
 
-  it('criterio_17: el servidor de la SPA manda Content-Security-Policy', () => {
+  it('criterion_17: the SPA server sends Content-Security-Policy', () => {
     const headers = config.server?.headers as Record<string, string>;
     expect(headers['Content-Security-Policy']).toBe(CONTENT_SECURITY_POLICY);
     expect(CONTENT_SECURITY_POLICY).toContain("default-src 'self'");
@@ -47,7 +47,7 @@ describe('entorno', () => {
     expect(CONTENT_SECURITY_POLICY).not.toContain('unsafe-eval');
   });
 
-  it('criterio_18: la cobertura de líneas exige al menos 80%', () => {
+  it('criterion_18: line coverage requires at least 80%', () => {
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
 });

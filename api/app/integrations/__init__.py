@@ -1,4 +1,4 @@
-"""Integraciones con servicios externos (Drive, Calendar, Trello, GitHub).
+"""Integrations with external services (Drive, Calendar, Trello, GitHub).
 
-Vacío en el primer corte; cada servicio tendrá su `Provider` desde el corte 2.
+Empty in the first slice; each service gets its own `Provider` starting in slice 2.
 """

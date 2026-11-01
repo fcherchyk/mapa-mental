@@ -2,8 +2,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentPath, nodeElement, queryNode, renderApp, sampleApi } from './test/renderApp';
 
-describe('navegación por foco', () => {
-  it('criterio_5: /n/X pide la ventana con la profundidad del usuario y dibuja X como foco', async () => {
+describe('focus navigation', () => {
+  it("criterion_5: /n/X requests the window with the user's depth and draws X as the focus", async () => {
     const api = sampleApi();
     renderApp('/n/f', api);
     expect(await screen.findByTestId('node-f')).toHaveClass('is-focus');
@@ -11,49 +11,49 @@ describe('navegación por foco', () => {
     expect(nodeElement('a1')).toBeInTheDocument();
   });
 
-  it('criterio_5: / usa root_node_id de /api/me', async () => {
+  it('criterion_5: / uses root_node_id from /api/me', async () => {
     const api = sampleApi();
     renderApp('/', api);
     expect(await screen.findByTestId('node-root')).toHaveClass('is-focus');
     expect(api.callsTo('GET', '/api/nodes/root/view?depth=3')).toHaveLength(1);
   });
 
-  it('criterio_5: un 404 muestra "No encontrado" con enlace a /', async () => {
+  it('criterion_5: a 404 shows "Not found" with a link to /', async () => {
     const api = sampleApi();
-    const { user } = renderApp('/n/ajeno', api);
-    expect(await screen.findByRole('heading', { name: 'No encontrado' })).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: 'Volver al inicio' });
+    const { user } = renderApp('/n/someone-elses', api);
+    expect(await screen.findByRole('heading', { name: 'Not found' })).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Back to the start' });
     expect(link).toHaveAttribute('href', '/');
     await user.click(link);
     await waitFor(() => expect(currentPath()).toBe('/'));
     expect(await screen.findByTestId('node-root')).toHaveClass('is-focus');
   });
 
-  it('criterio_5: un 422 (id que no es UUID) también muestra "No encontrado"', async () => {
+  it('criterion_5: a 422 (an id that is not a UUID) also shows "Not found"', async () => {
     const api = sampleApi();
     api.failNext((call) => call.url.startsWith('/api/nodes/f/view'), 422);
     renderApp('/n/f', api);
-    expect(await screen.findByRole('heading', { name: 'No encontrado' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Not found' })).toBeInTheDocument();
   });
 
-  it('criterio_5: atrás en el historial vuelve al foco anterior desde la caché', async () => {
+  it('criterion_5: going back in history returns to the previous focus from the cache', async () => {
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     fireEvent.doubleClick(await screen.findByTestId('node-a'));
     await waitFor(() => expect(currentPath()).toBe('/n/a'));
     expect(await screen.findByTestId('node-a')).toHaveClass('is-focus');
-    await user.click(screen.getByRole('button', { name: 'historial-atras' }));
+    await user.click(screen.getByRole('button', { name: 'history-back' }));
     await waitFor(() => expect(nodeElement('f')).toHaveClass('is-focus'));
     expect(api.callsTo('GET', '/api/nodes/f/view?depth=3')).toHaveLength(1);
   });
 
-  it('criterio_7: doble click sobre un nodo que no es el foco navega a /n/<id>', async () => {
+  it('criterion_7: double click on a node that is not the focus navigates to /n/<id>', async () => {
     renderApp('/n/f', sampleApi());
     fireEvent.doubleClick(await screen.findByTestId('node-b'));
     await waitFor(() => expect(currentPath()).toBe('/n/b'));
   });
 
-  it('criterio_7: doble click sobre el foco sube a su padre, o a / si el padre es la raíz', async () => {
+  it('criterion_7: double click on the focus goes up to its parent, or to / if the parent is the root', async () => {
     renderApp('/n/a', sampleApi());
     fireEvent.doubleClick(await screen.findByTestId('node-a'));
     await waitFor(() => expect(currentPath()).toBe('/n/f'));
@@ -61,31 +61,31 @@ describe('navegación por foco', () => {
     await waitFor(() => expect(currentPath()).toBe('/'));
   });
 
-  it('criterio_7: doble click sobre la raíz real no cambia la URL', async () => {
+  it('criterion_7: double click on the real root does not change the URL', async () => {
     renderApp('/', sampleApi());
     fireEvent.doubleClick(await screen.findByTestId('node-root'));
     expect(currentPath()).toBe('/');
     expect(nodeElement('root')).toHaveClass('is-focus');
   });
 
-  it('criterio_8: la miga de pan muestra ancestros y foco en orden y enfoca al clickear', async () => {
+  it('criterion_8: the breadcrumb shows the ancestors and the focus in order and focuses on click', async () => {
     const { user } = renderApp('/n/a1', sampleApi());
-    const crumbs = await screen.findByRole('navigation', { name: 'Miga de pan' });
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
     await waitFor(() =>
       expect([...crumbs.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
-        'Mi mapa',
-        'Foco',
+        'My map',
+        'Focus',
         'Idea A',
         'Idea A1',
       ]),
     );
-    await user.click(screen.getByRole('link', { name: 'Foco' }));
+    await user.click(screen.getByRole('link', { name: 'Focus' }));
     await waitFor(() => expect(currentPath()).toBe('/n/f'));
-    await user.click(await screen.findByRole('link', { name: 'Mi mapa' }));
+    await user.click(await screen.findByRole('link', { name: 'My map' }));
     await waitFor(() => expect(currentPath()).toBe('/'));
   });
 
-  it('criterio_8: Enter enfoca el seleccionado y Retroceso sube como el doble click', async () => {
+  it('criterion_8: Enter focuses the selected node and Backspace goes up like the double click', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByText('Idea B'));
     expect(nodeElement('b')).toHaveClass('is-selected');
@@ -101,13 +101,13 @@ describe('navegación por foco', () => {
     expect(currentPath()).toBe('/');
   });
 
-  it('criterio_9: el borde muestra +k, no dibuja el nivel siguiente y no se expande', async () => {
+  it('criterion_9: the border shows +k, does not draw the next level and does not expand', async () => {
     const api = sampleApi();
     for (let i = 1; i <= 4; i++) {
       api.nodes.set(`b${i}`, {
         id: `b${i}`,
         parent_id: 'b',
-        title: `Hoja ${i}`,
+        title: `Leaf ${i}`,
         sort_key: `${i}`,
         collapsed: false,
         version: 1,
@@ -122,12 +122,12 @@ describe('navegación por foco', () => {
     await user.keyboard(' ');
     expect(queryNode('b1')).not.toBeInTheDocument();
     expect(api.callsTo('PATCH', '/api/nodes/b')).toHaveLength(0);
-    // Un click directo sobre el indicador tampoco lo expande en el lugar
+    // A direct click on the indicator does not expand it in place either
     fireEvent.click(screen.getByText('+4'));
     expect(queryNode('b1')).not.toBeInTheDocument();
   });
 
-  it('criterio_9: un nodo del borde sin hijos no muestra indicador', async () => {
+  it('criterion_9: a border node without children shows no indicator', async () => {
     const api = sampleApi();
     api.depth = 1;
     renderApp('/n/a', api);

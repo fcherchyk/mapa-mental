@@ -8,68 +8,70 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('sesión', () => {
+describe('session', () => {
   it.each(['/', '/n/x'])(
-    'criterio_3: sin sesión, %s muestra el login que lleva a /api/auth/login',
+    'criterion_3: without a session, %s shows the login that goes to /api/auth/login',
     async (path) => {
       const api = sampleApi();
       api.loggedIn = false;
       renderApp(path, api);
-      const button = await screen.findByRole('link', { name: 'Entrar con Google' });
+      expect(await screen.findByRole('heading', { name: 'Mind Map' })).toBeInTheDocument();
+      expect(screen.getByText('Sign in with your Google account to see your map.')).toBeInTheDocument();
+      const button = screen.getByRole('link', { name: 'Sign in with Google' });
       expect(button).toHaveAttribute('href', '/api/auth/login');
       expect(api.callsTo('GET', /view/)).toHaveLength(0);
     },
   );
 
-  it('criterio_3: un 401 posterior (sesión vencida) vuelve a la pantalla de login', async () => {
+  it('criterion_3: a later 401 (expired session) goes back to the login screen', async () => {
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     fireEvent.click(await screen.findByTestId('node-b'));
     api.loggedIn = false;
     await user.keyboard('{F2}');
-    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Sin sesión' } });
-    fireEvent.blur(screen.getByLabelText('Título'));
-    expect(await screen.findByRole('link', { name: 'Entrar con Google' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'No session' } });
+    fireEvent.blur(screen.getByLabelText('Title'));
+    expect(await screen.findByRole('link', { name: 'Sign in with Google' })).toBeInTheDocument();
   });
 
-  it('criterio_4: Salir llama al logout con X-CSRF, vacía la caché y muestra el login', async () => {
+  it('criterion_4: Sign out calls logout with X-CSRF, clears the cache and shows the login', async () => {
     const clear = vi.spyOn(ViewCache.prototype, 'clear');
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     await screen.findByTestId('node-f');
-    await user.click(screen.getByRole('button', { name: 'Salir' }));
-    expect(await screen.findByRole('link', { name: 'Entrar con Google' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(await screen.findByRole('link', { name: 'Sign in with Google' })).toBeInTheDocument();
     const [logout] = api.callsTo('POST', '/api/auth/logout');
     expect(logout.headers['X-CSRF']).toBe('1');
     expect(clear).toHaveBeenCalled();
   });
 
-  it('si la API no responde se muestra un aviso', async () => {
+  it('if the API does not respond a notice is shown', async () => {
     const api = sampleApi();
     api.failNext((call) => call.url === '/api/me', 502);
     renderApp('/', api);
-    expect(await screen.findByText('No se pudo conectar con la API.')).toBeInTheDocument();
+    expect(await screen.findByText('Could not connect to the API.')).toBeInTheDocument();
   });
 
-  it('una ruta desconocida muestra "No encontrado"', async () => {
-    renderApp('/otra/cosa', sampleApi());
-    expect(await screen.findByRole('heading', { name: 'No encontrado' })).toBeInTheDocument();
+  it('an unknown route shows "Not found"', async () => {
+    renderApp('/some/thing', sampleApi());
+    expect(await screen.findByRole('heading', { name: 'Not found' })).toBeInTheDocument();
   });
 
-  it('un error al pedir la ventana muestra un aviso', async () => {
+  it('an error fetching the window shows a notice', async () => {
     const api = sampleApi();
     api.failNext((call) => call.url.includes('/view'), 500);
     renderApp('/n/f', api);
-    expect(await screen.findByText('No se pudo cargar el mapa.')).toBeInTheDocument();
+    expect(await screen.findByText('Could not load the map.')).toBeInTheDocument();
   });
 });
 
-describe('preferencia N', () => {
-  it('criterio_16: elegir 5 llama a PATCH /api/me/settings y pide view?depth=5 del foco', async () => {
+describe('preference N', () => {
+  it("criterion_16: choosing 5 calls PATCH /api/me/settings and requests the focus's view?depth=5", async () => {
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     await screen.findByTestId('node-f');
-    const select = screen.getByRole('combobox', { name: 'Niveles visibles' });
+    const select = screen.getByRole('combobox', { name: 'Visible levels' });
     expect(select).toHaveValue('3');
     const options = within(select)
       .getAllByRole('option')
@@ -82,20 +84,20 @@ describe('preferencia N', () => {
     expect(patch.headers['X-CSRF']).toBe('1');
   });
 
-  it('criterio_16: si el PATCH falla vuelve al valor anterior y avisa', async () => {
+  it('criterion_16: if the PATCH fails it goes back to the previous value and notifies', async () => {
     const api = sampleApi();
     api.failNext((call) => call.url === '/api/me/settings', 500);
     const { user } = renderApp('/n/f', api);
     await screen.findByTestId('node-f');
-    const select = screen.getByRole('combobox', { name: 'Niveles visibles' });
+    const select = screen.getByRole('combobox', { name: 'Visible levels' });
     await user.selectOptions(select, '2');
-    expect(await screen.findByRole('alert')).toHaveTextContent('niveles');
+    expect(await screen.findByRole('alert')).toHaveTextContent('levels');
     expect(select).toHaveValue('3');
   });
 });
 
-describe('seguridad', () => {
-  it('criterio_17: un título con HTML se ve como texto en el lienzo y en la miga de pan', async () => {
+describe('security', () => {
+  it('criterion_17: a title with HTML is shown as text on the canvas and in the breadcrumb', async () => {
     const malicious = '<img src=x onerror=alert(1)>';
     const api = new FakeApi([
       { id: 'root', parent_id: null, title: malicious, sort_key: 'V' },
@@ -104,16 +106,16 @@ describe('seguridad', () => {
     ]);
     const { container } = renderApp('/n/f', api);
     expect(await screen.findByTestId('node-c')).toHaveTextContent(malicious);
-    const crumbs = screen.getByRole('navigation', { name: 'Miga de pan' });
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(crumbs).getByRole('link', { name: malicious })).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
   });
 
-  it('criterio_17: payloads con <script> y <svg> no inyectan elementos en el DOM', async () => {
+  it('criterion_17: <script> and <svg> payloads do not inject elements into the DOM', async () => {
     const scriptPayload = '<script>alert(1)</script>';
     const svgPayload = '<svg onload=alert(1)>';
     const api = new FakeApi([
-      { id: 'root', parent_id: null, title: 'Raíz', sort_key: 'V' },
+      { id: 'root', parent_id: null, title: 'Root', sort_key: 'V' },
       { id: 'f', parent_id: 'root', title: scriptPayload, sort_key: 'V' },
       { id: 'c', parent_id: 'f', title: svgPayload, sort_key: 'V' },
     ]);

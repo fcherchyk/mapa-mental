@@ -1,4 +1,4 @@
-"""Endpoint de preferencias: `PATCH /me/settings`."""
+"""Preferences endpoint: `PATCH /me/settings`."""
 
 from typing import Annotated
 

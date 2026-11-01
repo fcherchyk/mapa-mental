@@ -1,4 +1,4 @@
-"""Configuración de la API, leída de variables de entorno."""
+"""API configuration, read from environment variables."""
 
 import os
 from collections.abc import Mapping
@@ -21,7 +21,7 @@ class Config:
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
-        """Arma la configuración; `DATABASE_URL` y `SESSION_SECRET` son obligatorias."""
+        """Builds the configuration; `DATABASE_URL` and `SESSION_SECRET` are required."""
         env = os.environ if env is None else env
         return cls(
             database_url=env["DATABASE_URL"],

@@ -3,9 +3,9 @@ import { Link } from 'react-router';
 export function NotFound() {
   return (
     <main className="centered-screen">
-      <h1>No encontrado</h1>
-      <p>Ese nodo no existe o no es tuyo.</p>
-      <Link to="/">Volver al inicio</Link>
+      <h1>Not found</h1>
+      <p>That idea does not exist or is not yours.</p>
+      <Link to="/">Back to the start</Link>
     </main>
   );
 }

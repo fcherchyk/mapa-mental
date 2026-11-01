@@ -1,4 +1,4 @@
-"""Endpoints de nodos: ventana visible, crear, editar y borrar."""
+"""Node endpoints: visible window, create, edit and delete."""
 
 import uuid
 from typing import Annotated, Literal
@@ -27,7 +27,7 @@ def view_node(
     db: Db,
     depth: Annotated[int | None, Query(ge=DEPTH_MIN, le=DEPTH_MAX)] = None,
 ) -> NodeView:
-    """Foco, ancestros y hasta `depth` niveles; sin `depth` usa la preferencia del usuario."""
+    """Focus, ancestors and up to `depth` levels; without `depth` it uses the user's preference."""
     return service.get_view(db, user.id, node_id, depth or read_settings(user).depth)
 
 
@@ -55,6 +55,6 @@ def delete_node(
     db: Db,
     children: Annotated[Literal["cascade", "reparent"], Query()] = "cascade",
 ) -> Response:
-    """`children=cascade` borra el subárbol; `reparent` sube los hijos directos al padre."""
+    """`children=cascade` deletes the subtree; `reparent` moves the direct children up."""
     service.delete_subtree(db, user.id, node_id, reparent=children == "reparent")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

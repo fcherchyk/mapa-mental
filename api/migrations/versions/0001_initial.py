@@ -1,4 +1,4 @@
-"""Tablas iniciales: users, sessions, maps y nodes.
+"""Initial tables: users, sessions, maps and nodes.
 
 Revision ID: 0001
 Revises:

@@ -1,4 +1,4 @@
-"""Registro de tipos de nodo: cada `kind` tiene su esquema Pydantic para `props` (ADR 0013)."""
+"""Node type registry: each `kind` has its own Pydantic schema for `props` (ADR 0013)."""
 
 from typing import Any
 
@@ -8,7 +8,7 @@ DEFAULT_KIND = "idea"
 
 
 class IdeaProps(BaseModel):
-    """Una idea todavía no tiene datos propios además del título."""
+    """An idea has no data of its own yet besides the title."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -25,8 +25,8 @@ def is_known_kind(kind: str) -> bool:
 
 
 def validate_props(kind: str, props: dict[str, Any]) -> dict[str, Any]:
-    """Valida `props` con el esquema del tipo; lanza `UnknownNodeKind` o `ValidationError`."""
+    """Validates `props` with the kind's schema; raises `UnknownNodeKind` or `ValidationError`."""
     schema = NODE_TYPES.get(kind)
     if schema is None:
-        raise UnknownNodeKind(f"tipo de nodo desconocido: {kind}")
+        raise UnknownNodeKind(f"unknown node kind: {kind}")
     return schema.model_validate(props).model_dump(mode="json")

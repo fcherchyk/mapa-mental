@@ -1,7 +1,7 @@
-"""Fixtures: PostgreSQL 16 efímero, app de tests y Google falso.
+"""Fixtures: ephemeral PostgreSQL 16, test app and fake Google.
 
-La base de tests se elige en este orden: `TEST_DATABASE_URL`, testcontainers si Docker responde,
-o un PostgreSQL embebido con `pgserver`. Si no hay ninguna, se saltean solo los tests que la usan.
+The test database is picked in this order: `TEST_DATABASE_URL`, testcontainers if Docker responds,
+or an embedded PostgreSQL with `pgserver`. If none is available, only the tests that use it skip.
 """
 
 import importlib.util
@@ -50,7 +50,7 @@ def docker_available() -> bool:
 
 
 def database_backend() -> str | None:
-    """De dónde sale la base de tests: "url", "docker", "pgserver" o None si no hay ninguna."""
+    """Where the test database comes from: "url", "docker", "pgserver" or None if none."""
     if os.environ.get("TEST_DATABASE_URL"):
         return "url"
     if docker_available():
@@ -72,10 +72,10 @@ def pytest_report_header() -> str:
 
 @contextmanager
 def embedded_postgres() -> Iterator[str]:
-    """PostgreSQL 16 de pgserver en una carpeta temporal, por socket Unix; se borra al terminar."""
+    """pgserver PostgreSQL 16 in a temporary folder, over a Unix socket; removed when done."""
     import pgserver
 
-    with tempfile.TemporaryDirectory(prefix="mapa-pg-") as pgdata:
+    with tempfile.TemporaryDirectory(prefix="mindmap-pg-") as pgdata:
         server = pgserver.get_server(pgdata, cleanup_mode="delete")
         try:
             yield server.get_uri().replace("postgresql://", "postgresql+psycopg://", 1)
@@ -85,10 +85,10 @@ def embedded_postgres() -> Iterator[str]:
 
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
-    """Un PostgreSQL 16 por sesión de tests, migrado con Alembic; nunca la base de desarrollo."""
+    """One PostgreSQL 16 per test session, migrated with Alembic; never the dev database."""
     backend = database_backend()
     if backend == "url":
-        # Tiene que ser una base vacía y descartable: los tests truncan sus tablas.
+        # It must be an empty, disposable database: the tests truncate its tables.
         url = os.environ["TEST_DATABASE_URL"]
         migrate(url)
         yield url
@@ -154,7 +154,7 @@ def admin_engine(postgres_url: str) -> Iterator[Engine]:
 
 @pytest.fixture(autouse=True)
 def clean_tables(request: pytest.FixtureRequest) -> None:
-    """Cada test que usa la base arranca con las tablas vacías."""
+    """Every test that uses the database starts with empty tables."""
     if "postgres_url" not in request.fixturenames:
         return
     with request.getfixturevalue("admin_engine").begin() as connection:
@@ -163,7 +163,7 @@ def clean_tables(request: pytest.FixtureRequest) -> None:
 
 @pytest.fixture(autouse=True)
 def fake_google(monkeypatch: pytest.MonkeyPatch) -> FakeGoogle:
-    """El tráfico HTTP saliente (el de Authlib) lo atiende el Google falso; nada sale a la red."""
+    """Outgoing HTTP traffic (Authlib's) is served by the fake Google; nothing goes out."""
     fake = FakeGoogle(CLIENT_ID)
 
     async def handle(_transport: httpx.AsyncHTTPTransport, request: httpx.Request):
@@ -174,7 +174,7 @@ def fake_google(monkeypatch: pytest.MonkeyPatch) -> FakeGoogle:
 
 
 def start_login(client: TestClient) -> dict[str, str]:
-    """Pide el inicio del login y devuelve los parámetros de la redirección a Google."""
+    """Starts the login and returns the parameters of the redirect to Google."""
     response = client.get("/api/auth/login", follow_redirects=False)
     assert response.status_code in (302, 303, 307)
     query = parse_qs(urlsplit(response.headers["location"]).query)
@@ -199,7 +199,7 @@ def complete_login(
 
 @pytest.fixture
 def login(app: FastAPI, fake_google: FakeGoogle) -> Callable[..., TestClient]:
-    """Devuelve un cliente nuevo con sesión iniciada para el usuario de Google indicado."""
+    """Returns a new client with a signed-in session for the given Google user."""
 
     def do_login(sub: str = "google-sub-ana", name: str = "Ana Pérez") -> TestClient:
         client = TestClient(app, base_url="http://testserver")

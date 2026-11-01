@@ -1,4 +1,4 @@
-"""Criterios 1, 2 y 18: compose, migraciones y aislamiento de la base de tests."""
+"""Criteria 1, 2 and 18: compose, migrations and isolation of the test database."""
 
 import json
 import os
@@ -47,14 +47,14 @@ def compose_config() -> dict:
 
 
 COMPOSE_SERVICES = {"db", "api", "web"}
-# Validan docker-compose.yml con la CLI de Docker; sin ella (por ejemplo en un sandbox) se saltean.
+# These validate docker-compose.yml with the Docker CLI; without it (e.g. in a sandbox) they skip.
 needs_docker_cli = pytest.mark.skipif(
     shutil.which("docker") is None, reason="Docker CLI not installed"
 )
 
 
 @needs_docker_cli
-def test_criterio_1_compose_db_api_y_web_con_puertos_en_localhost() -> None:
+def test_criterion_1_compose_db_api_and_web_with_ports_on_localhost() -> None:
     config = compose_config()
 
     assert set(config["services"]) == COMPOSE_SERVICES
@@ -68,7 +68,7 @@ def test_criterio_1_compose_db_api_y_web_con_puertos_en_localhost() -> None:
 
 
 @needs_docker_cli
-def test_criterio_1_compose_config_con_archivo_env_copiado(tmp_path: Path) -> None:
+def test_criterion_1_compose_config_with_copied_env_file(tmp_path: Path) -> None:
     env_copy = tmp_path / ".env"
     shutil.copy(ENV_EXAMPLE, env_copy)
     result = subprocess.run(
@@ -95,23 +95,23 @@ def in_git_repo() -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
-def test_criterio_1_env_example_sin_valores_reales() -> None:
+def test_criterion_1_env_example_without_real_values() -> None:
     values = read_env_example()
 
     assert REQUIRED_VARIABLES <= set(values)
     assert all(values[name] == "" for name in SECRET_VARIABLES)
 
 
-# Mira qué archivos versiona git; fuera de un repo (por ejemplo, un zip de `git archive`) se saltea.
+# Checks which files git tracks; outside a repo (for example, a `git archive` zip) it skips.
 @pytest.mark.skipif(not in_git_repo(), reason="not inside a git repository")
-def test_criterio_1_env_fuera_del_repo() -> None:
+def test_criterion_1_env_outside_the_repo() -> None:
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=REPO_DIR, capture_output=True, text=True, check=True
     ).stdout.splitlines()
     assert ".env" not in tracked
 
 
-def test_criterio_2_migraciones_crean_tablas_unique_e_indices(admin_engine: Engine) -> None:
+def test_criterion_2_migrations_create_tables_unique_and_indexes(admin_engine: Engine) -> None:
     inspector = inspect(admin_engine)
 
     assert {"users", "sessions", "maps", "nodes"} <= set(inspector.get_table_names())
@@ -122,8 +122,8 @@ def test_criterio_2_migraciones_crean_tablas_unique_e_indices(admin_engine: Engi
     assert ["parent_id", "sort_key"] in node_indexes
 
 
-def test_criterio_2_unique_constraint_en_maps_owner_id_impide_duplicados(db: Session) -> None:
-    user = User(google_sub="sub-unique", email="u@example.com", name="Usuario")
+def test_criterion_2_unique_constraint_on_maps_owner_id_prevents_duplicates(db: Session) -> None:
+    user = User(google_sub="sub-unique", email="u@example.com", name="User")
     db.add(user)
     db.flush()
 
@@ -136,7 +136,7 @@ def test_criterio_2_unique_constraint_en_maps_owner_id_impide_duplicados(db: Ses
     db.rollback()
 
 
-def test_criterio_18_la_app_de_tests_usa_el_postgres_de_testcontainers(
+def test_criterion_18_the_test_app_uses_the_testcontainers_postgres(
     app: FastAPI, postgres_url: str
 ) -> None:
     engine_url = app.state.engine.url
@@ -146,7 +146,7 @@ def test_criterio_18_la_app_de_tests_usa_el_postgres_de_testcontainers(
     assert dev_url is None or engine_url != make_url(dev_url)
 
 
-def test_config_lee_variables_de_entorno() -> None:
+def test_config_reads_environment_variables() -> None:
     config = Config.from_env(
         {
             "DATABASE_URL": "postgresql+psycopg://u:p@db/x",

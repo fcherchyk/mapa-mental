@@ -1,4 +1,4 @@
-"""Esquemas de entrada y salida de la API de nodos."""
+"""Input and output schemas of the nodes API."""
 
 import uuid
 from typing import Annotated, Any
@@ -25,7 +25,7 @@ SortKey = Annotated[str, StringConstraints(pattern=SORT_KEY_PATTERN, max_length=
 
 def check_known_kind(kind: str | None) -> str | None:
     if kind is not None and not is_known_kind(kind):
-        raise ValueError(f"tipo de nodo desconocido: {kind}")
+        raise ValueError(f"unknown node kind: {kind}")
     return kind
 
 
@@ -47,7 +47,7 @@ class NodeCreate(BaseModel):
         try:
             self.props = validate_props(self.kind, self.props)
         except ValueError as exc:
-            raise ValueError(f"props inválidos para {self.kind}: {exc}") from None
+            raise ValueError(f"invalid props for {self.kind}: {exc}") from None
         return self
 
 
@@ -80,10 +80,10 @@ class NodeOut(BaseModel):
 
 
 class WindowNode(NodeOut):
-    level: int = Field(description="Distancia al foco: 1 son sus hijos directos.")
+    level: int = Field(description="Distance to the focus: 1 means its direct children.")
 
 
 class NodeView(BaseModel):
     focus: NodeOut
-    ancestors: list[NodeOut] = Field(description="De la raíz al padre del foco.")
-    nodes: list[WindowNode] = Field(description="Por nivel; los hermanos, por sort_key.")
+    ancestors: list[NodeOut] = Field(description="From the root to the focus's parent.")
+    nodes: list[WindowNode] = Field(description="By level; siblings by sort_key.")

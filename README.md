@@ -13,24 +13,24 @@ The map is meant to become the hub for a person's ideas and work:
 
 ## Features
 
-- Google login handled on the server (Authorization Code with `state` and `nonce`, scopes `openid email profile`); the browser only receives an `HttpOnly` cookie. The SPA shows a login screen when there is no session or it has expired; "Salir" (Log out) ends the session.
+- Google login handled on the server (Authorization Code with `state` and `nonce`, scopes `openid email profile`); the browser only receives an `HttpOnly` cookie. The SPA shows a login screen when there is no session or it has expired; "Sign out" ends the session.
 - First login: creates the user, their map and the root node with their name.
 - `GET /api/me` returns the user, their preferences and `root_node_id`; logout.
-- `depth` preference (1 to 10, default 3) set with `PATCH /api/me/settings`, editable from the "Niveles visibles" (Visible levels) selector.
+- `depth` preference (1 to 10, default 3) set with `PATCH /api/me/settings`, editable from the "Visible levels" selector.
 - Visible window `GET /api/nodes/{id}/view?depth=N`: focus, ancestors and up to N levels down, with `child_count`, respecting `collapsed`. The SPA caches it by `(node, N)`.
 - React Flow canvas: horizontal tree laid out automatically, with zoom and pan.
 - Focus lives in the URL (`/` is the root, `/n/:nodeId` is any other node); back, forward and reload work.
 - Navigation: double-click focuses a node, and double-clicking the focus goes up one level; breadcrumb; Enter focuses the selected node and Backspace goes up.
 - "+" button on each node: creates a child in edit mode, same as Tab. It shows on the focused and selected nodes, and on the others when hovered. It does not show while the node is being edited or is pending. On a node at the edge, focus moves one level toward it and the child is created there; on a collapsed node, it is expanded first.
-- 🗑 button on each node (with the accessible label "Borrar …" (Delete …)), like the "+" button: it shows on the focus, on the selected node and on hover. It does not show on the real root of the map or on pending nodes. It does the same as Delete.
-- Deleting a leaf (no visible or hidden children) asks for no confirmation. Deleting a node with children opens a dialog that is accessible by keyboard, with the initial focus on "Cancelar" (Cancel), and three options: "Borrar todo a partir de acá" (Delete everything from here down), which removes the node and its whole subtree and shows how many descendants there are; "Borrar solo este y subir sus hijos" (Delete only this one and move its children up), where the children move to the parent, in the node's place and order, with their subtrees intact; or "Cancelar" (Cancel). Escape also cancels.
+- 🗑 button on each node (with the accessible label "Delete …"), like the "+" button: it shows on the focus, on the selected node and on hover. It does not show on the real root of the map or on pending nodes. It does the same as Delete.
+- Deleting a leaf (no visible or hidden children) asks for no confirmation. Deleting a node with children opens a dialog that is accessible by keyboard, with the initial focus on "Cancel", and three options: "Delete everything from here", which removes the node and its whole subtree and shows how many descendants there are; "Delete only this one and move its children up", where the children move to the parent, in the node's place and order, with their subtrees intact; or "Cancel". Escape also cancels.
 - "?" button in the header: opens a panel with the keyboard shortcuts. Escape or another click closes it and returns focus to the button.
-- Hint "Tocá + o Tab para agregar una idea" (Tap + or Tab to add an idea) while the focus is on the root and it has no children.
+- Hint "Tap + or Tab to add an idea" while the focus is on the root and it has no children.
 - When an edit ends (pencil, "+", Tab or F2), focus goes back to the map, so the shortcuts keep working without clicking anywhere else.
 - Edge nodes show a "+k" indicator with the number of hidden children (focus them to see those); collapsed nodes show "+k" with a dotted border.
 - Optimistic editing with rollback and a notice if the API fails: Tab creates a child, Enter (while editing) creates a sibling, F2 or the pencil renames, Space collapses or expands, Delete removes (a leaf without asking; a node with children opens the delete dialog), and the arrow keys move the selection.
 - Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), edit with version control (`PATCH /api/nodes/{id}`) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed.
-- User isolation: a node that belongs to someone else returns `404`, and the SPA shows "No encontrado" (Not found).
+- User isolation: a node that belongs to someone else returns `404`, and the SPA shows "Not found".
 - CSRF protection: every mutation requires the `X-CSRF: 1` header. Titles are always rendered as text, and the SPA is served with a `Content-Security-Policy`.
 
 ## Installation
@@ -90,7 +90,7 @@ pnpm --dir web exec vitest run --coverage
 
 The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus).
 
-In the frontend, `web/src/actions.test.tsx` groups the tests into blocks named `criterio N: …` (criterion N of the spec), and each test starts with `CAN:` (criterion N, case N), so you can see which spec criterion it covers.
+Test names say which spec criterion they cover. In the backend they start with `test_criterion_N_` (or `test_acN_` in `test_delete_modes.py`). In the frontend, `web/src/actions.test.tsx` groups the tests into blocks named `criterion N: …`, and each test starts with `ACN:` (acceptance criterion N).
 
 ## Structure
 
@@ -111,7 +111,7 @@ api/
     nodes/                window (recursive CTE), create, edit, delete (cascade or reparent), sort_keys
     node_types/           node type registry (idea) and props validation
     integrations/         empty in the first slice
-  tests/                  pytest + httpx against a testcontainers PostgreSQL
+  tests/                  pytest + httpx against an ephemeral PostgreSQL
 web/
   package.json, pnpm-lock.yaml  pnpm (only esbuild may run install scripts)
   Dockerfile              Node 22 + pnpm with corepack
@@ -123,7 +123,7 @@ web/
     actions.test.tsx      tests for the map actions (+ button, help, focus after editing, hint)
     deleteModes.test.tsx  delete tests (🗑 button, leaf, dialog, reparent, cancel, focus)
     api/                  fetch client with X-CSRF and the OpenAPI types (schema.ts)
-    components/           login, not-found page ("No encontrado"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children)
+    components/           login, not-found page ("Not found"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children)
     map/
       tree.ts             normalized window and pure operations (insert, delete, arrows)
       layout.ts           horizontal tree layout

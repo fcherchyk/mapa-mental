@@ -1,4 +1,4 @@
-"""Criterio 10: profundidad N como preferencia del usuario."""
+"""Criterion 10: depth N as a user preference."""
 
 from collections.abc import Callable
 
@@ -11,7 +11,7 @@ from app.settings.service import read_settings
 from tests.conftest import CSRF
 
 
-def test_criterio_10_patch_depth_se_guarda_y_sigue_en_sesion_nueva(
+def test_criterion_10_patch_depth_is_saved_and_kept_in_a_new_session(
     login: Callable[..., TestClient],
 ) -> None:
     client = login(sub="sub-depth")
@@ -25,7 +25,7 @@ def test_criterio_10_patch_depth_se_guarda_y_sigue_en_sesion_nueva(
 
 
 @pytest.mark.parametrize("depth", [1, 10])
-def test_criterio_10_depth_valores_limite_1_y_10_son_validos(
+def test_criterion_10_depth_boundary_values_1_and_10_are_valid(
     client: TestClient, depth: int
 ) -> None:
     response = client.patch("/api/me/settings", json={"depth": depth}, headers=CSRF)
@@ -36,7 +36,7 @@ def test_criterio_10_depth_valores_limite_1_y_10_son_validos(
 
 
 @pytest.mark.parametrize("depth", [0, 11, -1, 12, 2.5, "5", None, True])
-def test_criterio_10_depth_invalido_responde_422_y_no_cambia(
+def test_criterion_10_invalid_depth_returns_422_and_does_not_change(
     client: TestClient, depth: object
 ) -> None:
     response = client.patch("/api/me/settings", json={"depth": depth}, headers=CSRF)
@@ -45,19 +45,19 @@ def test_criterio_10_depth_invalido_responde_422_y_no_cambia(
     assert client.get("/api/me").json()["settings"]["depth"] == DEPTH_DEFAULT
 
 
-def test_criterio_10_patch_body_invalido_o_extra_forbid_responde_422(client: TestClient) -> None:
-    # Campos extra no permitidos (extra="forbid")
-    res1 = client.patch("/api/me/settings", json={"depth": 4, "campo_extra": "no"}, headers=CSRF)
+def test_criterion_10_patch_invalid_body_or_forbidden_extra_returns_422(client: TestClient) -> None:
+    # Extra fields are not allowed (extra="forbid")
+    res1 = client.patch("/api/me/settings", json={"depth": 4, "extra_field": "no"}, headers=CSRF)
     assert res1.status_code == 422
 
-    # Cuerpo vacío
+    # Empty body
     res2 = client.patch("/api/me/settings", json={}, headers=CSRF)
     assert res2.status_code == 422
 
-    # Valor previo no cambió
+    # The previous value did not change
     assert client.get("/api/me").json()["settings"]["depth"] == DEPTH_DEFAULT
 
 
-def test_settings_guardados_invalidos_vuelven_al_valor_por_defecto() -> None:
+def test_invalid_stored_settings_fall_back_to_the_default_value() -> None:
     assert read_settings(User(settings={"depth": 99})).depth == DEPTH_DEFAULT
     assert read_settings(User(settings={})).depth == DEPTH_DEFAULT

@@ -22,17 +22,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('cliente de la API', () => {
+describe('API client', () => {
   const mutations = [
-    ['crear', (api: ReturnType<typeof createApiClient>) => api.createChild('n1', { title: 't' })],
-    ['editar', (api: ReturnType<typeof createApiClient>) => api.updateNode('n1', { version: 1 })],
-    ['borrar', (api: ReturnType<typeof createApiClient>) => api.deleteNode('n1')],
+    ['create', (api: ReturnType<typeof createApiClient>) => api.createChild('n1', { title: 't' })],
+    ['update', (api: ReturnType<typeof createApiClient>) => api.updateNode('n1', { version: 1 })],
+    ['delete', (api: ReturnType<typeof createApiClient>) => api.deleteNode('n1')],
     ['settings', (api: ReturnType<typeof createApiClient>) => api.patchSettings({ depth: 4 })],
     ['logout', (api: ReturnType<typeof createApiClient>) => api.logout()],
   ] as const;
 
   it.each(mutations)(
-    'criterio_2: la mutación %s va a /api/ con X-CSRF: 1 y misma credencial de origen',
+    'criterion_2: the %s mutation goes to /api/ with X-CSRF: 1 and same-origin credentials',
     async (_, call) => {
       const fetchMock = stubFetch(200, {});
       await call(createApiClient());
@@ -43,7 +43,7 @@ describe('cliente de la API', () => {
     },
   );
 
-  it('criterio_2: los GET no mandan X-CSRF', async () => {
+  it('criterion_2: GET requests do not send X-CSRF', async () => {
     const fetchMock = stubFetch(200, {});
     const api = createApiClient();
     await api.getMe();
@@ -53,12 +53,12 @@ describe('cliente de la API', () => {
     expect(requestOf(fetchMock, 1).headers['X-CSRF']).toBeUndefined();
   });
 
-  it('un 204 devuelve undefined', async () => {
+  it('a 204 returns undefined', async () => {
     stubFetch(204);
     await expect(createApiClient().deleteNode('n1')).resolves.toBeUndefined();
   });
 
-  it('deleteNode con reparent manda ?children=reparent y sin opciones no manda query', async () => {
+  it('deleteNode with reparent sends ?children=reparent and without options sends no query', async () => {
     const fetchMock = stubFetch(204);
     const api = createApiClient();
     await api.deleteNode('n1');
@@ -67,19 +67,19 @@ describe('cliente de la API', () => {
     expect(requestOf(fetchMock, 1).url).toBe('/api/nodes/n1?children=reparent');
   });
 
-  it('un 401 avisa a onUnauthorized y rechaza con ApiError', async () => {
-    stubFetch(401, { detail: 'sesión inválida o vencida' });
+  it('a 401 notifies onUnauthorized and rejects with ApiError', async () => {
+    stubFetch(401, { detail: 'invalid or expired session' });
     const onUnauthorized = vi.fn();
     const error = await createApiClient(onUnauthorized).getMe().catch((e: unknown) => e);
     expect(onUnauthorized).toHaveBeenCalledOnce();
     expect(error).toBeInstanceOf(ApiError);
-    expect(error).toMatchObject({ status: 401, message: 'sesión inválida o vencida' });
+    expect(error).toMatchObject({ status: 401, message: 'invalid or expired session' });
   });
 
-  it('un error sin detalle legible usa el código', async () => {
+  it('an error without a readable detail uses the status code', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response('no es json', { status: 502 })),
+      vi.fn(async () => new Response('not json', { status: 502 })),
     );
     await expect(createApiClient().getMe()).rejects.toMatchObject({
       status: 502,

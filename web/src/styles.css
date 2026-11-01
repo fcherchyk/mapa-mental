@@ -108,7 +108,7 @@ button {
   min-height: 0;
 }
 
-/* El contenedor recibe el foco al terminar una edición; el nodo seleccionado ya marca dónde está. */
+/* The container gets focus when an edit ends; the selected node already shows where it is. */
 .map-canvas:focus {
   outline: none;
 }

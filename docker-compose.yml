@@ -1,5 +1,5 @@
-# Entorno local del primer corte (ADR 0005). Los valores salen de .env (copiado de .env.example).
-# `web` sirve la SPA con Vite en localhost:5173 y reenvía /api a `api` (mismo origen, sin CORS).
+# Local environment of the first slice (ADR 0005). Values come from .env (copied from .env.example).
+# `web` serves the SPA with Vite on localhost:5173 and forwards /api to `api` (same origin, no CORS).
 services:
   db:
     image: postgres:16
@@ -40,7 +40,7 @@ services:
       API_PROXY_TARGET: http://api:8000
     volumes:
       - ./web:/srv/web
-      # node_modules de Linux, separado de los de la Mac.
+      # Linux node_modules, kept apart from the Mac ones.
       - web-node-modules:/srv/web/node_modules
     ports:
       - "127.0.0.1:5173:5173"

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-// jsdom no mide el DOM ni trae ResizeObserver; React Flow los necesita para dibujar.
+// jsdom does not measure the DOM nor ship ResizeObserver; React Flow needs both to draw.
 class ResizeObserverStub {
   observe(): void {}
 
@@ -39,5 +39,5 @@ function stubLayoutApis(): void {
     ({ x: 0, y: 0, width: 0, height: 0 }) as DOMRect;
 }
 
-// Los tests de configuración corren en entorno `node`, sin DOM.
+// Configuration tests run in the `node` environment, without a DOM.
 if (typeof HTMLElement !== 'undefined') stubLayoutApis();

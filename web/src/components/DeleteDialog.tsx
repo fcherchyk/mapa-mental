@@ -7,11 +7,11 @@ interface DeleteDialogProps {
   onCancel: () => void;
 }
 
-/** Diálogo modal para borrar un nodo con hijos; empieza en «Cancelar», la opción menos destructiva. */
+/** Modal dialog to delete a node with children; it starts on "Cancel", the least destructive option. */
 export function DeleteDialog({ request, onChoose, onCancel }: DeleteDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const amount = request.exact ? `${request.count}` : `al menos ${request.count}`;
+  const amount = request.exact ? `${request.count}` : `at least ${request.count}`;
 
   useEffect(() => {
     cancelRef.current?.focus();
@@ -48,20 +48,20 @@ export function DeleteDialog({ request, onChoose, onCancel }: DeleteDialogProps)
         aria-describedby="delete-dialog-text"
         onKeyDown={onKeyDown}
       >
-        <h2 id="delete-dialog-title">Borrar «{request.title}»</h2>
+        <h2 id="delete-dialog-title">Delete “{request.title}”</h2>
         <p id="delete-dialog-text">
-          Tiene {amount} {request.count === 1 && request.exact ? 'descendiente' : 'descendientes'}.
-          ¿Qué hacemos con ellos?
+          It has {amount} {request.count === 1 && request.exact ? 'descendant' : 'descendants'}.
+          What should we do with them?
         </p>
         <div className="delete-dialog-actions">
           <button type="button" className="is-danger" onClick={() => onChoose('cascade')}>
-            Borrar todo a partir de acá
+            Delete everything from here
           </button>
           <button type="button" onClick={() => onChoose('reparent')}>
-            Borrar solo este y subir sus hijos
+            Delete only this one and move its children up
           </button>
           <button type="button" ref={cancelRef} onClick={onCancel}>
-            Cancelar
+            Cancel
           </button>
         </div>
       </div>
