@@ -143,7 +143,7 @@ web/
 - [x] Create, edit, collapse and expand nodes
 - [x] Discoverable actions and keyboard shortcuts help ("+" button, "?" panel, first-use hint)
 - [x] Delete nodes, either the whole subtree or moving the children up to the parent
-- [ ] Move and reorder nodes by dragging (uses `sort_key`)
+- [ ] Move and reorder nodes by dragging (uses `sort_key`) — specified in [`docs/slices/slice-2-move-and-reorder.md`](docs/slices/slice-2-move-and-reorder.md)
 - [ ] Other node kinds: Google Drive documents, spreadsheets, calendar events, tasks, repositories or projects
 - [ ] Integrations with Google Calendar, Trello and GitHub
 - [ ] Mobile app that reuses the API, starting with a PWA

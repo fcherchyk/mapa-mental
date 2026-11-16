@@ -13,7 +13,8 @@ run, in Spanish, kept as history) and in `.agents/log.md`.
 | Slice | Document | Status |
 |---|---|---|
 | 1 | [slice-1-mvp.md](slice-1-mvp.md) — MVP: Google login, one map, create/edit/navigate/delete ideas | Delivered |
-| 2 | — | Not started: drag and reorder with `sort_key`, Drive nodes with incremental `drive.file` scope |
+| 2 | [slice-2-move-and-reorder.md](slice-2-move-and-reorder.md) — move and reorder nodes by dragging and with the keyboard | Specified, not built |
+| 3 | — | Not started: "Drive document" node with the Google Picker and incremental `drive.file` scope |
 
 The backlog beyond slice 1 is the [Roadmap in `README.md`](../../README.md#roadmap).
 

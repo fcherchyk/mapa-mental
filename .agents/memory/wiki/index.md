@@ -2,7 +2,7 @@
 
 **Purpose**: a web app where one person with a Google account builds a single mind map of ideas (titled nodes): create, edit, delete, collapse and navigate by focus. Later: nodes of other kinds (Drive document, spreadsheet, event, task, repo).
 
-**Status**: the first slice has the backend and the SPA. Slice 2 is pending (drag and reorder with `sort_key`, Drive).
+**Status**: slice 1 (backend and SPA) is delivered. Slice 2, moving and reordering nodes by dragging and with the keyboard, is specified in `docs/slices/slice-2-move-and-reorder.md` but not built. The Drive document node with the Google Picker moved to slice 3.
 
 **Components**
 - `api` (implemented): FastAPI (Python 3.12) in `api/app/` with the modules `auth`, `nodes`, `settings`, `node_types` and `integrations` (empty). SQLAlchemy 2 + Alembic. Routes under `/api`: `auth` (login, callback, logout), `me`, `me/settings`, `nodes/{id}/view`, `nodes/{id}/children`, `nodes/{id}` (`PATCH`; `DELETE` with `?children=cascade|reparent`, default `cascade`; `reparent` moves the direct children up to the parent in one transaction).
@@ -16,4 +16,4 @@
 
 **Slice specifications**: `docs/slices/` holds what the product does today, as acceptance criteria with ids `S1_BE_AC<n>` (backend suite) and `S1_FE_AC<n>` (frontend suite). `docs/slices/slice-1-mvp.md` is the current state of the MVP and consolidates the five delivered run specs; `docs/slices/README.md` has the convention. Every criterion has at least one test whose name starts with its id: `test_S1_BE_AC11_…` in pytest, `it('S1_FE_AC6: …')` in Vitest. Tests with no id are supporting unit tests.
 
-Details in `memory/arquitectura.md` and `memory/adr/` (ADRs and specs are kept in Spanish as history).
+Details in `memory/architecture.md`, which describes the current state and carries no roadmap, and in `memory/adr/` (ADRs and run specs are kept in Spanish as history). The roadmap lives only in `README.md`.
