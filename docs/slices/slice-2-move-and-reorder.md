@@ -108,6 +108,14 @@ nothing about the real canvas. With elements as targets, `S2_FE_AC4` through `AC
 automated. `S2_FE_AC19` stays manual, but now covers only what no test environment can check: that
 the pointer actually reaches those elements on a real canvas.
 
+**What this decision got wrong, and the correction.** As first written, it treated "the drop rules
+are automated" as if it also covered "a drag can start", and it does not: a test that dispatches
+`dragstart` directly skips the `mousedown` that a browser sends first, and that `mousedown` was
+being swallowed by React Flow's pan handler. The feature shipped unusable with every criterion
+green. The lesson is narrow and worth keeping: **when a test replaces a gesture with a synthetic
+event, name what the substitution drops, and cover that separately.** `S2_FE_AC21` is that cover
+for the `mousedown`; `S2_FE_AC19` remains the manual check for everything after it.
+
 ## 4. The move endpoint
 
 ```http
@@ -328,6 +336,20 @@ siblings and onto a breadcrumb entry, with the feedback of `S2_FE_AC9` and the s
 `pnpm --dir web exec vitest run --coverage` still meets the 80% line threshold.
 → `S2_FE_AC20:` in `web/src/config.test.ts`
 
+**S2_FE_AC21 — The gesture can begin.** *(added after delivery; see below)*
+Given a node, when the mouse is pressed on it and the browser then starts a drag, then the drag
+starts: the insertion lines appear and a drop still moves the idea. Concretely, the node carries the
+`nopan` class, which is where React Flow's pan filter looks
+(`event.target.closest('.nopan')`).
+
+This criterion exists because its absence shipped a broken feature. React Flow adds `nopan` only to
+nodes **it** drags, and it drags none of ours — the layout owns the positions (ADR 0003). Without
+the class, the pane's `d3-zoom` handles the `mousedown` that precedes every drag and calls
+`d3-drag`'s `dragDisable`, which registers a capture-phase listener that `preventDefault`s every
+`dragstart` on the window. Every other frontend criterion passed while no drag could start in a
+browser, because the tests dispatch `dragstart` directly and never press the mouse first.
+→ `S2_FE_AC21:` in `web/src/move.test.tsx`
+
 ## 7. Changes by file
 
 | File | Change |
@@ -345,7 +367,7 @@ siblings and onto a breadcrumb entry, with the feedback of `S2_FE_AC9` and the s
 | `web/src/map/tree.ts` | `reorderChild`, for the optimistic reorder |
 | `web/src/map/MapCanvas.tsx` | drag flags per node and the gap drop zones |
 | `web/src/map/nodes/GapDropZone.tsx` | new: the insertion line between two siblings |
-| `web/src/map/nodes/IdeaNode.tsx` | `draggable` and the drag handlers |
+| `web/src/map/nodes/IdeaNode.tsx` | `draggable`, the drag handlers, and `nopan` so the pan handler lets the drag start (`S2_FE_AC21`) |
 | `web/src/map/nodes/nodeActions.ts` | drag actions and the drag-related node data |
 | `web/src/map/useMapView.ts` | `move`, optimistic for a reorder, re-read for a reparent |
 | `web/src/map/MapPage.tsx` | drag state, the four `Alt` shortcuts, Escape cancelling a drag |
@@ -364,11 +386,11 @@ Measured on 2026-11-16, with the slice delivered:
 | Suite | Slice 2 test cases | Criteria covered |
 |---|---|---|
 | Backend (`api/tests/test_move.py`) | 31 | `S2_BE_AC1`–`AC13`, no gaps |
-| Frontend (`move.test.tsx`, `dropTarget.test.ts`, `config.test.ts`) | 40 | `S2_FE_AC1`–`AC18` and `AC20`, no gaps |
+| Frontend (`move.test.tsx`, `dropTarget.test.ts`, `config.test.ts`) | 41 | `S2_FE_AC1`–`AC18`, `AC20` and `AC21`, no gaps |
 
 `S2_FE_AC19` is the only criterion with no automated test, by decision D6.
 
-Whole-repo totals after the slice: **153 backend tests** (98.23% line coverage) and **158 frontend
+Whole-repo totals after the slice: **153 backend tests** (98.23% line coverage) and **159 frontend
 tests** (99.46%).
 
 ```sh
@@ -378,10 +400,12 @@ pnpm --dir web exec vitest list | grep -o 'S2_FE_AC[0-9]*' | sort -u
 
 ## 9. Known gaps
 
-- **No automated coverage of the pointer gesture** (decision D6). The drop *rules* are covered by
-  firing drag events at the real elements, but nothing checks that a pointer dragged across the
-  React Flow canvas reaches those elements; that is `S2_FE_AC19`, by hand, until the project
-  decides on Playwright.
+- **No automated coverage of the pointer gesture** (decision D6). `S2_FE_AC21` now covers the
+  `mousedown` that starts it, and the drop rules are covered by firing drag events at the real
+  elements, but nothing checks that a pointer dragged across the React Flow canvas actually
+  reaches those elements; that is `S2_FE_AC19`, by hand, until the project decides on Playwright.
+- **Panning no longer starts from a node.** `nopan` on the nodes means the canvas is panned from
+  the background, as in any React Flow app whose nodes are draggable.
 - **The fake API renumbers a parent's children on every move**, while the real one writes only the
   moved row. The frontend tests therefore cannot assert on `sort_key` values, only on order.
 - **Keys grow under adversarial reordering.** `S2_BE_AC12` fixes a floor of 50 moves into the same

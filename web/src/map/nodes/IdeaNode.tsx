@@ -7,6 +7,10 @@ export function IdeaNode({ data }: NodeComponentProps) {
   const actions = useNodeActions();
   const classes = [
     'map-node',
+    // React Flow only marks a node `nopan` when it drags the node itself, and it does not here:
+    // the layout owns the positions. Without it the pane's d3-zoom takes the mousedown and calls
+    // d3-drag's dragDisable, which suppresses `dragstart` on the window, so no drag ever starts.
+    'nopan',
     isFocus && 'is-focus',
     selected && 'is-selected',
     dragging && 'is-dragging',

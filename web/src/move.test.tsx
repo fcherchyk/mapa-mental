@@ -133,6 +133,33 @@ describe('dragging into a gap', () => {
   });
 });
 
+describe('the gesture can begin at all', () => {
+  it('S2_FE_AC21: the mousedown that precedes a drag does not suppress it', async () => {
+    const { api } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-b');
+    const node = nodeElement('b');
+
+    // React Flow adds `nopan` only to nodes it drags itself, which it does not do here: the
+    // layout owns the positions. Without that class the pane's d3-zoom handles the mousedown
+    // and calls d3-drag's dragDisable, which registers a capture listener that preventDefaults
+    // every `dragstart` on the window. The drop rules below would all still pass, and no drag
+    // would ever start in a browser. The pan filter looks exactly here:
+    // `event.target.closest('.nopan')`.
+    expect(node.closest('.nopan')).not.toBeNull();
+
+    // The real order of events: press, then the browser starts the drag.
+    fireEvent.mouseDown(node, { button: 0 });
+    fireEvent.dragStart(node);
+
+    expect(screen.getByTestId('gap-first')).toBeInTheDocument();
+    expect(node).toHaveClass('is-dragging');
+
+    fireEvent.drop(gapZone(null));
+
+    await waitFor(() => expect(moveCalls(api)).toHaveLength(1));
+  });
+});
+
 describe('the breadcrumb as a drop target', () => {
   it('S2_FE_AC7: dropping on an ancestor moves the idea into it', async () => {
     const { api } = renderApp('/n/a', sampleApi());

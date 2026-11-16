@@ -36,7 +36,9 @@ task or a repository, and a mobile app to use the same backend.
     a target and not a position: nodes are dragged with the browser's own drag and drop, node
     bodies take a drop as "become the last child", and while a drag is in progress an insertion
     line (`GapDropZone`) is drawn in each gap among the dragged node's own siblings. The rules
-    live in `map/dropTarget.ts`.
+    live in `map/dropTarget.ts`. Nodes carry the `nopan` class: React Flow adds it only to nodes
+    it drags itself, and without it the pane's `d3-zoom` takes the `mousedown` and suppresses the
+    browser's `dragstart`, so no drag can start.
   - **`Breadcrumb`**: shows root › … › focus, and each ancestor is clickable.
   - **`NodeRenderer`**: picks the component by `kind`. Only `IdeaNode` exists. Border nodes show
     "+k", the number of hidden direct children, and cannot be expanded (12A).
