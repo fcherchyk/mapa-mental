@@ -7,6 +7,11 @@ export function IdeaNode({ data }: NodeComponentProps) {
   const actions = useNodeActions();
   const classes = [
     'map-node',
+    // Without `nopan` React Flow's pan handler takes the mousedown and calls d3-drag's
+    // `dragDisable`, which suppresses the browser's `dragstart` on the window: the node could
+    // never be picked up. React Flow only adds the class to nodes it drags itself, and it does
+    // not drag these (ADR 0003: the layout owns every position).
+    'nopan',
     isFocus && 'is-focus',
     selected && 'is-selected',
     dragging && 'is-dragging',

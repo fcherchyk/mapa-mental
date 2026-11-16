@@ -29,6 +29,44 @@ const drawnOrder = (ids: string[]) =>
 const childIdsIn = (api: FakeApi, parentId: string) =>
   api.children(parentId).map((node) => node.id);
 
+describe('starting the gesture', () => {
+  /**
+   * React Flow's pan handler is attached to the pane the nodes live in. If a mousedown on a node
+   * reaches it, d3-zoom calls d3-drag's `dragDisable`, which registers a capture-phase listener
+   * on the window that cancels every `dragstart`: the node can never be picked up. The `nopan`
+   * class on the node is what keeps the pan filter away from it.
+   */
+  it('S2_FE_AC21: pressing a node does not cancel the drag the browser is about to start', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-b');
+    const node = nodeElement('b');
+
+    // `dragDisable` registers its listener on the event's `view`, so the press has to carry one.
+    // jsdom refuses a `view` in the MouseEvent constructor, and d3 only ever calls
+    // `addEventListener` on it, so a plain event with the window attached is enough.
+    const press = (type: string) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'view', { value: globalThis.window });
+      fireEvent(node, event);
+    };
+
+    press('mousedown');
+
+    const dragstart = new Event('dragstart', { bubbles: true, cancelable: true });
+    node.dispatchEvent(dragstart);
+    expect(dragstart.defaultPrevented).toBe(false);
+    press('mouseup');
+  });
+
+  it('S2_FE_AC21: a node is marked so the canvas does not pan when it is dragged', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-b');
+
+    expect(nodeElement('b')).toHaveClass('nopan');
+    expect(nodeElement('b')).toHaveAttribute('draggable', 'true');
+  });
+});
+
 describe('dragging onto another idea', () => {
   it('S2_FE_AC4: dropping on a node sends place "last" and makes it that node is child', async () => {
     const { api } = renderApp('/n/f', sampleApi());

@@ -108,6 +108,14 @@ nothing about the real canvas. With elements as targets, `S2_FE_AC4` through `AC
 automated. `S2_FE_AC19` stays manual, but now covers only what no test environment can check: that
 the pointer actually reaches those elements on a real canvas.
 
+*What this decision missed.* Firing `dragStart` at an element tests the drop rules and skips the
+press that makes a browser fire it. The first manual test found exactly that: the gesture never
+started, because React Flow's pan handler was cancelling `dragstart` (see `S2_FE_AC21`). The
+lesson is that a synthetic event is not only a weaker version of the real one, it also silently
+asserts that everything before it already works. `S2_FE_AC21` now pins that "before" down, and it
+does run in jsdom: pressing the node and checking that a following `dragstart` survives reproduces
+the failure faithfully.
+
 ## 4. The move endpoint
 
 ```http
@@ -319,6 +327,19 @@ Given a drag that starts and ends on the same node, when it ends, then the route
 the node is not focused and no move is sent: a drag is never read as a click or a double click.
 → `S2_FE_AC18:` in `web/src/move.test.tsx`
 
+**S2_FE_AC21 — The gesture can start at all.**
+Given a node, when the mouse is pressed on it, then the `dragstart` the browser is about to fire is
+not cancelled, and the node carries the `nopan` class that keeps React Flow's pan handler off it.
+
+*Added after the first manual test, which found that dragging did nothing.* React Flow's pan
+handler lives on the pane the nodes sit in; a `mousedown` that reaches it makes `d3-zoom` call
+`d3-drag`'s `dragDisable`, which registers a capture-phase listener on the window that cancels
+every `dragstart`. React Flow adds `nopan` only to the nodes **it** drags, and it drags none of
+these (`nodesDraggable={false}`, since the layout owns every position), so the class has to be set
+by hand. Every criterion below `AC18` passed throughout: they fire `dragStart` directly and so
+never exercised the press that precedes it.
+→ `S2_FE_AC21:` in `web/src/move.test.tsx`
+
 **S2_FE_AC19 — Manual validation of the real gesture.**
 With the app running, dragging with the mouse moves a node onto another node, into a gap between its
 siblings and onto a breadcrumb entry, with the feedback of `S2_FE_AC9` and the subtree intact.
@@ -345,7 +366,7 @@ siblings and onto a breadcrumb entry, with the feedback of `S2_FE_AC9` and the s
 | `web/src/map/tree.ts` | `reorderChild`, for the optimistic reorder |
 | `web/src/map/MapCanvas.tsx` | drag flags per node and the gap drop zones |
 | `web/src/map/nodes/GapDropZone.tsx` | new: the insertion line between two siblings |
-| `web/src/map/nodes/IdeaNode.tsx` | `draggable` and the drag handlers |
+| `web/src/map/nodes/IdeaNode.tsx` | `draggable`, the drag handlers, and `nopan` so the pan handler does not cancel the drag (`S2_FE_AC21`) |
 | `web/src/map/nodes/nodeActions.ts` | drag actions and the drag-related node data |
 | `web/src/map/useMapView.ts` | `move`, optimistic for a reorder, re-read for a reparent |
 | `web/src/map/MapPage.tsx` | drag state, the four `Alt` shortcuts, Escape cancelling a drag |
@@ -364,11 +385,11 @@ Measured on 2026-11-16, with the slice delivered:
 | Suite | Slice 2 test cases | Criteria covered |
 |---|---|---|
 | Backend (`api/tests/test_move.py`) | 31 | `S2_BE_AC1`–`AC13`, no gaps |
-| Frontend (`move.test.tsx`, `dropTarget.test.ts`, `config.test.ts`) | 40 | `S2_FE_AC1`–`AC18` and `AC20`, no gaps |
+| Frontend (`move.test.tsx`, `dropTarget.test.ts`, `config.test.ts`) | 42 | `S2_FE_AC1`–`AC18`, `AC20` and `AC21`, no gaps |
 
 `S2_FE_AC19` is the only criterion with no automated test, by decision D6.
 
-Whole-repo totals after the slice: **153 backend tests** (98.23% line coverage) and **158 frontend
+Whole-repo totals after the slice: **153 backend tests** (98.23% line coverage) and **160 frontend
 tests** (99.46%).
 
 ```sh
