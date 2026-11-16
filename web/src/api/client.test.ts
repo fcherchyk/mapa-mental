@@ -32,7 +32,7 @@ describe('API client', () => {
   ] as const;
 
   it.each(mutations)(
-    'criterion_2: the %s mutation goes to /api/ with X-CSRF: 1 and same-origin credentials',
+    'S1_FE_AC2: the %s mutation goes to /api/ with X-CSRF: 1 and same-origin credentials',
     async (_, call) => {
       const fetchMock = stubFetch(200, {});
       await call(createApiClient());
@@ -43,7 +43,7 @@ describe('API client', () => {
     },
   );
 
-  it('criterion_2: GET requests do not send X-CSRF', async () => {
+  it('S1_FE_AC2: GET requests do not send X-CSRF', async () => {
     const fetchMock = stubFetch(200, {});
     const api = createApiClient();
     await api.getMe();

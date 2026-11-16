@@ -2,7 +2,7 @@
 
 A web app that lets a person with a Google account build a single mind map of ideas and browse it by focusing one node at a time, seeing at most N levels down. The first slice has the FastAPI API on PostgreSQL (`api/`) and the React + TypeScript SPA with Vite and React Flow (`web/`), which talk to each other over `/api` from the same origin, `localhost:5173`.
 
-**Status: MVP.** What is built today is a minimum viable product: login, a single map, and creating, editing, navigating and deleting ideas. The rest of the vision is in the [Roadmap](#roadmap).
+**Status: MVP.** What is built today is a minimum viable product: login, a single map, and creating, editing, navigating and deleting ideas. It is specified criterion by criterion in [`docs/slices/slice-1-mvp.md`](docs/slices/slice-1-mvp.md). The rest of the vision is in the [Roadmap](#roadmap).
 
 ### Vision
 
@@ -90,13 +90,14 @@ pnpm --dir web exec vitest run --coverage
 
 The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus).
 
-Test names say which spec criterion they cover. In the backend they start with `test_criterion_N_` (or `test_acN_` in `test_delete_modes.py`). In the frontend, `web/src/actions.test.tsx` groups the tests into blocks named `criterion N: …`, and each test starts with `ACN:` (acceptance criterion N).
+Test names say which acceptance criterion they cover, using the ids from the slice specification in [`docs/slices/`](docs/slices/). Backend tests start with `test_S1_BE_AC<n>_` and frontend test names start with `S1_FE_AC<n>:`, where `S1` is the slice. Run one criterion with `pytest -k S1_BE_AC11` or `vitest run -t S1_FE_AC6`. Tests with no id are supporting unit tests, listed in the slice document.
 
 ## Structure
 
 ```
 docker-compose.yml        services db, api and web (ports only on 127.0.0.1)
 .env.example              environment variables, without real values
+docs/slices/              slice specifications: what the product does, as acceptance criteria
 api/
   pyproject.toml, uv.lock uv environment (pytest, pytest-cov, testcontainers in dev)
   Dockerfile

@@ -14,4 +14,6 @@
 
 **Structure and commands**: MIT license in `LICENSE` (root). `README.md` (English, for users) is the only usage document outside `.agents/`. Backend in `api/` (package `api/app/`, tests in `api/tests/`, environment managed with `uv`). Frontend in `web/` (`src/`, tests next to the code, fake API in `src/test/fakeApi.ts`, `pnpm`). `setup_command` and `test_command` in `.agents/project.yaml` already include `web/` because the directory exists. The frontend coverage threshold is 80% of lines in `web/vite.config.ts`.
 
+**Slice specifications**: `docs/slices/` holds what the product does today, as acceptance criteria with ids `S1_BE_AC<n>` (backend suite) and `S1_FE_AC<n>` (frontend suite). `docs/slices/slice-1-mvp.md` is the current state of the MVP and consolidates the five delivered run specs; `docs/slices/README.md` has the convention. Every criterion has at least one test whose name starts with its id: `test_S1_BE_AC11_…` in pytest, `it('S1_FE_AC6: …')` in Vitest. Tests with no id are supporting unit tests.
+
 Details in `memory/arquitectura.md` and `memory/adr/` (ADRs and specs are kept in Spanish as history).

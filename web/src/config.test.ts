@@ -19,14 +19,14 @@ function composeService(name: string): string {
 }
 
 describe('environment', () => {
-  it('criterion_1: docker compose publishes web only on 127.0.0.1:5173 with a proxy to the api', () => {
+  it('S1_FE_AC1: docker compose publishes web only on 127.0.0.1:5173 with a proxy to the api', () => {
     const web = composeService('web');
     expect(web).toContain('"127.0.0.1:5173:5173"');
     expect(web).toContain('API_PROXY_TARGET: http://api:8000');
     expect(web).toMatch(/node_modules/);
   });
 
-  it('criterion_1: Vite listens on 0.0.0.0:5173 and forwards /api without rewriting', () => {
+  it('S1_FE_AC1: Vite listens on 0.0.0.0:5173 and forwards /api without rewriting', () => {
     expect(config.server?.host).toBe('0.0.0.0');
     expect(config.server?.port).toBe(5173);
     const proxy = config.server?.proxy as Record<string, { target: string; rewrite?: unknown }>;
@@ -34,12 +34,12 @@ describe('environment', () => {
     expect(proxy['/api'].rewrite).toBeUndefined();
   });
 
-  it('criterion_1: pnpm-lock.yaml is versioned and node_modules is not', () => {
+  it('S1_FE_AC1: pnpm-lock.yaml is versioned and node_modules is not', () => {
     expect(existsSync(resolve(webDir, 'pnpm-lock.yaml'))).toBe(true);
     expect(repoFile('.gitignore').split('\n')).toContain('node_modules/');
   });
 
-  it('criterion_17: the SPA server sends Content-Security-Policy', () => {
+  it('S1_FE_AC35: the SPA server sends Content-Security-Policy', () => {
     const headers = config.server?.headers as Record<string, string>;
     expect(headers['Content-Security-Policy']).toBe(CONTENT_SECURITY_POLICY);
     expect(CONTENT_SECURITY_POLICY).toContain("default-src 'self'");
@@ -47,7 +47,7 @@ describe('environment', () => {
     expect(CONTENT_SECURITY_POLICY).not.toContain('unsafe-eval');
   });
 
-  it('criterion_18: line coverage requires at least 80%', () => {
+  it('S1_FE_AC36: line coverage requires at least 80%', () => {
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
 });
