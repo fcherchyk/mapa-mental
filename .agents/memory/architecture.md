@@ -32,7 +32,11 @@ task or a repository, and a mobile app to use the same backend.
   - **`MapPage`**: requests the window for the current focus from the server, draws it, and owns
     the keyboard shortcuts and the first-use hint (decision 13A).
   - **`MapCanvas`**: React Flow. The horizontal tree layout is computed on the client over the
-    visible window, in `map/layout.ts`. Nodes are not draggable.
+    visible window, in `map/layout.ts`. Positions are never stored, so moving a node is a drop on
+    a target and not a position: nodes are dragged with the browser's own drag and drop, node
+    bodies take a drop as "become the last child", and while a drag is in progress an insertion
+    line (`GapDropZone`) is drawn in each gap among the dragged node's own siblings. The rules
+    live in `map/dropTarget.ts`.
   - **`Breadcrumb`**: shows root › … › focus, and each ancestor is clickable.
   - **`NodeRenderer`**: picks the component by `kind`. Only `IdeaNode` exists. Border nodes show
     "+k", the number of hidden direct children, and cannot be expanded (12A).
@@ -54,6 +58,10 @@ task or a repository, and a mobile app to use the same backend.
     - Space collapses or expands.
     - F2 or the pencil icon renames.
     - Delete or the 🗑 button deletes.
+    - Dragging, or Alt with the arrow keys, moves an idea: Alt+↑ and Alt+↓ among its siblings,
+      Alt+→ into the idea above it and Alt+← out to its grandparent. A new parent always takes it
+      as the last child, so moving somewhere and placing it precisely are two gestures.
+    - Breadcrumb entries accept a drop, which moves the idea up to that ancestor.
     - When an edit ends, focus returns to the map container, so the shortcuts keep working.
   - **State**: optimistic updates with rollback and a cache of windows by `(nodeId, N)` that is
     invalidated when something changes.
@@ -76,6 +84,10 @@ task or a repository, and a mobile app to use the same backend.
   - `POST /nodes/{id}/children` takes `{ title, after_sort_key? }`.
   - `PATCH /nodes/{id}` changes `title`, `collapsed` or `sort_key` and requires `version`. If the
     version is stale, it responds `409`.
+  - `POST /nodes/{id}/move` takes `{ parent_id, place, version }`, where `place` is `"first"`,
+    `"last"` or `{ "after_id": … }`. The server computes the `sort_key`, so the client never does
+    fractional-index arithmetic. It refuses to move the root or to put a node inside its own
+    subtree (`422`), and only the moved row is written: the subtree follows its parent.
   - `DELETE /nodes/{id}?children=cascade|reparent` deletes the node. With `cascade`, the default,
     the whole subtree goes; with `reparent`, only the node goes and its direct children move up to
     its parent, in its place and order, in one transaction. The root cannot be deleted (`422`).
@@ -94,7 +106,7 @@ task or a repository, and a mobile app to use the same backend.
   - `id` (uuid), `map_id` and `parent_id` (empty only on the root).
   - `kind` (text, `'idea'` today) and `title`.
   - `sort_key` (text with a fractional index). There is always a key between two keys, so inserting
-    between siblings only writes the new node.
+    between siblings, or moving one, only writes that node's row.
   - `collapsed` (boolean).
   - `props` (jsonb, `{}`).
   - `version`, `created_at` and `updated_at`.

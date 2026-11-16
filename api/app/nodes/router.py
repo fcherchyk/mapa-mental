@@ -10,7 +10,7 @@ from app.auth.dependencies import current_user, require_csrf
 from app.db import get_db
 from app.models import User
 from app.nodes import service
-from app.nodes.schemas import NodeCreate, NodeOut, NodePatch, NodeView
+from app.nodes.schemas import NodeCreate, NodeMove, NodeOut, NodePatch, NodeView
 from app.settings.schemas import DEPTH_MAX, DEPTH_MIN
 from app.settings.service import read_settings
 
@@ -44,6 +44,12 @@ def create_child(node_id: uuid.UUID, data: NodeCreate, user: CurrentUser, db: Db
 @router.patch("/{node_id}", response_model=NodeOut, dependencies=[Depends(require_csrf)])
 def update_node(node_id: uuid.UUID, patch: NodePatch, user: CurrentUser, db: Db) -> NodeOut:
     return service.update_node(db, user.id, node_id, patch)
+
+
+@router.post("/{node_id}/move", response_model=NodeOut, dependencies=[Depends(require_csrf)])
+def move_node(node_id: uuid.UUID, data: NodeMove, user: CurrentUser, db: Db) -> NodeOut:
+    """Moves the node, with its whole subtree, to `parent_id` at `place`."""
+    return service.move_node(db, user.id, node_id, data)
 
 
 @router.delete(

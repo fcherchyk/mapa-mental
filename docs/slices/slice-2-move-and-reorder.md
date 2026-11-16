@@ -1,7 +1,7 @@
 # Slice 2 — Move and reorder nodes by dragging
 
-**Status:** specified, not built. The criteria below are the contract for the implementation; the
-test names they quote do not exist yet.
+**Status:** delivered. Three criteria were amended while building, each marked *Amended* below with
+what changed and why.
 
 Builds on [slice 1](slice-1-mvp.md). Criteria ids follow the convention in [README.md](README.md):
 `S2_BE_AC<n>` for the backend suite and `S2_FE_AC<n>` for the frontend suite.
@@ -94,12 +94,19 @@ express "first" and "last" at the same time, and `POST /children`'s convention (
 naming a sibling, because the client often has not loaded the destination's children — that is
 exactly the collapsed and border case.
 
-**D6 — Real pointer dragging is validated by hand.**
-jsdom does not lay out or measure React Flow nodes, which is why slice 1's tests already look nodes
-up by label instead of by role. Rather than assert on a drag that the test environment cannot
-really perform, the geometry is extracted into a **pure function** that is tested directly, and the
-pointer gesture itself is a manual-validation criterion (`S2_FE_AC19`). Covering it automatically
-would mean adding Playwright, which is a separate decision.
+**D6 — Drop targets are elements, not coordinates.**
+The drag uses the browser's own drag and drop: every node is a drop target, and while a drag is in
+progress an insertion line is drawn as its own element in each offered gap. Nothing is resolved
+from pointer coordinates, so **the drop rules are testable without geometry**: the tests fire
+`dragStart`, `dragOver` and `drop` at named elements, exactly as a browser would.
+
+*This replaces the original decision*, which put the geometry in a pure
+`resolveDrop(pointer) → target` function and left the gesture to manual validation. The first
+attempt was written that way and discarded: jsdom never measures React Flow nodes, so every
+coordinate is zero and such a function can only be tested against invented positions, which proves
+nothing about the real canvas. With elements as targets, `S2_FE_AC4` through `AC13` are genuinely
+automated. `S2_FE_AC19` stays manual, but now covers only what no test environment can check: that
+the pointer actually reaches those elements on a real canvas.
 
 ## 4. The move endpoint
 
@@ -172,10 +179,14 @@ Given N with `version = v`, when a move arrives with `version = v-1` or `v+1`, t
 `409` and nothing changes.
 → `test_S2_BE_AC9_*` in `api/tests/test_move.py`
 
-**S2_BE_AC10 — Moving a node where it already is.**
+**S2_BE_AC10 — Moving a node where it already is.** *(Amended: see the last sentence.)*
 Given N already last among P's children, when it is moved to P with `place: "last"`, then the answer
-is `200`, the order of P's children is unchanged, and N's `version` is incremented like any other
-move — the no-op is not special-cased.
+is `200` and the order of P's children is unchanged. The computed position is the one N already
+holds, so no row is written and N's `version` does not change: `version` counts changes to the row,
+not requests. A move that does change the position bumps it as usual.
+*Amended: this first demanded that the version be incremented "like any other move". It is not —
+SQLAlchemy writes nothing when no column changed — and demanding it would have meant a pointless
+UPDATE just to make a counter move.*
 → `test_S2_BE_AC10_*` in `api/tests/test_move.py`
 
 **S2_BE_AC11 — Validation and CSRF.**
@@ -201,22 +212,24 @@ its old parent and `sort_key`.
 Every node drawn in the window is draggable except the real root of the map and the current focus
 — the focus is the window's own root and its parent is not on the canvas. A node being edited or
 still `pending` is not draggable either.
-→ `S2_FE_AC1:` in `web/src/move.test.tsx`
+→ `S2_FE_AC1:` in `web/src/map/dropTarget.test.ts`
 
-**S2_FE_AC2 — Drop resolution is a pure function.**
-Given the laid-out window, the dragged node and a pointer position, when the drop is resolved, then
-the result is exactly one of: `{kind: 'child', parentId}` when the pointer is over a node's body,
-`{kind: 'sibling', parentId, afterId}` when it is over a gap between two of the dragged node's
-current siblings, or `null` when the drop is not allowed. The function is tested directly, with no
+**S2_FE_AC2 — The drop rules are a pure module.**
+Given a window and a dragged node, when a target is checked, then `isUsefulTarget` answers whether
+it is reachable and would change anything, and `placeFor` turns it into the endpoint's `place`:
+`'last'` for a node's body, `'first'` or `{after_id}` for a gap. Both are tested directly, with no
 rendering.
+*Amended (decision D6): this was "drop resolution is a pure function" taking a pointer position.
+Targets are elements now, so there is no geometry to resolve.*
 → `S2_FE_AC2:` in `web/src/map/dropTarget.test.ts`
 
 **S2_FE_AC3 — Gaps belong to the current parent only.**
-Given a node N being dragged, when the pointer is over a gap between two nodes that are not N's
-current siblings, then no insertion position is offered and the resolution falls back to the
-enclosing node's body, if any. Gaps among N's own siblings are offered, including the gap before the
-first sibling and the one after the last.
-→ `S2_FE_AC3:` in `web/src/map/dropTarget.test.ts`
+Given a node N being dragged, when the insertion lines are drawn, then there is one for each gap
+among N's **own** siblings that would actually move it — including the gap before the first sibling
+— and none anywhere else in the tree. Dropping on any other node's body remains an append.
+*Amended (decision D6): the gaps are elements offered during the drag, not regions a pointer is
+tested against.*
+→ `S2_FE_AC3:` in `web/src/map/dropTarget.test.ts` and `web/src/move.test.tsx`
 
 **S2_FE_AC4 — Dropping on a node appends.**
 Given N dropped on the body of another node D, when the drop is confirmed, then
@@ -315,29 +328,62 @@ siblings and onto a breadcrumb entry, with the feedback of `S2_FE_AC9` and the s
 `pnpm --dir web exec vitest run --coverage` still meets the 80% line threshold.
 → `S2_FE_AC20:` in `web/src/config.test.ts`
 
-## 7. Expected changes by file
+## 7. Changes by file
 
 | File | Change |
 |---|---|
 | `api/app/nodes/schemas.py` | `NodeMove` with `parent_id`, `place` (tagged union) and `version` |
-| `api/app/nodes/service.py` | `move_node`: ownership, cycle, root and `after_id` checks; key via `key_between` |
-| `api/app/nodes/repository.py` | is-a-descendant check and the destination's neighbouring keys |
+| `api/app/nodes/service.py` | `move_node` and `destination_sort_key`: ownership, cycle, root and `after_id` checks; key via `key_between` |
+| `api/app/nodes/repository.py` | `is_descendant`, `first_child_sort_key`, and `exclude_id` on the neighbour lookups so the moved node is not its own neighbour |
 | `api/app/nodes/router.py` | `POST /nodes/{id}/move` |
 | `api/tests/test_move.py` | new, `S2_BE_AC1`–`AC13` |
-| `web/src/api/client.ts`, `schema.ts` | `moveNode`, regenerated types |
-| `web/src/map/dropTarget.ts` | new, the pure resolution of `S2_FE_AC2` |
-| `web/src/map/MapCanvas.tsx` | `nodesDraggable`, drag handlers, drop feedback |
+| `api/scripts/export_openapi.py` | puts the package on the path, so `pnpm gen:api` runs (it was broken) |
+| `web/package.json` | `gen:api` passes `--default-non-nullable=false`, so defaulted request fields stay optional |
+| `web/src/api/schema.ts` | regenerated; it had drifted into a hand-edited file |
+| `web/src/api/client.ts` | `moveNode`, `NodeMove` and `Place` |
+| `web/src/map/dropTarget.ts` | new: `isDraggable`, `isUsefulTarget`, `gapSlots`, `placeFor` |
+| `web/src/map/tree.ts` | `reorderChild`, for the optimistic reorder |
+| `web/src/map/MapCanvas.tsx` | drag flags per node and the gap drop zones |
+| `web/src/map/nodes/GapDropZone.tsx` | new: the insertion line between two siblings |
+| `web/src/map/nodes/IdeaNode.tsx` | `draggable` and the drag handlers |
+| `web/src/map/nodes/nodeActions.ts` | drag actions and the drag-related node data |
 | `web/src/map/useMapView.ts` | `move`, optimistic for a reorder, re-read for a reparent |
-| `web/src/map/MapPage.tsx` | the four `Alt` shortcuts |
+| `web/src/map/MapPage.tsx` | drag state, the four `Alt` shortcuts, Escape cancelling a drag |
 | `web/src/components/Breadcrumb.tsx` | drop target |
 | `web/src/components/ShortcutsHelp.tsx` | the new shortcuts |
+| `web/src/styles.css` | dragged, target and refused states; the insertion line |
+| `web/src/test/fakeApi.ts` | `/move`, renumbering the destination's children |
+| `web/src/move.test.tsx`, `web/src/map/dropTarget.test.ts` | new, `S2_FE_AC1`–`AC18` |
 | `web/src/actions.test.tsx` | `S1_FE_AC22` updated for the longer list |
 | `docs/slices/slice-1-mvp.md` | `S1_FE_AC22` amended |
 
-## 8. Known gaps
+## 8. Traceability
 
-- **No automated coverage of the pointer gesture** (decision D6). `S2_FE_AC19` is manual until the
-  project decides on Playwright.
+Measured on 2026-11-16, with the slice delivered:
+
+| Suite | Slice 2 test cases | Criteria covered |
+|---|---|---|
+| Backend (`api/tests/test_move.py`) | 31 | `S2_BE_AC1`–`AC13`, no gaps |
+| Frontend (`move.test.tsx`, `dropTarget.test.ts`, `config.test.ts`) | 40 | `S2_FE_AC1`–`AC18` and `AC20`, no gaps |
+
+`S2_FE_AC19` is the only criterion with no automated test, by decision D6.
+
+Whole-repo totals after the slice: **153 backend tests** (98.23% line coverage) and **158 frontend
+tests** (99.46%).
+
+```sh
+uv run --directory api pytest --collect-only -q | grep -o 'test_S2_BE_AC[0-9]*' | sort -u
+pnpm --dir web exec vitest list | grep -o 'S2_FE_AC[0-9]*' | sort -u
+```
+
+## 9. Known gaps
+
+- **No automated coverage of the pointer gesture** (decision D6). The drop *rules* are covered by
+  firing drag events at the real elements, but nothing checks that a pointer dragged across the
+  React Flow canvas reaches those elements; that is `S2_FE_AC19`, by hand, until the project
+  decides on Playwright.
+- **The fake API renumbers a parent's children on every move**, while the real one writes only the
+  moved row. The frontend tests therefore cannot assert on `sort_key` values, only on order.
 - **Keys grow under adversarial reordering.** `S2_BE_AC12` fixes a floor of 50 moves into the same
   gap; a sufficiently long sequence still lengthens keys. There is no renormalization pass, and the
   128-character cap would eventually answer `422`.

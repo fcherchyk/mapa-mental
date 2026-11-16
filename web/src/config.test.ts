@@ -50,4 +50,10 @@ describe('environment', () => {
   it('S1_FE_AC36: line coverage requires at least 80%', () => {
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
+
+  it('S2_FE_AC20: the move suite runs under the same coverage threshold', () => {
+    expect(existsSync(resolve(webDir, 'src/move.test.tsx'))).toBe(true);
+    expect(existsSync(resolve(webDir, 'src/map/dropTarget.test.ts'))).toBe(true);
+    expect(config.test.coverage.thresholds.lines).toBe(80);
+  });
 });

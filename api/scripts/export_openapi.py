@@ -7,8 +7,11 @@ import json
 import sys
 from pathlib import Path
 
-from app.config import Config
-from app.main import create_app
+# Running a script puts its own folder on the path, not the project's, so `app` is added by hand.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.config import Config  # noqa: E402
+from app.main import create_app  # noqa: E402
 
 # The schema does not depend on the configuration; create_app opens no connections when built.
 PLACEHOLDER_CONFIG = Config(

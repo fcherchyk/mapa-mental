@@ -1,7 +1,7 @@
 """Input and output schemas of the nodes API."""
 
 import uuid
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -65,6 +65,29 @@ class NodePatch(BaseModel):
     @classmethod
     def check_kind(cls, kind: str | None) -> str | None:
         return check_known_kind(kind)
+
+
+class AfterSibling(BaseModel):
+    """Position right after a given sibling, named by id."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    after_id: uuid.UUID
+
+
+class NodeMove(BaseModel):
+    """Where a node goes: a parent, plus a position among its children.
+
+    `place` is a tagged union because a nullable `after_id` could not tell "first" from "last",
+    and "last" has to be expressible without naming a sibling: the caller often has not loaded
+    the destination's children (a collapsed or border node).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    parent_id: uuid.UUID
+    place: Literal["first", "last"] | AfterSibling
+    version: Annotated[int, Field(strict=True, ge=1)]
 
 
 class NodeOut(BaseModel):

@@ -245,7 +245,8 @@ describe('S1_FE_AC21: shortcuts keep working after the +', () => {
 });
 
 describe('S1_FE_AC22: opening and closing the help', () => {
-  it('S1_FE_AC22: ? opens the panel with the 8 shortcuts and their descriptions, and Escape closes it returning focus to the button', async () => {
+  // Slice 2 added the Alt and Drag entries, so this lists the slice 1 ones and does not count.
+  it('S1_FE_AC22: ? opens the panel with the map shortcuts and their descriptions, and Escape closes it returning focus to the button', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     const help = helpButton();

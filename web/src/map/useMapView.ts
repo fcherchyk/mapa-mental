@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, type NodeOut } from '../api/client';
 import { useSession } from '../session';
+import { placeFor, type DropTarget } from './dropTarget';
 import { cacheKey } from './viewCache';
 import {
   childOfFocusToward,
@@ -12,6 +13,7 @@ import {
   isBorder,
   patchNode,
   removeSubtree,
+  reorderChild,
   replaceNode,
   selectionAfterDelete,
   visibleChildren,
@@ -23,6 +25,7 @@ export type ViewStatus = 'loading' | 'ready' | 'notFound' | 'error';
 
 const CONFLICT_NOTICE = 'The idea changed elsewhere: the change was undone and the map reloaded.';
 const FAILURE_NOTICE = 'Could not save the change: it was undone.';
+const movedAwayNotice = (title: string) => `The idea moved into "${title}", outside this view.`;
 
 /**
  * Creating a child that waits for the right window to arrive: the focus moved one level down
@@ -88,6 +91,7 @@ export interface MapView {
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;
   toggleCollapse: (id: string) => void;
+  move: (id: string, target: DropTarget) => void;
   remove: (id: string, onFocusDeleted: (parentId: string) => void) => void;
   deleteRequest: DeleteRequest | null;
   confirmRemove: (mode: DeleteMode) => void;
@@ -366,6 +370,54 @@ export function useMapView(focusId: string, depth: number): MapView {
 
   const cancelRemove = () => setDeleteRequest(null);
 
+  /**
+   * Moves a node, with its subtree, to a target already validated by `isUsefulTarget`.
+   *
+   * A reorder inside the same parent is optimistic (S2_FE_AC11). Changing parent moves the
+   * `child_count` of two nodes and may bring unloaded levels in, so the window is read again
+   * instead of guessed (S2_FE_AC12).
+   */
+  const move = (id: string, target: DropTarget) => {
+    const current = stateRef.current;
+    const node = current?.nodes[id];
+    if (!current || !node || node.pending || node.parent_id === null) return;
+    const place = placeFor(target);
+    const call = () =>
+      api.moveNode(id, {
+        parent_id: target.parentId,
+        place,
+        version: currentNode(id)?.version ?? 0,
+      });
+    if (target.parentId === node.parent_id) {
+      const afterId = target.kind === 'child' ? undefined : target.afterId;
+      mutate(
+        (state) => reorderChild(state, id, afterId),
+        call,
+        (state, moved: NodeOut) => patchNode(state, id, moved),
+      );
+      return;
+    }
+    // An ancestor outside the window, or a node already on the border, swallows the moved idea.
+    const destination = current.nodes[target.parentId];
+    const leavesTheWindow = !destination || isBorder(current, target.parentId);
+    if (leavesTheWindow) {
+      const title =
+        destination?.title ??
+        current.ancestors.find((ancestor) => ancestor.id === target.parentId)?.title ??
+        '';
+      setSelectedId(node.parent_id);
+      setNotice(movedAwayNotice(title));
+    }
+    mutate(
+      (state) => state,
+      call,
+      (state) => {
+        queueMicrotask(reloadFromServer);
+        return state;
+      },
+    );
+  };
+
   const deleteNode = (
     id: string,
     mode: DeleteMode,
@@ -422,6 +474,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     commitEdit,
     cancelEdit,
     toggleCollapse,
+    move,
     remove,
     deleteRequest,
     confirmRemove,

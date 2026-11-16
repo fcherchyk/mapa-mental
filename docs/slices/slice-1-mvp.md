@@ -383,9 +383,11 @@ focus returns to the map and the shortcuts keep working.
 → `S1_FE_AC21:` in `web/src/actions.test.tsx` (3 tests)
 
 **S1_FE_AC22 — Opening and closing the help.**
-Clicking the "Keyboard shortcuts" button opens a `role="dialog"` listing the 8 shortcuts with their
-descriptions, and the button becomes `aria-expanded="true"`. Escape or a second click closes the
-panel, returns focus to the "?" button and sets `aria-expanded="false"`.
+Clicking the "Keyboard shortcuts" button opens a `role="dialog"` listing the map's shortcuts with
+their descriptions, and the button becomes `aria-expanded="true"`. Escape or a second click closes
+the panel, returns focus to the "?" button and sets `aria-expanded="false"`.
+*Amended by slice 2 (`S2_FE_AC17`): this used to require exactly the 8 shortcuts of slice 1, and
+now requires those 8 to be present, since slice 2 adds the `Alt` and `Drag` entries.*
 → `S1_FE_AC22:` in `web/src/actions.test.tsx` (2 tests)
 
 **S1_FE_AC23 — The help does not trigger map shortcuts.**

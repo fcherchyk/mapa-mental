@@ -6,6 +6,9 @@ export type NodeOut = components['schemas']['NodeOut'];
 export type NodeView = components['schemas']['NodeView'];
 export type NodeCreate = components['schemas']['NodeCreate'];
 export type NodePatch = components['schemas']['NodePatch'];
+export type NodeMove = components['schemas']['NodeMove'];
+/** Where a node lands among its new siblings: first, last, or right after a given one. */
+export type Place = NodeMove['place'];
 
 export const API_PREFIX = '/api';
 export const LOGIN_URL = `${API_PREFIX}/auth/login`;
@@ -36,6 +39,7 @@ export interface ApiClient {
   getView(nodeId: string, depth: number): Promise<NodeView>;
   createChild(parentId: string, data: NodeCreate): Promise<NodeOut>;
   updateNode(nodeId: string, patch: NodePatch): Promise<NodeOut>;
+  moveNode(nodeId: string, move: NodeMove): Promise<NodeOut>;
   deleteNode(nodeId: string, options?: DeleteOptions): Promise<void>;
 }
 
@@ -65,6 +69,7 @@ export function createApiClient(onUnauthorized: () => void = () => {}): ApiClien
     getView: (nodeId, depth) => request('GET', `${node(nodeId)}/view?depth=${depth}`),
     createChild: (parentId, data) => request('POST', `${node(parentId)}/children`, data),
     updateNode: (nodeId, patch) => request('PATCH', node(nodeId), patch),
+    moveNode: (nodeId, move) => request('POST', `${node(nodeId)}/move`, move),
     deleteNode: (nodeId, options) =>
       request('DELETE', `${node(nodeId)}${options?.children === 'reparent' ? '?children=reparent' : ''}`),
   };

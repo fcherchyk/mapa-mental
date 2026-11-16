@@ -2,7 +2,7 @@
 
 A web app that lets a person with a Google account build a single mind map of ideas and browse it by focusing one node at a time, seeing at most N levels down. The first slice has the FastAPI API on PostgreSQL (`api/`) and the React + TypeScript SPA with Vite and React Flow (`web/`), which talk to each other over `/api` from the same origin, `localhost:5173`.
 
-**Status: MVP.** What is built today is a minimum viable product: login, a single map, and creating, editing, navigating and deleting ideas. It is specified criterion by criterion in [`docs/slices/slice-1-mvp.md`](docs/slices/slice-1-mvp.md). The rest of the vision is in the [Roadmap](#roadmap).
+**Status: MVP.** What is built today is a minimum viable product: login, a single map, and creating, editing, navigating, moving and deleting ideas. It is specified criterion by criterion in [`docs/slices/`](docs/slices/), one document per slice. The rest of the vision is in the [Roadmap](#roadmap).
 
 ### Vision
 
@@ -29,7 +29,8 @@ The map is meant to become the hub for a person's ideas and work:
 - When an edit ends (pencil, "+", Tab or F2), focus goes back to the map, so the shortcuts keep working without clicking anywhere else.
 - Edge nodes show a "+k" indicator with the number of hidden children (focus them to see those); collapsed nodes show "+k" with a dotted border.
 - Optimistic editing with rollback and a notice if the API fails: Tab creates a child, Enter (while editing) creates a sibling, F2 or the pencil renames, Space collapses or expands, Delete removes (a leaf without asking; a node with children opens the delete dialog), and the arrow keys move the selection.
-- Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), edit with version control (`PATCH /api/nodes/{id}`) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed.
+- Move ideas by dragging: dropping one on another makes it its last child, and dropping it between two of its own siblings reorders it. Breadcrumb entries also take the drop, which moves the idea up to that ancestor. The whole subtree travels along. With the keyboard, Alt+↑ and Alt+↓ reorder among siblings, Alt+→ makes the idea the last child of the one above it, and Alt+← takes it out to its grandparent. Escape cancels a drag.
+- Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), edit with version control (`PATCH /api/nodes/{id}`), move (`POST /api/nodes/{id}/move` with `{parent_id, place, version}`, where `place` is `"first"`, `"last"` or `{"after_id": …}`; the server computes the `sort_key`, refuses to move the root or to put a node inside its own subtree) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed.
 - User isolation: a node that belongs to someone else returns `404`, and the SPA shows "Not found".
 - CSRF protection: every mutation requires the `X-CSRF: 1` header. Titles are always rendered as text, and the SPA is served with a `Content-Security-Policy`.
 
@@ -64,7 +65,7 @@ docker compose up --build
 
 Open `http://localhost:5173` and sign in with Google. All ports are published only on `127.0.0.1`.
 
-Keyboard (with the map focused, not editing): Tab creates a child, F2 renames, Space collapses or expands, Delete removes, Enter focuses, Backspace goes up, and the arrow keys move the selection. Double-click focuses a node, and double-clicking the focus goes up one level. While editing a title: Enter confirms and creates a sibling, and Escape cancels.
+Keyboard (with the map focused, not editing): Tab creates a child, F2 renames, Space collapses or expands, Delete removes, Enter focuses, Backspace goes up, the arrow keys move the selection and Alt with the arrow keys moves the idea itself. Double-click focuses a node, and double-clicking the focus goes up one level. While editing a title: Enter confirms and creates a sibling, and Escape cancels.
 
 With the mouse or the keyboard you can also reach the actions from the node: the "+" creates a child, the 🗑 deletes the node (with the dialog if it has children), and the "?" in the header shows the list of shortcuts. With focus on a button, Tab moves between the browser's controls and does not create a child.
 
@@ -88,7 +89,7 @@ pnpm --dir web exec vitest run --coverage
   4. None: the tests that need the database are skipped and the rest still run. The two tests that validate `docker-compose.yml` are skipped when the Docker CLI is not installed.
 - Frontend: Vitest + Testing Library on jsdom, against an in-memory API (`web/src/test/fakeApi.ts`). It fails if line coverage drops below 80%.
 
-The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus).
+The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus). Moving has `api/tests/test_move.py` (positions, cycles, isolation, versions, key growth) and, on the client, `web/src/map/dropTarget.test.ts` (the drop rules, as pure functions) and `web/src/move.test.tsx` (dragging, the breadcrumb, rollback and the Alt shortcuts).
 
 Test names say which acceptance criterion they cover, using the ids from the slice specification in [`docs/slices/`](docs/slices/). Backend tests start with `test_S1_BE_AC<n>_` and frontend test names start with `S1_FE_AC<n>:`, where `S1` is the slice. Run one criterion with `pytest -k S1_BE_AC11` or `vitest run -t S1_FE_AC6`. Tests with no id are supporting unit tests, listed in the slice document.
 
@@ -109,7 +110,7 @@ api/
     db.py, models.py      SQLAlchemy 2
     auth/                 Google OAuth, sessions, CSRF, /me
     settings/             user preferences (depth)
-    nodes/                window (recursive CTE), create, edit, delete (cascade or reparent), sort_keys
+    nodes/                window (recursive CTE), create, edit, move, delete (cascade or reparent), sort_keys
     node_types/           node type registry (idea) and props validation
     integrations/         empty in the first slice
   tests/                  pytest + httpx against an ephemeral PostgreSQL
@@ -123,16 +124,18 @@ web/
     App.tsx, session.tsx  session (/api/me, login, logout, N) and the / and /n/:nodeId routes
     actions.test.tsx      tests for the map actions (+ button, help, focus after editing, hint)
     deleteModes.test.tsx  delete tests (🗑 button, leaf, dialog, reparent, cancel, focus)
+    move.test.tsx         move tests (dragging, gaps, breadcrumb, rollback, Alt shortcuts)
     api/                  fetch client with X-CSRF and the OpenAPI types (schema.ts)
     components/           login, not-found page ("Not found"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children)
     map/
-      tree.ts             normalized window and pure operations (insert, delete, arrows)
+      tree.ts             normalized window and pure operations (insert, delete, reorder, arrows)
       layout.ts           horizontal tree layout
+      dropTarget.ts       drop rules: what can be dragged, which targets move it, where the gaps go
       viewCache.ts        window cache by (node, N)
       useMapView.ts       loading and optimistic mutations
-      MapPage.tsx         map page, keyboard shortcuts, first-use hint and focus after editing
+      MapPage.tsx         map page, keyboard shortcuts, drag state, first-use hint and focus after editing
       MapCanvas.tsx       React Flow
-      nodes/              NodeRenderer (picks the component by kind), IdeaNode, TitleEditor, nodeActions.ts
+      nodes/              NodeRenderer (picks the component by kind), IdeaNode, TitleEditor, GapDropZone, nodeActions.ts
     test/                 jsdom setup, the fake API (fakeApi.ts) and helpers
 ```
 
@@ -143,7 +146,7 @@ web/
 - [x] Create, edit, collapse and expand nodes
 - [x] Discoverable actions and keyboard shortcuts help ("+" button, "?" panel, first-use hint)
 - [x] Delete nodes, either the whole subtree or moving the children up to the parent
-- [ ] Move and reorder nodes by dragging (uses `sort_key`) — specified in [`docs/slices/slice-2-move-and-reorder.md`](docs/slices/slice-2-move-and-reorder.md)
+- [x] Move and reorder nodes by dragging and with the keyboard (uses `sort_key`)
 - [ ] Other node kinds: Google Drive documents, spreadsheets, calendar events, tasks, repositories or projects
 - [ ] Integrations with Google Calendar, Trello and GitHub
 - [ ] Mobile app that reuses the API, starting with a PWA
