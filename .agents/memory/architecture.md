@@ -53,10 +53,11 @@ task or a repository, and a mobile app to use the same backend.
       and Backspace to go up.
   - **Editing**:
     - Tab or the "+" button creates a child.
-    - Enter, while editing, creates a sibling.
+    - Enter, while creating inline, creates a sibling.
     - The arrow keys move the selection.
     - Space collapses or expands.
-    - F2 or the pencil icon renames.
+    - Selecting a node opens a details panel on the right with its title and description,
+      editable and saved on blur; F2 goes to its title. There is no pencil (slice 3).
     - Delete or the 🗑 button deletes.
     - Dragging, or Alt with the arrow keys, moves an idea: Alt+↑ and Alt+↓ among its siblings,
       Alt+→ into the idea above it and Alt+← out to its grandparent. A new parent always takes it

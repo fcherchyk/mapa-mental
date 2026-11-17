@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { DeleteDialog } from '../components/DeleteDialog';
+import { DetailsPanel } from '../components/DetailsPanel';
 import { NotFound } from '../components/NotFound';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { ShortcutsHelp } from '../components/ShortcutsHelp';
@@ -44,7 +45,10 @@ export function MapPage() {
   const canvasRef = useRef<HTMLElement>(null);
   const wasEditing = useRef(false);
 
-  // When an edit ends (pencil, +, Tab or F2) focus returns to the map so the shortcuts keep
+  const titleFieldRef = useRef<HTMLInputElement>(null);
+  const focusMap = () => canvasRef.current?.focus();
+
+  // When an inline creation ends (+ or Tab) focus returns to the map so the shortcuts keep
   // working. If the edit opens a sibling (Enter), focus does not return until no edit is left.
   useEffect(() => {
     if (editingId) {
@@ -89,7 +93,7 @@ export function MapPage() {
     select: view.select,
     open,
     createChild: (id) => view.startCreateChild(id, goTo),
-    startEdit: view.startEdit,
+    clearSelection: view.clearSelection,
     remove: (id) => view.remove(id, goTo),
     commitEdit: view.commitEdit,
     cancelEdit: view.cancelEdit,
@@ -156,8 +160,21 @@ export function MapPage() {
       event.preventDefault();
       return;
     }
-    if (!state || !selectedId || editingId || helpOpen || view.deleteRequest) return;
+    if (!state || editingId || helpOpen || view.deleteRequest) return;
     if (isInteractiveTarget(event.target)) return;
+    if (!selectedId) {
+      // Nothing selected (decision D7): the arrows bring the selection back, on the focus.
+      if (ARROW_KEYS.has(event.key) && !event.altKey) {
+        view.select(state.focusId);
+        event.preventDefault();
+      }
+      return;
+    }
+    if (event.key === 'Escape') {
+      view.clearSelection();
+      event.preventDefault();
+      return;
+    }
     if (event.altKey) {
       if (!ARROW_KEYS.has(event.key)) return;
       if (moveWithKeyboard(selectedId, event.key as ArrowKey)) event.preventDefault();
@@ -184,7 +201,9 @@ export function MapPage() {
         open(state.focusId);
         return true;
       case 'F2':
-        view.startEdit(id);
+        // Editing happens in the details panel (S3_FE_AC15).
+        titleFieldRef.current?.focus();
+        titleFieldRef.current?.select();
         return true;
       case ' ':
         view.toggleCollapse(id);
@@ -202,6 +221,11 @@ export function MapPage() {
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   });
+
+  // The panel shows the selection, except while a node is being created inline (decision D8).
+  const selectedNode = state && selectedId ? state.nodes[selectedId] : undefined;
+  const panelNode = selectedNode && !selectedNode.pending && !editingId ? selectedNode : undefined;
+  const panelDetail = panelNode ? view.detailOf(panelNode.id) : null;
 
   if (view.status === 'notFound') return <NotFound />;
 
@@ -244,6 +268,7 @@ export function MapPage() {
           </button>
         </div>
       )}
+      <div className="map-body">
       <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
         {view.status === 'error' && <p role="alert">Could not load the map.</p>}
         {!state && view.status === 'loading' && <p>Loading…</p>}
@@ -259,6 +284,18 @@ export function MapPage() {
         )}
         {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
       </main>
+      {panelNode && panelDetail && (
+        <DetailsPanel
+          nodeId={panelNode.id}
+          title={panelNode.title}
+          detail={panelDetail}
+          titleRef={titleFieldRef}
+          onSave={view.saveDetails}
+          onRetry={view.retryDetail}
+          onDone={focusMap}
+        />
+      )}
+      </div>
       {view.deleteRequest && (
         <DeleteDialog
           request={view.deleteRequest}

@@ -79,6 +79,7 @@ class Node(Base):
     )
     kind: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text, default="", server_default=text("''"))
     # Collation "C": the database ordering matches the fractional index ordering.
     sort_key: Mapped[str] = mapped_column(Text(collation="C"))
     collapsed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))

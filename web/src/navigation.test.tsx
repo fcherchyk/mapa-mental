@@ -111,6 +111,7 @@ describe('focus navigation', () => {
         sort_key: `${i}`,
         collapsed: false,
         version: 1,
+        description: '',
       });
     }
     api.depth = 1;

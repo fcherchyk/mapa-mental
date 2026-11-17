@@ -139,7 +139,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Node
+         * @description A single node with its description (slice 3); the window does not carry it.
+         */
+        get: operations["get_node_api_nodes__node_id__get"];
         put?: never;
         post?: never;
         /**
@@ -230,6 +234,37 @@ export interface components {
             };
         };
         /**
+         * NodeDetail
+         * @description A single node with the fields the window does not carry (slice 3, decision D2).
+         */
+        NodeDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Sort Key */
+            sort_key: string;
+            /** Collapsed */
+            collapsed: boolean;
+            /** Props */
+            props: {
+                [key: string]: unknown;
+            };
+            /** Version */
+            version: number;
+            /** Child Count */
+            child_count: number;
+            /** Description */
+            description: string;
+        };
+        /**
          * NodeMove
          * @description Where a node goes: a parent, plus a position among its children.
          *
@@ -280,6 +315,8 @@ export interface components {
             version: number;
             /** Title */
             title?: string | null;
+            /** Description */
+            description?: string | null;
             /** Collapsed */
             collapsed?: boolean | null;
             /** Sort Key */
@@ -565,6 +602,37 @@ export interface operations {
             };
         };
     };
+    get_node_api_nodes__node_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_node_api_nodes__node_id__delete: {
         parameters: {
             query?: {
@@ -621,7 +689,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NodeOut"];
+                    "application/json": components["schemas"]["NodeDetail"];
                 };
             };
             /** @description Validation Error */

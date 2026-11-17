@@ -3,6 +3,7 @@ import type { components } from './schema';
 export type Me = components['schemas']['MeOut'];
 export type UserSettings = components['schemas']['UserSettings'];
 export type NodeOut = components['schemas']['NodeOut'];
+export type NodeDetail = components['schemas']['NodeDetail'];
 export type NodeView = components['schemas']['NodeView'];
 export type NodeCreate = components['schemas']['NodeCreate'];
 export type NodePatch = components['schemas']['NodePatch'];
@@ -37,8 +38,9 @@ export interface ApiClient {
   logout(): Promise<void>;
   patchSettings(settings: { depth: number }): Promise<UserSettings>;
   getView(nodeId: string, depth: number): Promise<NodeView>;
+  getNode(nodeId: string): Promise<NodeDetail>;
   createChild(parentId: string, data: NodeCreate): Promise<NodeOut>;
-  updateNode(nodeId: string, patch: NodePatch): Promise<NodeOut>;
+  updateNode(nodeId: string, patch: NodePatch): Promise<NodeDetail>;
   moveNode(nodeId: string, move: NodeMove): Promise<NodeOut>;
   deleteNode(nodeId: string, options?: DeleteOptions): Promise<void>;
 }
@@ -67,6 +69,7 @@ export function createApiClient(onUnauthorized: () => void = () => {}): ApiClien
     logout: () => request('POST', '/auth/logout'),
     patchSettings: (settings) => request('PATCH', '/me/settings', settings),
     getView: (nodeId, depth) => request('GET', `${node(nodeId)}/view?depth=${depth}`),
+    getNode: (nodeId) => request('GET', node(nodeId)),
     createChild: (parentId, data) => request('POST', `${node(parentId)}/children`, data),
     updateNode: (nodeId, patch) => request('PATCH', node(nodeId), patch),
     moveNode: (nodeId, move) => request('POST', `${node(nodeId)}/move`, move),

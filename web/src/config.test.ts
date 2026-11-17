@@ -56,4 +56,9 @@ describe('environment', () => {
     expect(existsSync(resolve(webDir, 'src/map/dropTarget.test.ts'))).toBe(true);
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
+
+  it('S3_FE_AC22: the details panel suite runs under the same coverage threshold', () => {
+    expect(existsSync(resolve(webDir, 'src/detailsPanel.test.tsx'))).toBe(true);
+    expect(config.test.coverage.thresholds.lines).toBe(80);
+  });
 });

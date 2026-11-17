@@ -20,6 +20,10 @@ TITLE_MAX_LENGTH = 200
 Title = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=TITLE_MAX_LENGTH)
 ]
+DESCRIPTION_MAX_LENGTH = 1000
+
+# Not trimmed: line breaks and indentation belong to the user (slice 3, decision D3).
+Description = Annotated[str, StringConstraints(max_length=DESCRIPTION_MAX_LENGTH)]
 SortKey = Annotated[str, StringConstraints(pattern=SORT_KEY_PATTERN, max_length=128)]
 
 
@@ -56,6 +60,7 @@ class NodePatch(BaseModel):
 
     version: Annotated[int, Field(strict=True, ge=1)]
     title: Title | None = None
+    description: Description | None = None
     collapsed: bool | None = None
     sort_key: SortKey | None = None
     kind: str | None = None
@@ -65,6 +70,14 @@ class NodePatch(BaseModel):
     @classmethod
     def check_kind(cls, kind: str | None) -> str | None:
         return check_known_kind(kind)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def description_is_never_null(cls, description: object) -> object:
+        """Absent means "unchanged"; an explicit null is refused, `""` is the empty value."""
+        if description is None:
+            raise ValueError("description cannot be null; send an empty string to clear it")
+        return description
 
 
 class AfterSibling(BaseModel):
@@ -100,6 +113,12 @@ class NodeOut(BaseModel):
     props: dict[str, Any]
     version: int
     child_count: int
+
+
+class NodeDetail(NodeOut):
+    """A single node with the fields the window does not carry (slice 3, decision D2)."""
+
+    description: str
 
 
 class WindowNode(NodeOut):

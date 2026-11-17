@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Me, NodeOut, NodeView } from '../api/client';
+import type { Me, NodeDetail, NodeOut, NodeView } from '../api/client';
 
 export interface FakeNode {
   id: string;
@@ -8,6 +8,7 @@ export interface FakeNode {
   sort_key: string;
   collapsed?: boolean;
   version?: number;
+  description?: string;
 }
 
 export interface RecordedCall {
@@ -36,7 +37,7 @@ export class FakeApi {
 
   constructor(nodes: FakeNode[]) {
     for (const node of nodes) {
-      this.nodes.set(node.id, { collapsed: false, version: 1, ...node });
+      this.nodes.set(node.id, { collapsed: false, version: 1, description: '', ...node });
     }
   }
 
@@ -106,6 +107,7 @@ export class FakeApi {
     const node = match && this.nodes.get(decodeURIComponent(match[1]));
     if (!match || !node) return json(404, { detail: 'node not found' });
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
+    if (method === 'GET' && !match[2]) return json(200, this.detail(node));
     if (method === 'POST' && match[2] === '/children') return json(201, this.create(node, call));
     if (method === 'POST' && match[2] === '/move') return this.move(node, call);
     if (method === 'PATCH') return this.patch(node, call);
@@ -139,13 +141,20 @@ export class FakeApi {
     return [id, ...this.children(id).flatMap((child) => this.subtree(child.id))];
   }
 
+  /** The window never carries the description (slice 3, decision D2). */
   private out(node: Required<FakeNode>): NodeOut {
+    const rest: Partial<Required<FakeNode>> = { ...node };
+    delete rest.description;
     return {
-      ...node,
+      ...(rest as Omit<Required<FakeNode>, 'description'>),
       kind: 'idea',
       props: {},
       child_count: this.children(node.id).length,
     };
+  }
+
+  detail(node: Required<FakeNode>): NodeDetail {
+    return { ...this.out(node), description: node.description };
   }
 
   view(focusId: string, depth: number): NodeView {
@@ -175,6 +184,7 @@ export class FakeApi {
       sort_key: body.after_sort_key ? `${body.after_sort_key}V` : `${last ?? ''}V`,
       collapsed: false,
       version: 1,
+      description: '',
     };
     this.nodes.set(node.id, node);
     return this.out(node);
@@ -216,15 +226,21 @@ export class FakeApi {
   }
 
   private patch(node: Required<FakeNode>, call: RecordedCall): Response {
-    const body = call.body as { version: number; title?: string; collapsed?: boolean };
+    const body = call.body as {
+      version: number;
+      title?: string;
+      description?: string;
+      collapsed?: boolean;
+    };
     if (body.version !== node.version) return json(409, { detail: 'the node changed' });
     const updated = {
       ...node,
       title: body.title ?? node.title,
+      description: body.description ?? node.description,
       collapsed: body.collapsed ?? node.collapsed,
       version: node.version + 1,
     };
     this.nodes.set(node.id, updated);
-    return json(200, this.out(updated));
+    return json(200, this.detail(updated));
   }
 }

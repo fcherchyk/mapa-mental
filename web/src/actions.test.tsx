@@ -5,8 +5,8 @@ import { currentPath, nodeElement, renderApp, sampleApi } from './test/renderApp
 
 // React Flow nodes stay `visibility: hidden` in jsdom, so the buttons inside them are looked up
 // by label and not by role.
-const titleInput = () => screen.getByLabelText('Title');
-const queryTitleInput = () => screen.queryByLabelText('Title');
+const titleInput = () => screen.getByLabelText('New idea title');
+const queryTitleInput = () => screen.queryByLabelText('New idea title');
 const addButton = (title: string) => screen.getByLabelText(`Add an idea inside ${title}`);
 const helpButton = () => screen.getByRole('button', { name: 'Keyboard shortcuts' });
 
@@ -96,11 +96,13 @@ describe('S1_FE_AC18: the + button is present where it should be', () => {
   });
 
   it('S1_FE_AC18: a node in edit mode has no + button in the DOM', async () => {
+    // Since slice 3 only a node being created is edited on the canvas.
     const { user } = renderApp('/n/f', sampleApi());
     await selectNode('a');
-    await user.keyboard('{F2}');
-    expect(titleInput()).toBeInTheDocument();
-    expect(nodeElement('a').querySelector('.map-node-add')).toBeNull();
+    await user.keyboard('{Tab}');
+    const editing = titleInput().closest('.map-node');
+    expect(editing).not.toBeNull();
+    expect(editing!.querySelector('.map-node-add')).toBeNull();
   });
 
   it('S1_FE_AC18: the + of a collapsed or border node is present and enabled', async () => {
@@ -146,67 +148,7 @@ describe('S1_FE_AC19: the + button does not trigger other node actions', () => {
   });
 });
 
-describe('S1_FE_AC20: shortcuts keep working after the pencil', () => {
-  it('S1_FE_AC20: shortcuts work after the pencil: on confirm, focus returns to the map and Tab creates a child', async () => {
-    const { user, api } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Rename Focus'));
-    await user.clear(titleInput());
-    await user.type(titleInput(), 'New focus{Enter}');
-    await waitFor(() => expect(api.callsTo('PATCH', '/api/nodes/f')).toHaveLength(1));
-    expect(screen.getByRole('main')).toHaveFocus();
-    await user.keyboard('{Tab}');
-    expect(titleInput()).toHaveFocus();
-    await user.type(titleInput(), 'Child');
-    fireEvent.blur(titleInput());
-    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(1));
-  });
-
-  it('S1_FE_AC20: shortcuts work after the pencil: Enter opens a sibling with focus there; Escape returns focus to the map', async () => {
-    const { user, api } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Rename Idea A'));
-    await user.type(titleInput(), '{Enter}');
-    expect(titleInput()).toHaveFocus();
-    expect(screen.getByRole('main')).not.toHaveFocus();
-    await user.keyboard('{Escape}');
-    expect(screen.getByRole('main')).toHaveFocus();
-    await user.keyboard('{Tab}');
-    await user.type(titleInput(), 'Child of A');
-    fireEvent.blur(titleInput());
-    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/a/children')).toHaveLength(1));
-  });
-
-  it('S1_FE_AC20: if the pencil edit is cancelled with Escape, focus returns to the map', async () => {
-    const { user } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Rename Idea B'));
-    await user.keyboard('{Escape}');
-    expect(screen.getByRole('main')).toHaveFocus();
-    await user.keyboard('{Tab}');
-    expect(titleInput()).toHaveFocus();
-  });
-
-  it('S1_FE_AC20: confirming the pencil edit by blurring leaves focus on the map so shortcuts like F2 work', async () => {
-    const { user, api } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Rename Idea A'));
-    await user.type(titleInput(), ' new');
-    fireEvent.blur(titleInput());
-    await waitFor(() => expect(api.callsTo('PATCH', '/api/nodes/a')).toHaveLength(1));
-    expect(screen.getByRole('main')).toHaveFocus();
-    await user.keyboard('{F2}');
-    expect(titleInput()).toBeInTheDocument();
-  });
-
-  it('S1_FE_AC20: cancelling the pencil edit with Escape lets Space collapse', async () => {
-    const api = sampleApi();
-    const { user } = renderApp('/n/f', api);
-    await selectNode('a');
-    fireEvent.click(screen.getByLabelText('Rename Idea A'));
-    await user.keyboard('{Escape}');
-    expect(screen.getByRole('main')).toHaveFocus();
-    await user.keyboard(' ');
-    await waitFor(() => expect(api.callsTo('PATCH', '/api/nodes/a')).toHaveLength(1));
-    expect(api.callsTo('PATCH', '/api/nodes/a')[0].body).toEqual({ collapsed: true, version: 1 });
-  });
-});
+// S1_FE_AC20 (shortcuts after the pencil) is superseded by S3_FE_AC14 in detailsPanel.test.tsx.
 
 describe('S1_FE_AC21: shortcuts keep working after the +', () => {
   it('S1_FE_AC21: F2 works after creating a child with the +', async () => {
@@ -216,8 +158,10 @@ describe('S1_FE_AC21: shortcuts keep working after the +', () => {
     fireEvent.blur(titleInput());
     await waitFor(() => expect(nodeElement('new-1')).toHaveTextContent('New child'));
     expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(1);
+    // Amended in slice 3: F2 goes to the details panel's title.
     await user.keyboard('{F2}');
-    expect(titleInput()).toHaveValue('New child');
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+    expect(screen.getByLabelText('Title')).toHaveValue('New child');
   });
 
   it('S1_FE_AC21: if creating with + is cancelled with Escape, focus returns to the map and shortcuts keep working', async () => {
@@ -255,10 +199,11 @@ describe('S1_FE_AC22: opening and closing the help', () => {
     const panel = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
     const expected = [
       { key: 'Tab', desc: 'With the map focused, adds a child to the selected idea and starts editing it.' },
-      { key: 'F2', desc: 'Starts editing the title of the selected idea.' },
+      // F2 amended in slice 3 (S3_FE_AC20).
+      { key: 'F2', desc: 'Edit the selected idea in the details panel.' },
       { key: 'Space', desc: 'Collapses or expands the selected idea.' },
       { key: 'Delete', desc: 'Deletes the selected idea. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.' },
-      { key: 'Enter', desc: 'Focuses the selected idea. While you edit a title, confirms it and opens a sibling idea.' },
+      { key: 'Enter', desc: 'Focuses the selected idea. While you create an idea, confirms it and opens a sibling idea.' },
       { key: 'Backspace', desc: 'Goes up one level from the focused idea.' },
       { key: 'Arrows', desc: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.' },
       { key: 'Double click', desc: 'Focuses the idea; on the focused idea, goes up one level.' },
@@ -518,5 +463,31 @@ describe('S1_FE_AC36: coverage and traceability', () => {
   it('S1_FE_AC36: the suite covers every criterion and meets the 80% line threshold configured in Vite', () => {
     // Checked by running vitest --coverage with threshold lines: 80
     expect(true).toBe(true);
+  });
+});
+
+describe('S3_FE_AC16: no pencil on the canvas', () => {
+  it('S3_FE_AC16: no node draws a rename button, while + and 🗑 are still there', async () => {
+    const { container } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-a');
+    fireEvent.click(nodeElement('a'));
+    expect(screen.queryByLabelText(/^Rename /)).not.toBeInTheDocument();
+    expect(container.querySelector('.map-node-edit')).toBeNull();
+    expect(addButton('Idea A')).toBeInTheDocument();
+    expect(screen.getByLabelText('Delete Idea A')).toBeInTheDocument();
+  });
+});
+
+describe('S3_FE_AC20: the help describes the details panel', () => {
+  it('S3_FE_AC20: F2 edits in the details panel and Escape clears the selection', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(helpButton());
+    const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    expect(within(help).getByText('Edit the selected idea in the details panel.')).toBeInTheDocument();
+    expect(within(help).getByText('Escape')).toBeInTheDocument();
+    expect(
+      within(help).getByText('Clear the selection and close the details panel.'),
+    ).toBeInTheDocument();
   });
 });
