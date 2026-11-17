@@ -1,4 +1,4 @@
-"""Acceptance tests of the Spanish -> English translation (criteria 1, 2, 5 and 7)."""
+"""Slice 1, criteria S1_BE_AC22 and AC23: live files in English, migrations and history frozen."""
 
 import re
 import subprocess
@@ -62,15 +62,15 @@ def matches(pattern: re.Pattern[str], strip_names: bool = False) -> list[str]:
     return found
 
 
-def test_criterion_1_no_accented_spanish_characters_in_live_files() -> None:
+def test_S1_BE_AC22_no_accented_spanish_characters_in_live_files() -> None:
     assert matches(ACCENTS, strip_names=True) == []
 
 
-def test_criterion_2_no_common_spanish_words_in_live_files() -> None:
+def test_S1_BE_AC22_no_common_spanish_words_in_live_files() -> None:
     assert matches(SPANISH_WORDS) == []
 
 
-def test_criterion_5_schema_ts_carries_the_english_openapi_descriptions() -> None:
+def test_S1_BE_AC22_schema_ts_carries_the_english_openapi_descriptions() -> None:
     config = Config(
         database_url="postgresql+psycopg://x:x@localhost:5432/x",
         session_secret="x",
@@ -89,14 +89,14 @@ def test_criterion_5_schema_ts_carries_the_english_openapi_descriptions() -> Non
         assert description in schema_ts
 
 
-def test_criterion_7_migration_revision_ids_are_unchanged() -> None:
+def test_S1_BE_AC23_migration_revision_ids_are_unchanged() -> None:
     source = (REPO / "api/migrations/versions/0001_initial.py").read_text(encoding="utf-8")
     assert 'revision: str = "0001"' in source
     assert "down_revision: str | None = None" in source
     assert len(list((REPO / "api/migrations/versions").glob("*.py"))) == 1
 
 
-def test_criterion_7_history_directories_are_untouched() -> None:
+def test_S1_BE_AC23_history_directories_are_untouched() -> None:
     result = subprocess.run(
         [
             "git",

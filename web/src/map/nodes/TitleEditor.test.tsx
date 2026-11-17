@@ -7,7 +7,7 @@ describe('TitleEditor', () => {
     vi.restoreAllMocks();
   });
 
-  it('feedback 1: focuses the field even if the first attempts fail (the new node is still hidden)', async () => {
+  it('S1_FE_AC27: focuses the field even if the first attempts fail (the new node is still hidden)', async () => {
     const realFocus = HTMLElement.prototype.focus;
     let attempts = 0;
     vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (

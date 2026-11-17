@@ -9,3 +9,5 @@ web/coverage/
 web/openapi.json
 .coverage
 htmlcov/
+.idea/
+.idea/

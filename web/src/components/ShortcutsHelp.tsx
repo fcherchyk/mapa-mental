@@ -22,7 +22,24 @@ const SHORTCUTS: { keys: string; description: string }[] = [
     keys: 'Arrows',
     description: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.',
   },
+  {
+    keys: 'Alt + ↑ ↓',
+    description: 'Move the selected idea up or down among its siblings.',
+  },
+  {
+    keys: 'Alt + →',
+    description: 'Makes the selected idea the last child of the idea above it.',
+  },
+  {
+    keys: 'Alt + ←',
+    description: 'Takes the selected idea out, as the last child of its grandparent.',
+  },
   { keys: 'Double click', description: 'Focuses the idea; on the focused idea, goes up one level.' },
+  {
+    keys: 'Drag',
+    description:
+      'Drop an idea on another to make it its last child, or between its own siblings to reorder it. Breadcrumb entries also accept the drop.',
+  },
 ];
 
 interface ShortcutsHelpProps {

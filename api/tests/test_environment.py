@@ -1,4 +1,4 @@
-"""Criteria 1, 2 and 18: compose, migrations and isolation of the test database."""
+"""Slice 1, criteria S1_BE_AC1, AC2 and AC21: compose, migrations and test database isolation."""
 
 import json
 import os
@@ -54,7 +54,7 @@ needs_docker_cli = pytest.mark.skipif(
 
 
 @needs_docker_cli
-def test_criterion_1_compose_db_api_and_web_with_ports_on_localhost() -> None:
+def test_S1_BE_AC1_compose_db_api_and_web_with_ports_on_localhost() -> None:
     config = compose_config()
 
     assert set(config["services"]) == COMPOSE_SERVICES
@@ -68,7 +68,7 @@ def test_criterion_1_compose_db_api_and_web_with_ports_on_localhost() -> None:
 
 
 @needs_docker_cli
-def test_criterion_1_compose_config_with_copied_env_file(tmp_path: Path) -> None:
+def test_S1_BE_AC1_compose_config_with_copied_env_file(tmp_path: Path) -> None:
     env_copy = tmp_path / ".env"
     shutil.copy(ENV_EXAMPLE, env_copy)
     result = subprocess.run(
@@ -95,7 +95,7 @@ def in_git_repo() -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
-def test_criterion_1_env_example_without_real_values() -> None:
+def test_S1_BE_AC1_env_example_without_real_values() -> None:
     values = read_env_example()
 
     assert REQUIRED_VARIABLES <= set(values)
@@ -104,14 +104,14 @@ def test_criterion_1_env_example_without_real_values() -> None:
 
 # Checks which files git tracks; outside a repo (for example, a `git archive` zip) it skips.
 @pytest.mark.skipif(not in_git_repo(), reason="not inside a git repository")
-def test_criterion_1_env_outside_the_repo() -> None:
+def test_S1_BE_AC1_env_outside_the_repo() -> None:
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=REPO_DIR, capture_output=True, text=True, check=True
     ).stdout.splitlines()
     assert ".env" not in tracked
 
 
-def test_criterion_2_migrations_create_tables_unique_and_indexes(admin_engine: Engine) -> None:
+def test_S1_BE_AC2_migrations_create_tables_unique_and_indexes(admin_engine: Engine) -> None:
     inspector = inspect(admin_engine)
 
     assert {"users", "sessions", "maps", "nodes"} <= set(inspector.get_table_names())
@@ -122,7 +122,7 @@ def test_criterion_2_migrations_create_tables_unique_and_indexes(admin_engine: E
     assert ["parent_id", "sort_key"] in node_indexes
 
 
-def test_criterion_2_unique_constraint_on_maps_owner_id_prevents_duplicates(db: Session) -> None:
+def test_S1_BE_AC2_unique_constraint_on_maps_owner_id_prevents_duplicates(db: Session) -> None:
     user = User(google_sub="sub-unique", email="u@example.com", name="User")
     db.add(user)
     db.flush()
@@ -136,7 +136,7 @@ def test_criterion_2_unique_constraint_on_maps_owner_id_prevents_duplicates(db: 
     db.rollback()
 
 
-def test_criterion_18_the_test_app_uses_the_testcontainers_postgres(
+def test_S1_BE_AC21_the_test_app_uses_the_testcontainers_postgres(
     app: FastAPI, postgres_url: str
 ) -> None:
     engine_url = app.state.engine.url

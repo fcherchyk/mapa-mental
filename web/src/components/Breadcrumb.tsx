@@ -6,14 +6,34 @@ interface BreadcrumbProps {
   ancestors: NodeOut[];
   focusTitle: string;
   rootId: string;
+  /** Set while a node is being dragged: dropping on an ancestor moves the node into it. */
+  onDropOn?: (ancestorId: string) => void;
+  acceptsDrop?: (ancestorId: string) => boolean;
 }
 
-export function Breadcrumb({ ancestors, focusTitle, rootId }: BreadcrumbProps) {
+export function Breadcrumb({
+  ancestors,
+  focusTitle,
+  rootId,
+  onDropOn,
+  acceptsDrop,
+}: BreadcrumbProps) {
   return (
     <nav aria-label="Breadcrumb" className="breadcrumb">
       <ol>
         {ancestors.map((ancestor) => (
-          <li key={ancestor.id}>
+          <li
+            key={ancestor.id}
+            className={onDropOn ? 'is-drop-zone' : undefined}
+            onDragOver={(event) => {
+              if (onDropOn && acceptsDrop?.(ancestor.id)) event.preventDefault();
+            }}
+            onDrop={(event) => {
+              if (!onDropOn) return;
+              event.preventDefault();
+              onDropOn(ancestor.id);
+            }}
+          >
             <Link to={pathFor(ancestor.id, rootId)}>{ancestor.title}</Link>
           </li>
         ))}

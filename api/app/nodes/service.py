@@ -11,7 +11,15 @@ from sqlalchemy.orm.exc import StaleDataError
 from app.models import Node
 from app.node_types import validate_props
 from app.nodes import repository
-from app.nodes.schemas import NodeCreate, NodeOut, NodePatch, NodeView, WindowNode
+from app.nodes.schemas import (
+    AfterSibling,
+    NodeCreate,
+    NodeMove,
+    NodeOut,
+    NodePatch,
+    NodeView,
+    WindowNode,
+)
 from app.nodes.sort_keys import key_between
 
 NOT_FOUND = "node not found"
@@ -109,6 +117,60 @@ def apply_patch(node: Node, patch: NodePatch) -> None:
         node.collapsed = patch.collapsed
     if patch.sort_key is not None:
         node.sort_key = patch.sort_key
+
+
+def move_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, data: NodeMove) -> NodeOut:
+    """Gives the node a new parent, a new position among its siblings, or both.
+
+    The subtree travels with it: only this row changes, because the children point at their
+    parent and keep their own `sort_key`.
+    """
+    node = repository.get_owned_node(db, owner_id, node_id)
+    if node is None:
+        raise not_found()
+    if node.parent_id is None:
+        raise unprocessable("the map's root cannot be moved")
+    if data.version != node.version:
+        raise HTTPException(status.HTTP_409_CONFLICT, VERSION_CONFLICT)
+    parent = repository.get_owned_node(db, owner_id, data.parent_id)
+    if parent is None:
+        raise not_found()
+    if parent.id == node.id or repository.is_descendant(db, node.id, parent.id):
+        raise unprocessable("a node cannot be moved inside itself")
+    sort_key = destination_sort_key(db, owner_id, node, parent.id, data.place)
+    try:
+        node.parent_id = parent.id
+        node.sort_key = sort_key
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, VERSION_CONFLICT) from None
+    except Exception:
+        db.rollback()
+        raise
+    return to_node_out(db, node)
+
+
+def destination_sort_key(
+    db: Session,
+    owner_id: uuid.UUID,
+    node: Node,
+    parent_id: uuid.UUID,
+    place: str | AfterSibling,
+) -> str:
+    """Key for `node` at `place` among `parent_id`'s children, ignoring the node's own key."""
+    if place == "first":
+        return key_between(None, repository.first_child_sort_key(db, parent_id, node.id))
+    if place == "last":
+        return key_between(repository.last_child_sort_key(db, parent_id, node.id), None)
+    assert isinstance(place, AfterSibling)
+    after = repository.get_owned_node(db, owner_id, place.after_id)
+    if after is None:
+        raise not_found()
+    if after.id == node.id or after.parent_id != parent_id:
+        raise unprocessable("after_id must be a child of parent_id")
+    upper = repository.next_sibling_sort_key(db, parent_id, after.sort_key, node.id)
+    return key_between(after.sort_key, upper)
 
 
 def delete_subtree(

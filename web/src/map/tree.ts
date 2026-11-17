@@ -107,6 +107,25 @@ export function insertChild(
   };
 }
 
+/**
+ * Moves a child within its own parent: `undefined` sends it last, `null` first, an id right
+ * after that sibling. Only the order changes, so the subtree comes along untouched.
+ */
+export function reorderChild(
+  state: MapState,
+  id: string,
+  afterId: string | null | undefined,
+): MapState {
+  const parentId = state.nodes[id]?.parent_id;
+  if (!parentId) return state;
+  const siblings = (state.childIds[parentId] ?? []).filter((sibling) => sibling !== id);
+  if (typeof afterId === 'string' && !siblings.includes(afterId)) return state;
+  const index =
+    afterId === undefined ? siblings.length : afterId === null ? 0 : siblings.indexOf(afterId) + 1;
+  siblings.splice(index, 0, id);
+  return { ...state, childIds: { ...state.childIds, [parentId]: siblings } };
+}
+
 /** Changes a node's id (the temporary one for the one the API assigned), keeping its place. */
 export function replaceNode(state: MapState, oldId: string, node: MapNode): MapState {
   const current = state.nodes[oldId];

@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe('creating nodes', () => {
-  it('criterion_10: Tab instantly creates a child in edit mode and confirming calls POST', async () => {
+  it('S1_FE_AC11: Tab instantly creates a child in edit mode and confirming calls POST', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     await user.keyboard('{Tab}');
@@ -40,7 +40,7 @@ describe('creating nodes', () => {
     await waitFor(() => expect(nodeElement('new-1')).toHaveTextContent('New idea'));
   });
 
-  it("criterion_10: Enter confirms and creates a sibling with the edited node's after_sort_key", async () => {
+  it("S1_FE_AC11: Enter confirms and creates a sibling with the edited node's after_sort_key", async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{F2}');
@@ -62,7 +62,7 @@ describe('creating nodes', () => {
     expect(queryTitleInput()).not.toBeInTheDocument();
   });
 
-  it('criterion_10: an empty or whitespace-only title is not sent', async () => {
+  it('S1_FE_AC11: an empty or whitespace-only title is not sent', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     await user.keyboard('{Tab}');
@@ -72,7 +72,7 @@ describe('creating nodes', () => {
     expect(nodeElement('f')).toHaveClass('is-selected');
   });
 
-  it('criterion_10: a title with leading and trailing spaces is sent trimmed', async () => {
+  it('S1_FE_AC11: a title with leading and trailing spaces is sent trimmed', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     await user.keyboard('{Tab}');
@@ -84,7 +84,7 @@ describe('creating nodes', () => {
     });
   });
 
-  it('criterion_10: Escape during creation cancels the new node without calling the API', async () => {
+  it('S1_FE_AC11: Escape during creation cancels the new node without calling the API', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     await user.keyboard('{Tab}');
@@ -95,7 +95,7 @@ describe('creating nodes', () => {
     expect(nodeElement('f')).toHaveClass('is-selected');
   });
 
-  it('Tab on a border node moves the focus one level down and creates the child in edit mode', async () => {
+  it('S1_FE_AC26: Tab on a border node moves the focus one level down and creates the child in edit mode', async () => {
     const api = sampleApi();
     api.depth = 1;
     const { user } = renderApp('/n/f', api);
@@ -108,7 +108,7 @@ describe('creating nodes', () => {
 });
 
 describe('renaming', () => {
-  it('criterion_11: F2 and confirming call PATCH with title and version; it takes the new version', async () => {
+  it('S1_FE_AC12: F2 and confirming call PATCH with title and version; it takes the new version', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{F2}');
@@ -126,7 +126,7 @@ describe('renaming', () => {
     expect(api.callsTo('PATCH', '/api/nodes/a')[1].body).toEqual({ collapsed: true, version: 2 });
   });
 
-  it('criterion_11: the pencil starts editing', async () => {
+  it('S1_FE_AC12: the pencil starts editing', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Rename Idea B'));
     await user.clear(titleInput());
@@ -135,7 +135,7 @@ describe('renaming', () => {
     expect(nodeElement('b')).toHaveTextContent('Idea B');
   });
 
-  it('criterion_11: while editing, Backspace, Delete, Space and the arrows act on the text', async () => {
+  it('S1_FE_AC12: while editing, Backspace, Delete, Space and the arrows act on the text', async () => {
     const { user, api } = renderApp('/n/a', sampleApi());
     const confirm = vi.spyOn(window, 'confirm');
     await selectNode('a1');
@@ -160,7 +160,7 @@ describe('renaming', () => {
 });
 
 describe('collapsing', () => {
-  it('criterion_12: Space hides the children and calls PATCH; again shows them', async () => {
+  it('S1_FE_AC13: Space hides the children and calls PATCH; again shows them', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard(' ');
@@ -174,7 +174,7 @@ describe('collapsing', () => {
     expect(api.callsTo('PATCH', '/api/nodes/a')[1].body).toEqual({ collapsed: false, version: 2 });
   });
 
-  it('criterion_12: a window with collapsed: true does not draw those children; expanding fetches them', async () => {
+  it('S1_FE_AC13: a window with collapsed: true does not draw those children; expanding fetches them', async () => {
     const api = sampleApi();
     api.nodes.get('a')!.collapsed = true;
     const { user } = renderApp('/n/f', api);
@@ -216,7 +216,7 @@ function treeWithSevenDescendants(): FakeNode[] {
 }
 
 describe('deleting', () => {
-  it('criterion_13: Delete opens the dialog with the number of descendants', async () => {
+  it('S1_FE_AC14: Delete opens the dialog with the number of descendants', async () => {
     const api = new FakeApi(treeWithSevenDescendants());
     const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/n/f', api);
@@ -238,7 +238,7 @@ describe('deleting', () => {
     expect(nodeElement('b')).toHaveClass('is-selected');
   });
 
-  it('criterion_13: if there are unloaded levels, the dialog says "at least"', async () => {
+  it('S1_FE_AC14: if there are unloaded levels, the dialog says "at least"', async () => {
     const api = new FakeApi(treeWithSevenDescendants());
     api.depth = 2;
     const { user } = renderApp('/n/f', api);
@@ -247,7 +247,7 @@ describe('deleting', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('at least 7');
   });
 
-  it('criterion_13: a node without descendants is deleted without confirmation', async () => {
+  it('S1_FE_AC14: a node without descendants is deleted without confirmation', async () => {
     const api = sampleApi();
     const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/n/f', api);
@@ -259,7 +259,7 @@ describe('deleting', () => {
     expect(nodeElement('a1')).toHaveClass('is-selected');
   });
 
-  it('criterion_13: Delete on the root does nothing', async () => {
+  it('S1_FE_AC14: Delete on the root does nothing', async () => {
     const api = sampleApi();
     const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/', api);
@@ -282,7 +282,7 @@ describe('deleting', () => {
 });
 
 describe('selection with arrows', () => {
-  it('criterion_14: → first child, ← parent, ↑ and ↓ siblings; outside the visible area it does not change', async () => {
+  it('S1_FE_AC15: → first child, ← parent, ↑ and ↓ siblings; outside the visible area it does not change', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     const expectSelected = (id: string) => expect(nodeElement(id)).toHaveClass('is-selected');
     await screen.findByTestId('node-f');
@@ -307,7 +307,7 @@ describe('selection with arrows', () => {
     expectSelected('f');
   });
 
-  it('criterion_14: right arrow on a collapsed or border node does not change the selection', async () => {
+  it('S1_FE_AC15: right arrow on a collapsed or border node does not change the selection', async () => {
     const api = sampleApi();
     api.nodes.get('a')!.collapsed = true;
     api.depth = 1;
@@ -323,7 +323,7 @@ describe('selection with arrows', () => {
 });
 
 describe('optimistic with rollback', () => {
-  it('criterion_15: a rename with 409 goes back to the previous title, notifies and fetches the window again', async () => {
+  it('S1_FE_AC16: a rename with 409 goes back to the previous title, notifies and fetches the window again', async () => {
     const api = sampleApi();
     api.failNext((call) => call.method === 'PATCH', 409);
     const { user } = renderApp('/n/f', api);
@@ -339,7 +339,7 @@ describe('optimistic with rollback', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('criterion_15: a creation with 5xx disappears and notifies', async () => {
+  it('S1_FE_AC16: a creation with 5xx disappears and notifies', async () => {
     const api = sampleApi();
     api.failNext((call) => call.method === 'POST', 500);
     const { user } = renderApp('/n/f', api);
@@ -352,7 +352,7 @@ describe('optimistic with rollback', () => {
     await waitFor(() => expect(api.callsTo('GET', '/api/nodes/f/view?depth=3')).toHaveLength(2));
   });
 
-  it('criterion_15: a collapse with 422 shows the children again', async () => {
+  it('S1_FE_AC16: a collapse with 422 shows the children again', async () => {
     const api = sampleApi();
     api.failNext((call) => call.method === 'PATCH', 422);
     const { user } = renderApp('/n/f', api);
@@ -363,7 +363,7 @@ describe('optimistic with rollback', () => {
     await waitFor(() => expect(api.callsTo('GET', '/api/nodes/f/view?depth=3')).toHaveLength(2));
   });
 
-  it('criterion_15: a delete with 5xx brings the node back', async () => {
+  it('S1_FE_AC16: a delete with 5xx brings the node back', async () => {
     const api = sampleApi();
     api.failNext((call) => call.method === 'DELETE', 503);
     const { user } = renderApp('/n/f', api);

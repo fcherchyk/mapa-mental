@@ -10,7 +10,7 @@ afterEach(() => {
 
 describe('session', () => {
   it.each(['/', '/n/x'])(
-    'criterion_3: without a session, %s shows the login that goes to /api/auth/login',
+    'S1_FE_AC3: without a session, %s shows the login that goes to /api/auth/login',
     async (path) => {
       const api = sampleApi();
       api.loggedIn = false;
@@ -23,7 +23,7 @@ describe('session', () => {
     },
   );
 
-  it('criterion_3: a later 401 (expired session) goes back to the login screen', async () => {
+  it('S1_FE_AC3: a later 401 (expired session) goes back to the login screen', async () => {
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     fireEvent.click(await screen.findByTestId('node-b'));
@@ -34,7 +34,7 @@ describe('session', () => {
     expect(await screen.findByRole('link', { name: 'Sign in with Google' })).toBeInTheDocument();
   });
 
-  it('criterion_4: Sign out calls logout with X-CSRF, clears the cache and shows the login', async () => {
+  it('S1_FE_AC4: Sign out calls logout with X-CSRF, clears the cache and shows the login', async () => {
     const clear = vi.spyOn(ViewCache.prototype, 'clear');
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
@@ -67,7 +67,7 @@ describe('session', () => {
 });
 
 describe('preference N', () => {
-  it("criterion_16: choosing 5 calls PATCH /api/me/settings and requests the focus's view?depth=5", async () => {
+  it("S1_FE_AC5: choosing 5 calls PATCH /api/me/settings and requests the focus's view?depth=5", async () => {
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     await screen.findByTestId('node-f');
@@ -84,7 +84,7 @@ describe('preference N', () => {
     expect(patch.headers['X-CSRF']).toBe('1');
   });
 
-  it('criterion_16: if the PATCH fails it goes back to the previous value and notifies', async () => {
+  it('S1_FE_AC5: if the PATCH fails it goes back to the previous value and notifies', async () => {
     const api = sampleApi();
     api.failNext((call) => call.url === '/api/me/settings', 500);
     const { user } = renderApp('/n/f', api);
@@ -97,7 +97,7 @@ describe('preference N', () => {
 });
 
 describe('security', () => {
-  it('criterion_17: a title with HTML is shown as text on the canvas and in the breadcrumb', async () => {
+  it('S1_FE_AC35: a title with HTML is shown as text on the canvas and in the breadcrumb', async () => {
     const malicious = '<img src=x onerror=alert(1)>';
     const api = new FakeApi([
       { id: 'root', parent_id: null, title: malicious, sort_key: 'V' },
@@ -111,7 +111,7 @@ describe('security', () => {
     expect(container.querySelector('img')).toBeNull();
   });
 
-  it('criterion_17: <script> and <svg> payloads do not inject elements into the DOM', async () => {
+  it('S1_FE_AC35: <script> and <svg> payloads do not inject elements into the DOM', async () => {
     const scriptPayload = '<script>alert(1)</script>';
     const svgPayload = '<svg onload=alert(1)>';
     const api = new FakeApi([

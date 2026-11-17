@@ -1,4 +1,4 @@
-"""Node deletion with two modes: `children=cascade` (the default) and `children=reparent`."""
+"""Slice 1, criteria S1_BE_AC16 and AC18 to AC20: `children=cascade` (default) and `reparent`."""
 
 from collections.abc import Callable
 
@@ -19,7 +19,7 @@ def reparent(client: TestClient, node: dict):
     return client.delete(f"/api/nodes/{node['id']}", params={"children": "reparent"}, headers=CSRF)
 
 
-def test_ac1_explicit_and_default_cascade_delete_the_subtree(client: TestClient) -> None:
+def test_S1_BE_AC16_explicit_and_default_cascade_delete_the_subtree(client: TestClient) -> None:
     root = root_id(client)
     for params in ({}, {"children": "cascade"}):
         n = add(client, root, "N")
@@ -33,7 +33,7 @@ def test_ac1_explicit_and_default_cascade_delete_the_subtree(client: TestClient)
             assert client.get(f"/api/nodes/{gone['id']}/view").status_code == 404
 
 
-def test_ac2_reparent_in_the_middle_keeps_position_and_order(client: TestClient) -> None:
+def test_S1_BE_AC18_reparent_in_the_middle_keeps_position_and_order(client: TestClient) -> None:
     root = root_id(client)
     a = add(client, root, "A")
     n = add(client, root, "N", after_sort_key=a["sort_key"])
@@ -52,7 +52,7 @@ def test_ac2_reparent_in_the_middle_keeps_position_and_order(client: TestClient)
     assert view(client, kids[0]["id"], depth=5)["nodes"] == before
 
 
-def test_ac2_reparent_as_first_child(client: TestClient) -> None:
+def test_S1_BE_AC18_reparent_as_first_child(client: TestClient) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     add(client, root, "B")
@@ -64,7 +64,7 @@ def test_ac2_reparent_as_first_child(client: TestClient) -> None:
     assert order_under(client, root) == ["c1", "c2", "B"]
 
 
-def test_ac2_reparent_as_last_child(client: TestClient) -> None:
+def test_S1_BE_AC18_reparent_as_last_child(client: TestClient) -> None:
     root = root_id(client)
     add(client, root, "A")
     n = add(client, root, "N")
@@ -76,7 +76,7 @@ def test_ac2_reparent_as_last_child(client: TestClient) -> None:
     assert order_under(client, root) == ["A", "c1", "c2"]
 
 
-def test_ac2_reparent_bumps_the_version_of_moved_children(client: TestClient) -> None:
+def test_S1_BE_AC18_reparent_bumps_the_version_of_moved_children(client: TestClient) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     child = add(client, n["id"], "c")
@@ -88,7 +88,7 @@ def test_ac2_reparent_bumps_the_version_of_moved_children(client: TestClient) ->
     assert moved["version"] > child["version"]
 
 
-def test_ac2_reparent_of_a_leaf_just_deletes_it(client: TestClient) -> None:
+def test_S1_BE_AC18_reparent_of_a_leaf_just_deletes_it(client: TestClient) -> None:
     root = root_id(client)
     leaf = add(client, root, "leaf")
 
@@ -110,7 +110,7 @@ def test_reparent_of_many_children_keeps_keys_short(client: TestClient) -> None:
     assert max(len(k) for k in keys) < 20
 
 
-def test_ac3_reparent_is_atomic(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_S1_BE_AC19_reparent_is_atomic(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     root = root_id(client)
     n = add(client, root, "N")
     add(client, n["id"], "c1")
@@ -128,7 +128,7 @@ def test_ac3_reparent_is_atomic(client: TestClient, monkeypatch: pytest.MonkeyPa
     assert order_under(client, n["id"]) == ["c1", "c2"]
 
 
-def test_ac4_reparent_without_csrf_returns_403(client: TestClient) -> None:
+def test_S1_BE_AC20_reparent_without_csrf_returns_403(client: TestClient) -> None:
     n = add(client, root_id(client), "N")
     add(client, n["id"], "c")
 
@@ -138,7 +138,9 @@ def test_ac4_reparent_without_csrf_returns_403(client: TestClient) -> None:
     assert order_under(client, n["id"]) == ["c"]
 
 
-def test_ac4_reparent_of_someone_elses_node_returns_404(login: Callable[..., TestClient]) -> None:
+def test_S1_BE_AC20_reparent_of_someone_elses_node_returns_404(
+    login: Callable[..., TestClient],
+) -> None:
     owner = login(sub="sub-o", name="O")
     n = add(owner, root_id(owner), "N")
     add(owner, n["id"], "c")
@@ -148,7 +150,7 @@ def test_ac4_reparent_of_someone_elses_node_returns_404(login: Callable[..., Tes
     assert order_under(owner, n["id"]) == ["c"]
 
 
-def test_ac4_reparent_of_the_root_returns_422(client: TestClient) -> None:
+def test_S1_BE_AC20_reparent_of_the_root_returns_422(client: TestClient) -> None:
     root = root_id(client)
     add(client, root, "h")
 
@@ -156,7 +158,7 @@ def test_ac4_reparent_of_the_root_returns_422(client: TestClient) -> None:
     assert order_under(client, root) == ["h"]
 
 
-def test_ac4_invalid_children_value_returns_422(client: TestClient) -> None:
+def test_S1_BE_AC20_invalid_children_value_returns_422(client: TestClient) -> None:
     n = add(client, root_id(client), "N")
 
     response = client.delete(f"/api/nodes/{n['id']}", params={"children": "foo"}, headers=CSRF)

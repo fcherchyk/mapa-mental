@@ -47,6 +47,17 @@ ORDER BY c.distance DESC
 """)
 
 
+# Walks up from a node to the root, to tell whether another node is one of its ancestors.
+IS_DESCENDANT_SQL = text("""
+WITH RECURSIVE chain AS (
+    SELECT n.parent_id FROM nodes n WHERE n.id = :node_id
+  UNION ALL
+    SELECT p.parent_id FROM chain c JOIN nodes p ON p.id = c.parent_id
+)
+SELECT EXISTS (SELECT 1 FROM chain WHERE parent_id = :ancestor_id)
+""")
+
+
 def fetch_window(
     db: Session, owner_id: uuid.UUID, focus_id: uuid.UUID, depth: int
 ) -> list[dict[str, Any]]:
@@ -73,22 +84,50 @@ def count_children(db: Session, node_id: uuid.UUID) -> int:
     return db.scalar(select(func.count()).select_from(Node).where(Node.parent_id == node_id)) or 0
 
 
-def last_child_sort_key(db: Session, parent_id: uuid.UUID) -> str | None:
-    return db.scalar(select(func.max(Node.sort_key)).where(Node.parent_id == parent_id))
+def is_descendant(db: Session, ancestor_id: uuid.UUID, node_id: uuid.UUID) -> bool:
+    """True if `ancestor_id` is one of `node_id`'s ancestors, however far up."""
+    params = {"ancestor_id": ancestor_id, "node_id": node_id}
+    return bool(db.scalar(IS_DESCENDANT_SQL, params))
 
 
-def next_sibling_sort_key(db: Session, parent_id: uuid.UUID, after: str) -> str | None:
+def siblings(parent_id: uuid.UUID, exclude_id: uuid.UUID | None) -> list[Any]:
+    """Conditions for the children of `parent_id`, leaving out the node being moved."""
+    conditions = [Node.parent_id == parent_id]
+    if exclude_id is not None:
+        conditions.append(Node.id != exclude_id)
+    return conditions
+
+
+def first_child_sort_key(
+    db: Session, parent_id: uuid.UUID, exclude_id: uuid.UUID | None = None
+) -> str | None:
+    query = select(func.min(Node.sort_key)).where(*siblings(parent_id, exclude_id))
+    return db.scalar(query)
+
+
+def last_child_sort_key(
+    db: Session, parent_id: uuid.UUID, exclude_id: uuid.UUID | None = None
+) -> str | None:
+    query = select(func.max(Node.sort_key)).where(*siblings(parent_id, exclude_id))
+    return db.scalar(query)
+
+
+def next_sibling_sort_key(
+    db: Session, parent_id: uuid.UUID, after: str, exclude_id: uuid.UUID | None = None
+) -> str | None:
     """Smallest `sort_key` among the children of `parent_id` that is greater than `after`."""
     query = select(func.min(Node.sort_key)).where(
-        Node.parent_id == parent_id, Node.sort_key > after
+        *siblings(parent_id, exclude_id), Node.sort_key > after
     )
     return db.scalar(query)
 
 
-def previous_sibling_sort_key(db: Session, parent_id: uuid.UUID, before: str) -> str | None:
+def previous_sibling_sort_key(
+    db: Session, parent_id: uuid.UUID, before: str, exclude_id: uuid.UUID | None = None
+) -> str | None:
     """Largest `sort_key` among the children of `parent_id` that is less than `before`."""
     query = select(func.max(Node.sort_key)).where(
-        Node.parent_id == parent_id, Node.sort_key < before
+        *siblings(parent_id, exclude_id), Node.sort_key < before
     )
     return db.scalar(query)
 

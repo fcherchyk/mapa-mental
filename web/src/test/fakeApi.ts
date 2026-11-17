@@ -101,12 +101,13 @@ export class FakeApi {
       return json(200, { depth: this.depth });
     }
     const match = url.match(
-      /^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children|\?children=(cascade|reparent))?$/,
+      /^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children|\/move|\?children=(cascade|reparent))?$/,
     );
     const node = match && this.nodes.get(decodeURIComponent(match[1]));
     if (!match || !node) return json(404, { detail: 'node not found' });
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
     if (method === 'POST' && match[2] === '/children') return json(201, this.create(node, call));
+    if (method === 'POST' && match[2] === '/move') return this.move(node, call);
     if (method === 'PATCH') return this.patch(node, call);
     if (method === 'DELETE') {
       if (match[4] === 'reparent') this.reparentChildren(node);
@@ -177,6 +178,41 @@ export class FakeApi {
     };
     this.nodes.set(node.id, node);
     return this.out(node);
+  }
+
+  /**
+   * Moves the node under `parent_id` at `place`. The destination's children are renumbered, which
+   * is not what the real API does (it only writes the moved row) but keeps the order readable.
+   */
+  private move(node: Required<FakeNode>, call: RecordedCall): Response {
+    const body = call.body as {
+      parent_id: string;
+      place: 'first' | 'last' | { after_id: string };
+      version: number;
+    };
+    if (body.version !== node.version) return json(409, { detail: 'the node changed' });
+    const parent = this.nodes.get(body.parent_id);
+    if (!parent) return json(404, { detail: 'node not found' });
+    const siblings = this.children(parent.id).filter((sibling) => sibling.id !== node.id);
+    const place = body.place;
+    let index = siblings.length;
+    if (place === 'first') {
+      index = 0;
+    } else if (typeof place === 'object') {
+      const after = siblings.findIndex((sibling) => sibling.id === place.after_id);
+      if (after === -1) return json(422, { detail: 'after_id must be a child of parent_id' });
+      index = after + 1;
+    }
+    const ordered = [...siblings.slice(0, index), node, ...siblings.slice(index)];
+    ordered.forEach((child, position) => {
+      this.nodes.set(child.id, {
+        ...child,
+        parent_id: parent.id,
+        sort_key: `k${String(position).padStart(3, '0')}`,
+        version: child.id === node.id ? child.version + 1 : child.version,
+      });
+    });
+    return json(200, this.out(this.nodes.get(node.id)!));
   }
 
   private patch(node: Required<FakeNode>, call: RecordedCall): Response {

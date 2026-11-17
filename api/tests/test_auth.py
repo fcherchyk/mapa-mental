@@ -1,4 +1,4 @@
-"""Criteria 3 to 9: Google login, cookie, `state`, session, CSRF and logout."""
+"""Slice 1, criteria S1_BE_AC3 to AC9: Google login, cookie, `state`, session, CSRF and logout."""
 
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -34,7 +34,7 @@ def session_cookie_header(response) -> str:
     return cookies[0]
 
 
-def test_criterion_3_login_redirects_to_google_with_minimal_scopes_state_and_nonce(
+def test_S1_BE_AC3_login_redirects_to_google_with_minimal_scopes_state_and_nonce(
     app: FastAPI,
 ) -> None:
     params = start_login(TestClient(app))
@@ -45,7 +45,7 @@ def test_criterion_3_login_redirects_to_google_with_minimal_scopes_state_and_non
     assert params["response_type"] == "code"
 
 
-def test_criterion_3_login_generates_different_state_and_nonce_per_request(app: FastAPI) -> None:
+def test_S1_BE_AC3_login_generates_different_state_and_nonce_per_request(app: FastAPI) -> None:
     client = TestClient(app)
     params1 = start_login(client)
     params2 = start_login(client)
@@ -54,7 +54,7 @@ def test_criterion_3_login_generates_different_state_and_nonce_per_request(app: 
     assert params1["nonce"] != params2["nonce"]
 
 
-def test_criterion_4_first_login_creates_user_map_and_root(
+def test_S1_BE_AC4_first_login_creates_user_map_and_root(
     login: Callable[..., TestClient], db: Session
 ) -> None:
     client = login(sub="sub-new", name="Ana Pérez")
@@ -71,7 +71,7 @@ def test_criterion_4_first_login_creates_user_map_and_root(
     assert (count(db, "users"), count(db, "maps"), count(db, "nodes")) == (1, 1, 1)
 
 
-def test_criterion_4_signing_in_again_keeps_a_single_user_and_map(
+def test_S1_BE_AC4_signing_in_again_keeps_a_single_user_and_map(
     login: Callable[..., TestClient], db: Session
 ) -> None:
     first = login(sub="sub-repeated").get("/api/me").json()
@@ -82,7 +82,7 @@ def test_criterion_4_signing_in_again_keeps_a_single_user_and_map(
     assert (count(db, "users"), count(db, "maps"), count(db, "sessions")) == (1, 1, 2)
 
 
-def test_criterion_4_name_with_spaces_empty_or_long_is_normalized(
+def test_S1_BE_AC4_name_with_spaces_empty_or_long_is_normalized(
     login: Callable[..., TestClient], db: Session
 ) -> None:
     c1 = login(sub="sub-spaces", name="   Juan    Carlos   ")
@@ -108,7 +108,7 @@ def test_criterion_4_name_with_spaces_empty_or_long_is_normalized(
     assert title3 == "L" * 200
 
 
-def test_criterion_5_cookie_httponly_samesite_lax_without_secure_by_default(
+def test_S1_BE_AC5_cookie_httponly_samesite_lax_without_secure_by_default(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     response = complete_login(TestClient(app), fake_google)
@@ -123,7 +123,7 @@ def test_criterion_5_cookie_httponly_samesite_lax_without_secure_by_default(
     assert token not in session_ids
 
 
-def test_criterion_5_cookie_secure_when_the_variable_enables_it(
+def test_S1_BE_AC5_cookie_secure_when_the_variable_enables_it(
     make_app: Callable[..., FastAPI], fake_google: FakeGoogle
 ) -> None:
     app = make_app(cookie_secure=True, google_redirect_uri="https://testserver/api/auth/callback")
@@ -135,7 +135,7 @@ def test_criterion_5_cookie_secure_when_the_variable_enables_it(
     assert "secure" in session_cookie_header(response).lower()
 
 
-def test_criterion_5_no_google_token_in_responses_or_tables(
+def test_S1_BE_AC5_no_google_token_in_responses_or_tables(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -153,7 +153,7 @@ def test_criterion_5_no_google_token_in_responses_or_tables(
         assert field not in me.text
 
 
-def test_criterion_6_callback_without_state_is_rejected_without_creating_rows(
+def test_S1_BE_AC6_callback_without_state_is_rejected_without_creating_rows(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -169,7 +169,7 @@ def test_criterion_6_callback_without_state_is_rejected_without_creating_rows(
     assert (count(db, "users"), count(db, "sessions")) == (0, 0)
 
 
-def test_criterion_6_callback_with_different_state_is_rejected_without_creating_rows(
+def test_S1_BE_AC6_callback_with_different_state_is_rejected_without_creating_rows(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -187,7 +187,7 @@ def test_criterion_6_callback_with_different_state_is_rejected_without_creating_
     assert (count(db, "users"), count(db, "sessions")) == (0, 0)
 
 
-def test_criterion_6_callback_with_different_nonce_is_rejected(
+def test_S1_BE_AC6_callback_with_different_nonce_is_rejected(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     client = TestClient(app)
@@ -204,7 +204,7 @@ def test_criterion_6_callback_with_different_nonce_is_rejected(
     assert (count(db, "users"), count(db, "sessions")) == (0, 0)
 
 
-def test_criterion_6_callback_without_flow_cookie_is_rejected(
+def test_S1_BE_AC6_callback_without_flow_cookie_is_rejected(
     app: FastAPI, fake_google: FakeGoogle, db: Session
 ) -> None:
     """A callback request without a started login (no oauth session cookie) is rejected."""
@@ -244,7 +244,7 @@ def assert_all_unauthorized(app: FastAPI, root_id: str, cookie: str | None) -> N
         assert response.json()["detail"] == "invalid or expired session", (method, path)
 
 
-def test_criterion_7_no_cookie_or_made_up_cookie_returns_401(
+def test_S1_BE_AC7_no_cookie_or_made_up_cookie_returns_401(
     app: FastAPI, client: TestClient
 ) -> None:
     root_id = client.get("/api/me").json()["root_node_id"]
@@ -254,7 +254,7 @@ def test_criterion_7_no_cookie_or_made_up_cookie_returns_401(
     assert_all_unauthorized(app, root_id, cookie="made-up-cookie")
 
 
-def test_criterion_7_expired_session_returns_401(
+def test_S1_BE_AC7_expired_session_returns_401(
     app: FastAPI, client: TestClient, db: Session
 ) -> None:
     root_id = client.get("/api/me").json()["root_node_id"]
@@ -265,7 +265,7 @@ def test_criterion_7_expired_session_returns_401(
     assert client.get("/api/me").status_code == 401
 
 
-def test_criterion_8_patch_settings_without_csrf_header_returns_403(client: TestClient) -> None:
+def test_S1_BE_AC8_patch_settings_without_csrf_header_returns_403(client: TestClient) -> None:
     response = client.patch("/api/me/settings", json={"depth": 5})
 
     assert response.status_code == 403
@@ -273,21 +273,21 @@ def test_criterion_8_patch_settings_without_csrf_header_returns_403(client: Test
     assert client.get("/api/me").json()["settings"]["depth"] == 3
 
 
-def test_criterion_8_csrf_header_with_wrong_value_returns_403(client: TestClient) -> None:
+def test_S1_BE_AC8_csrf_header_with_wrong_value_returns_403(client: TestClient) -> None:
     response = client.patch("/api/me/settings", json={"depth": 5}, headers={"X-CSRF": "0"})
 
     assert response.status_code == 403
     assert client.get("/api/me").json()["settings"]["depth"] == 3
 
 
-def test_criterion_8_patch_settings_with_empty_csrf_header_returns_403(client: TestClient) -> None:
+def test_S1_BE_AC8_patch_settings_with_empty_csrf_header_returns_403(client: TestClient) -> None:
     response = client.patch("/api/me/settings", json={"depth": 5}, headers={"X-CSRF": ""})
 
     assert response.status_code == 403
     assert client.get("/api/me").json()["settings"]["depth"] == 3
 
 
-def test_criterion_9_logout_invalidates_the_session(
+def test_S1_BE_AC9_logout_invalidates_the_session(
     app: FastAPI, client: TestClient, db: Session
 ) -> None:
     token = client.cookies[SESSION_COOKIE]
@@ -300,7 +300,7 @@ def test_criterion_9_logout_invalidates_the_session(
     assert reused.status_code == 401
 
 
-def test_criterion_9_logout_clears_the_cookie_in_the_response(client: TestClient) -> None:
+def test_S1_BE_AC9_logout_clears_the_cookie_in_the_response(client: TestClient) -> None:
     response = client.post("/api/auth/logout", headers=CSRF)
 
     assert response.status_code == 204
@@ -313,13 +313,13 @@ def test_criterion_9_logout_clears_the_cookie_in_the_response(client: TestClient
     assert "max-age=0" in cookie or 'sid=""' in cookie or "sid=;" in cookie
 
 
-def test_criterion_9_logout_without_active_session_returns_204(app: FastAPI) -> None:
+def test_S1_BE_AC9_logout_without_active_session_returns_204(app: FastAPI) -> None:
     anonymous = TestClient(app)
     response = anonymous.post("/api/auth/logout", headers=CSRF)
     assert response.status_code == 204
 
 
-def test_criterion_9_logout_requires_csrf_header(client: TestClient, db: Session) -> None:
+def test_S1_BE_AC9_logout_requires_csrf_header(client: TestClient, db: Session) -> None:
     assert client.post("/api/auth/logout").status_code == 403
     assert count(db, "sessions") == 1
 

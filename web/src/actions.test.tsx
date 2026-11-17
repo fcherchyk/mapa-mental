@@ -15,8 +15,8 @@ const selectNode = async (id: string) => {
   expect(nodeElement(id)).toHaveClass('is-selected');
 };
 
-describe('criterion 1: the + button creates a child in edit mode', () => {
-  it('AC1: the root + creates a child in edit mode and Enter sends it as a POST', async () => {
+describe('S1_FE_AC17: the + button creates a child in edit mode', () => {
+  it('S1_FE_AC17: the root + creates a child in edit mode and Enter sends it as a POST', async () => {
     const { user, api } = renderApp('/', sampleApi());
     await screen.findByTestId('node-root');
     fireEvent.click(addButton('My map'));
@@ -33,7 +33,7 @@ describe('criterion 1: the + button creates a child in edit mode', () => {
     expect(api.callsTo('POST', /children/)).toHaveLength(1);
   });
 
-  it('AC1: the + of a child node creates a child in edit mode inside that node', async () => {
+  it('S1_FE_AC17: the + of a child node creates a child in edit mode inside that node', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Idea A'));
@@ -45,7 +45,7 @@ describe('criterion 1: the + button creates a child in edit mode', () => {
     });
   });
 
-  it('AC1: an empty or whitespace-only title when creating with + is not sent to the API', async () => {
+  it('S1_FE_AC17: an empty or whitespace-only title when creating with + is not sent to the API', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Focus'));
@@ -56,7 +56,7 @@ describe('criterion 1: the + button creates a child in edit mode', () => {
     expect(nodeElement('f')).toHaveClass('is-selected');
   });
 
-  it('AC1: Escape while creating a child with + cancels the creation without calling the API', async () => {
+  it('S1_FE_AC17: Escape while creating a child with + cancels the creation without calling the API', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Focus'));
@@ -67,7 +67,7 @@ describe('criterion 1: the + button creates a child in edit mode', () => {
     expect(nodeElement('f')).toHaveClass('is-selected');
   });
 
-  it('AC1: a title with leading and trailing spaces when creating with + is sent trimmed', async () => {
+  it('S1_FE_AC17: a title with leading and trailing spaces when creating with + is sent trimmed', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Focus'));
@@ -80,8 +80,8 @@ describe('criterion 1: the + button creates a child in edit mode', () => {
   });
 });
 
-describe('criterion 2: the + button is present where it should be', () => {
-  it('AC2: the + is in the DOM of every non-pending node; the focus and the selected one show it', async () => {
+describe('S1_FE_AC18: the + button is present where it should be', () => {
+  it('S1_FE_AC18: the + is in the DOM of every non-pending node; the focus and the selected one show it', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     expect(addButton('Focus')).toHaveClass('is-visible');
@@ -95,7 +95,7 @@ describe('criterion 2: the + button is present where it should be', () => {
     expect(titleInput().closest('.map-node')?.querySelector('.map-node-add')).toBeNull();
   });
 
-  it('AC2: a node in edit mode has no + button in the DOM', async () => {
+  it('S1_FE_AC18: a node in edit mode has no + button in the DOM', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{F2}');
@@ -103,7 +103,7 @@ describe('criterion 2: the + button is present where it should be', () => {
     expect(nodeElement('a').querySelector('.map-node-add')).toBeNull();
   });
 
-  it('AC2: the + of a collapsed or border node is present and enabled', async () => {
+  it('S1_FE_AC18: the + of a collapsed or border node is present and enabled', async () => {
     const api = sampleApi();
     api.nodes.get('a')!.collapsed = true;
     api.depth = 1;
@@ -114,7 +114,7 @@ describe('criterion 2: the + button is present where it should be', () => {
     expect(addButton('Idea B')).toBeEnabled();
   });
 
-  it('AC2: the pending node created with the + button has no + button in the DOM', async () => {
+  it('S1_FE_AC18: the pending node created with the + button has no + button in the DOM', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Focus'));
@@ -122,22 +122,22 @@ describe('criterion 2: the + button is present where it should be', () => {
   });
 });
 
-describe('criterion 3: the + button does not trigger other node actions', () => {
-  it('AC3: double clicking the + of a node that is not the focus does not change the route', async () => {
+describe('S1_FE_AC19: the + button does not trigger other node actions', () => {
+  it('S1_FE_AC19: double clicking the + of a node that is not the focus does not change the route', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.doubleClick(addButton('Idea B'));
     expect(currentPath()).toBe('/n/f');
   });
 
-  it('AC3: double clicking the + of the focus node does not go up a level or change the route', async () => {
+  it('S1_FE_AC19: double clicking the + of the focus node does not go up a level or change the route', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.doubleClick(addButton('Focus'));
     expect(currentPath()).toBe('/n/f');
   });
 
-  it('AC3: a single click on the + of a child does not navigate to or focus that node', async () => {
+  it('S1_FE_AC19: a single click on the + of a child does not navigate to or focus that node', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Idea A'));
@@ -146,8 +146,8 @@ describe('criterion 3: the + button does not trigger other node actions', () => 
   });
 });
 
-describe('criterion 4: shortcuts keep working after the pencil', () => {
-  it('AC4: shortcuts work after the pencil: on confirm, focus returns to the map and Tab creates a child', async () => {
+describe('S1_FE_AC20: shortcuts keep working after the pencil', () => {
+  it('S1_FE_AC20: shortcuts work after the pencil: on confirm, focus returns to the map and Tab creates a child', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Rename Focus'));
     await user.clear(titleInput());
@@ -161,7 +161,7 @@ describe('criterion 4: shortcuts keep working after the pencil', () => {
     await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(1));
   });
 
-  it('AC4: shortcuts work after the pencil: Enter opens a sibling with focus there; Escape returns focus to the map', async () => {
+  it('S1_FE_AC20: shortcuts work after the pencil: Enter opens a sibling with focus there; Escape returns focus to the map', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Rename Idea A'));
     await user.type(titleInput(), '{Enter}');
@@ -175,7 +175,7 @@ describe('criterion 4: shortcuts keep working after the pencil', () => {
     await waitFor(() => expect(api.callsTo('POST', '/api/nodes/a/children')).toHaveLength(1));
   });
 
-  it('AC4: if the pencil edit is cancelled with Escape, focus returns to the map', async () => {
+  it('S1_FE_AC20: if the pencil edit is cancelled with Escape, focus returns to the map', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Rename Idea B'));
     await user.keyboard('{Escape}');
@@ -184,7 +184,7 @@ describe('criterion 4: shortcuts keep working after the pencil', () => {
     expect(titleInput()).toHaveFocus();
   });
 
-  it('AC4: confirming the pencil edit by blurring leaves focus on the map so shortcuts like F2 work', async () => {
+  it('S1_FE_AC20: confirming the pencil edit by blurring leaves focus on the map so shortcuts like F2 work', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Rename Idea A'));
     await user.type(titleInput(), ' new');
@@ -195,7 +195,7 @@ describe('criterion 4: shortcuts keep working after the pencil', () => {
     expect(titleInput()).toBeInTheDocument();
   });
 
-  it('AC4: cancelling the pencil edit with Escape lets Space collapse', async () => {
+  it('S1_FE_AC20: cancelling the pencil edit with Escape lets Space collapse', async () => {
     const api = sampleApi();
     const { user } = renderApp('/n/f', api);
     await selectNode('a');
@@ -208,8 +208,8 @@ describe('criterion 4: shortcuts keep working after the pencil', () => {
   });
 });
 
-describe('criterion 5: shortcuts keep working after the +', () => {
-  it('AC5: F2 works after creating a child with the +', async () => {
+describe('S1_FE_AC21: shortcuts keep working after the +', () => {
+  it('S1_FE_AC21: F2 works after creating a child with the +', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Add an idea inside Focus'));
     await user.type(titleInput(), 'New child');
@@ -220,7 +220,7 @@ describe('criterion 5: shortcuts keep working after the +', () => {
     expect(titleInput()).toHaveValue('New child');
   });
 
-  it('AC5: if creating with + is cancelled with Escape, focus returns to the map and shortcuts keep working', async () => {
+  it('S1_FE_AC21: if creating with + is cancelled with Escape, focus returns to the map and shortcuts keep working', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Add an idea inside Focus'));
     expect(titleInput()).toHaveFocus();
@@ -230,7 +230,7 @@ describe('criterion 5: shortcuts keep working after the +', () => {
     expect(titleInput()).toHaveFocus();
   });
 
-  it('AC5: after creating a child with the + button, Tab on the new child creates a grandchild in edit mode', async () => {
+  it('S1_FE_AC21: after creating a child with the + button, Tab on the new child creates a grandchild in edit mode', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     fireEvent.click(await screen.findByLabelText('Add an idea inside Focus'));
     await user.type(titleInput(), 'New child');
@@ -244,8 +244,9 @@ describe('criterion 5: shortcuts keep working after the +', () => {
   });
 });
 
-describe('criterion 6: opening and closing the help', () => {
-  it('AC6: ? opens the panel with the 8 shortcuts and their descriptions, and Escape closes it returning focus to the button', async () => {
+describe('S1_FE_AC22: opening and closing the help', () => {
+  // Slice 2 added the Alt and Drag entries, so this lists the slice 1 ones and does not count.
+  it('S1_FE_AC22: ? opens the panel with the map shortcuts and their descriptions, and Escape closes it returning focus to the button', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     const help = helpButton();
@@ -273,7 +274,7 @@ describe('criterion 6: opening and closing the help', () => {
     expect(help).toHaveFocus();
   });
 
-  it('AC6: a second click on ? closes the panel and returns focus to the button', async () => {
+  it('S1_FE_AC22: a second click on ? closes the panel and returns focus to the button', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(helpButton());
@@ -285,8 +286,8 @@ describe('criterion 6: opening and closing the help', () => {
   });
 });
 
-describe('criterion 7: the help does not trigger map shortcuts', () => {
-  it('AC7: with the panel open, Delete and Space neither delete nor collapse nodes', async () => {
+describe('S1_FE_AC23: the help does not trigger map shortcuts', () => {
+  it('S1_FE_AC23: with the panel open, Delete and Space neither delete nor collapse nodes', async () => {
     const api = sampleApi();
     const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/n/f', api);
@@ -301,7 +302,7 @@ describe('criterion 7: the help does not trigger map shortcuts', () => {
     expect(nodeElement('a1')).toBeInTheDocument();
   });
 
-  it('AC7: with the panel open, Tab, F2, Backspace and Enter neither create children, edit nor navigate', async () => {
+  it('S1_FE_AC23: with the panel open, Tab, F2, Backspace and Enter neither create children, edit nor navigate', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     fireEvent.click(helpButton());
@@ -320,7 +321,7 @@ describe('criterion 7: the help does not trigger map shortcuts', () => {
     expect(currentPath()).toBe('/n/f');
   });
 
-  it('AC7: with the panel open, the arrows do not change the selection', async () => {
+  it('S1_FE_AC23: with the panel open, the arrows do not change the selection', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     fireEvent.click(helpButton());
@@ -331,8 +332,8 @@ describe('criterion 7: the help does not trigger map shortcuts', () => {
   });
 });
 
-describe('criterion 8: it can be used with the keyboard only', () => {
-  it('AC8: keyboard only: Enter or Space on ? open and close the help; Enter on the + creates a child', async () => {
+describe('S1_FE_AC24: it can be used with the keyboard only', () => {
+  it('S1_FE_AC24: keyboard only: Enter or Space on ? open and close the help; Enter on the + creates a child', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     helpButton().focus();
@@ -346,7 +347,7 @@ describe('criterion 8: it can be used with the keyboard only', () => {
     expect(titleInput()).toHaveFocus();
   });
 
-  it('AC8: Space on the + button creates a child in edit mode', async () => {
+  it('S1_FE_AC24: Space on the + button creates a child in edit mode', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     addButton('Focus').focus();
@@ -354,7 +355,7 @@ describe('criterion 8: it can be used with the keyboard only', () => {
     expect(titleInput()).toHaveFocus();
   });
 
-  it('AC8: with focus on a button, Tab does not create a child but moves to the next interactive control', async () => {
+  it('S1_FE_AC24: with focus on a button, Tab does not create a child but moves to the next interactive control', async () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     helpButton().focus();
@@ -364,10 +365,10 @@ describe('criterion 8: it can be used with the keyboard only', () => {
   });
 });
 
-describe('criterion 9: initial hint', () => {
+describe('S1_FE_AC25: initial hint', () => {
   const HINT = 'Tap + or Tab to add an idea';
 
-  it('AC9: it shows with the real root without children and disappears when Tab creates the first child', async () => {
+  it('S1_FE_AC25: it shows with the real root without children and disappears when Tab creates the first child', async () => {
     const api = new FakeApi([{ id: 'root', parent_id: null, title: 'My map', sort_key: 'V' }]);
     const { user } = renderApp('/', api);
     await screen.findByTestId('node-root');
@@ -379,7 +380,7 @@ describe('criterion 9: initial hint', () => {
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
   });
 
-  it('AC9: it disappears when the + button creates the first child', async () => {
+  it('S1_FE_AC25: it disappears when the + button creates the first child', async () => {
     const api = new FakeApi([{ id: 'root', parent_id: null, title: 'My map', sort_key: 'V' }]);
     const { user } = renderApp('/', api);
     await screen.findByTestId('node-root');
@@ -391,7 +392,7 @@ describe('criterion 9: initial hint', () => {
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
   });
 
-  it('AC9: if creating the first child is cancelled with Escape, the hint stays visible', async () => {
+  it('S1_FE_AC25: if creating the first child is cancelled with Escape, the hint stays visible', async () => {
     const api = new FakeApi([{ id: 'root', parent_id: null, title: 'My map', sort_key: 'V' }]);
     const { user } = renderApp('/', api);
     await screen.findByTestId('node-root');
@@ -403,13 +404,13 @@ describe('criterion 9: initial hint', () => {
     expect(screen.getByText(HINT)).toBeInTheDocument();
   });
 
-  it('AC9: it does not show if the root already has children', async () => {
+  it('S1_FE_AC25: it does not show if the root already has children', async () => {
     renderApp('/', sampleApi());
     await screen.findByTestId('node-root');
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
   });
 
-  it('AC9: it does not show if the focus is not the real root', async () => {
+  it('S1_FE_AC25: it does not show if the focus is not the real root', async () => {
     const api = new FakeApi([
       { id: 'root', parent_id: null, title: 'My map', sort_key: 'V' },
       { id: 'x', parent_id: 'root', title: 'Alone', sort_key: 'V' },
@@ -419,7 +420,7 @@ describe('criterion 9: initial hint', () => {
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
   });
 
-  it("AC9: if the root's only child is deleted, the hint shows again", async () => {
+  it("S1_FE_AC25: if the root's only child is deleted, the hint shows again", async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const api = new FakeApi([
       { id: 'root', parent_id: null, title: 'My map', sort_key: 'V' },
@@ -435,8 +436,8 @@ describe('criterion 9: initial hint', () => {
   });
 });
 
-describe('feedback: focus when creating siblings', () => {
-  it('feedback 1: Enter, Enter, Enter leaves the third sibling in edit mode and focused', async () => {
+describe('S1_FE_AC27: focus when creating siblings', () => {
+  it('S1_FE_AC27: Enter, Enter, Enter leaves the third sibling in edit mode and focused', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Focus'));
@@ -452,8 +453,8 @@ describe('feedback: focus when creating siblings', () => {
   });
 });
 
-describe('feedback: creating beyond the border or inside a collapsed node', () => {
-  it('feedback 2: + on a border node moves the focus one level down and creates the child in edit mode', async () => {
+describe('S1_FE_AC26: creating beyond the border or inside a collapsed node', () => {
+  it('S1_FE_AC26: + on a border node moves the focus one level down and creates the child in edit mode', async () => {
     const api = sampleApi();
     api.depth = 2;
     const { user } = renderApp('/n/root', api);
@@ -467,7 +468,7 @@ describe('feedback: creating beyond the border or inside a collapsed node', () =
     expect(api.callsTo('POST', '/api/nodes/a/children')[0].body).toEqual({ title: 'Child of A' });
   });
 
-  it('feedback 2: Tab on a border node moves the focus one level down and creates the child in edit mode', async () => {
+  it('S1_FE_AC26: Tab on a border node moves the focus one level down and creates the child in edit mode', async () => {
     const api = sampleApi();
     api.depth = 2;
     const { user } = renderApp('/n/root', api);
@@ -478,7 +479,7 @@ describe('feedback: creating beyond the border or inside a collapsed node', () =
     expect(api.callsTo('POST', /children/)).toHaveLength(0);
   });
 
-  it('feedback 2: + on a collapsed node expands it and then creates the child in edit mode', async () => {
+  it('S1_FE_AC26: + on a collapsed node expands it and then creates the child in edit mode', async () => {
     const api = sampleApi();
     api.nodes.get('a')!.collapsed = true;
     const { user } = renderApp('/n/f', api);
@@ -493,7 +494,7 @@ describe('feedback: creating beyond the border or inside a collapsed node', () =
     expect(api.callsTo('POST', '/api/nodes/a/children')[0].body).toEqual({ title: 'New child' });
   });
 
-  it('feedback 2: if expanding for the + fails, no pending creation is left to fire later', async () => {
+  it('S1_FE_AC26: if expanding for the + fails, no pending creation is left to fire later', async () => {
     const api = sampleApi();
     api.nodes.get('a')!.collapsed = true;
     api.failNext((call) => call.method === 'PATCH' && call.url === '/api/nodes/a', 500);
@@ -513,8 +514,8 @@ describe('feedback: creating beyond the border or inside a collapsed node', () =
   });
 });
 
-describe('criterion 10: coverage and traceability', () => {
-  it('AC10: the suite covers every criterion and meets the 80% line threshold configured in Vite', () => {
+describe('S1_FE_AC36: coverage and traceability', () => {
+  it('S1_FE_AC36: the suite covers every criterion and meets the 80% line threshold configured in Vite', () => {
     // Checked by running vitest --coverage with threshold lines: 80
     expect(true).toBe(true);
   });

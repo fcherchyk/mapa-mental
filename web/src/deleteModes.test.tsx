@@ -17,14 +17,14 @@ afterEach(() => {
 });
 
 describe('delete: visible button', () => {
-  it('AC5: every non-root node has a delete button and the real root does not', async () => {
+  it('S1_FE_AC28: every non-root node has a delete button and the real root does not', async () => {
     renderApp('/', sampleApi());
     await screen.findByTestId('node-f');
     expect(deleteButton('Focus')).toBeInTheDocument();
     expect(screen.queryByLabelText('Delete My map')).not.toBeInTheDocument();
   });
 
-  it('AC5: activating the button is the same as selecting and pressing Delete', async () => {
+  it('S1_FE_AC28: activating the button is the same as selecting and pressing Delete', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     await user.click(deleteButton('Idea B'));
@@ -34,7 +34,7 @@ describe('delete: visible button', () => {
 });
 
 describe('delete: leaf', () => {
-  it('AC6: a leaf is deleted without a dialog or window.confirm, in cascade mode', async () => {
+  it('S1_FE_AC29: a leaf is deleted without a dialog or window.confirm, in cascade mode', async () => {
     const confirm = vi.spyOn(window, 'confirm');
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a2');
@@ -45,7 +45,7 @@ describe('delete: leaf', () => {
     await waitFor(() => expect(api.callsTo('DELETE', '/api/nodes/a2')).toHaveLength(1));
   });
 
-  it('AC6: a leaf deleted with the button is also deleted without asking', async () => {
+  it('S1_FE_AC29: a leaf deleted with the button is also deleted without asking', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-a2');
     await user.click(deleteButton('Idea A2'));
@@ -55,7 +55,7 @@ describe('delete: leaf', () => {
 });
 
 describe('delete: inner node', () => {
-  it('AC7: opens an accessible dialog with three options and focus inside', async () => {
+  it('S1_FE_AC30: opens an accessible dialog with three options and focus inside', async () => {
     const confirm = vi.spyOn(window, 'confirm');
     const { user } = renderApp('/n/f', sampleApi());
     await selectNode('a');
@@ -77,7 +77,7 @@ describe('delete: inner node', () => {
     expect(option(REPARENT)).toHaveFocus();
   });
 
-  it('AC7: a node with only hidden children (child_count > 0) also asks', async () => {
+  it('S1_FE_AC30: a node with only hidden children (child_count > 0) also asks', async () => {
     const api = sampleApi();
     api.depth = 1;
     const { user } = renderApp('/n/f', api);
@@ -86,7 +86,7 @@ describe('delete: inner node', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('at least 2');
   });
 
-  it('AC8: "Delete everything from here" deletes the subtree and closes the dialog', async () => {
+  it('S1_FE_AC31: "Delete everything from here" deletes the subtree and closes the dialog', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -97,7 +97,7 @@ describe('delete: inner node', () => {
     await waitFor(() => expect(api.callsTo('DELETE', '/api/nodes/a')).toHaveLength(1));
   });
 
-  it('AC9: "move its children up" uses children=reparent and fetches the window again', async () => {
+  it('S1_FE_AC32: "move its children up" uses children=reparent and fetches the window again', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -114,7 +114,7 @@ describe('delete: inner node', () => {
     expect(api.children('f').map((n) => n.id)).toEqual(['a1', 'a2', 'b']);
   });
 
-  it('AC10: Cancel deletes nothing and returns focus to the map', async () => {
+  it('S1_FE_AC33: Cancel deletes nothing and returns focus to the map', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -125,7 +125,7 @@ describe('delete: inner node', () => {
     expect(screen.getByRole('main')).toHaveFocus();
   });
 
-  it('AC10: Esc cancels and returns focus to the map', async () => {
+  it('S1_FE_AC33: Esc cancels and returns focus to the map', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{Delete}');
@@ -135,7 +135,7 @@ describe('delete: inner node', () => {
     expect(screen.getByRole('main')).toHaveFocus();
   });
 
-  it('AC11: deleting the inner focus with either mode navigates to its parent', async () => {
+  it('S1_FE_AC34: deleting the inner focus with either mode navigates to its parent', async () => {
     for (const choice of [ALL, REPARENT]) {
       const { user, unmount } = renderApp('/n/a', sampleApi());
       await screen.findByTestId('node-a');

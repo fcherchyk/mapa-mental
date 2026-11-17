@@ -6,9 +6,10 @@ import { NotFound } from '../components/NotFound';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { ShortcutsHelp } from '../components/ShortcutsHelp';
 import { pathFor, useSession } from '../session';
-import { MapCanvas } from './MapCanvas';
+import { isUsefulTarget, type DropTarget } from './dropTarget';
+import { MapCanvas, type DragState } from './MapCanvas';
 import { NodeActionsContext, type NodeActions } from './nodes/nodeActions';
-import { isRealRoot, moveSelection, type ArrowKey } from './tree';
+import { isRealRoot, moveSelection, visibleChildren, type ArrowKey } from './tree';
 import { useMapView } from './useMapView';
 
 const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
@@ -39,6 +40,7 @@ export function MapPage() {
   const view = useMapView(focusId, depth);
   const { state, selectedId, editingId } = view;
   const [helpOpen, setHelpOpen] = useState(false);
+  const [drag, setDrag] = useState<DragState>({ draggingId: null, hover: null });
   const canvasRef = useRef<HTMLElement>(null);
   const wasEditing = useRef(false);
 
@@ -74,6 +76,15 @@ export function MapPage() {
     if (!isRealRoot(state, id) && parent) goTo(parent.id);
   };
 
+  /** Runs a move if the target is allowed and would change something (S2_FE_AC8). */
+  const applyMove = (draggedId: string, target: DropTarget): boolean => {
+    if (!state || !isUsefulTarget(state, draggedId, target)) return false;
+    view.move(draggedId, target);
+    return true;
+  };
+
+  const endDrag = () => setDrag({ draggingId: null, hover: null });
+
   const actions: NodeActions = {
     select: view.select,
     open,
@@ -82,6 +93,21 @@ export function MapPage() {
     remove: (id) => view.remove(id, goTo),
     commitEdit: view.commitEdit,
     cancelEdit: view.cancelEdit,
+    dragStart: (id) => {
+      view.select(id);
+      setDrag({ draggingId: id, hover: null });
+    },
+    dragEnd: endDrag,
+    dragOver: (target) => {
+      if (!drag.draggingId || !state) return false;
+      setDrag((current) => ({ ...current, hover: target }));
+      return isUsefulTarget(state, drag.draggingId, target);
+    },
+    drop: (target) => {
+      const draggedId = drag.draggingId;
+      endDrag();
+      if (draggedId) applyMove(draggedId, target);
+    },
   };
 
   // No loaded children and none on the server: the hint invites adding the first idea.
@@ -91,9 +117,52 @@ export function MapPage() {
     state.nodes[state.focusId].child_count === 0 &&
     (state.childIds[state.focusId] ?? []).length === 0;
 
+  /**
+   * Alt + arrows move the selected idea (S2_FE_AC14 to AC16). Out of the sibling list, and
+   * through the keyboard too, a new parent always takes the idea as its last child (decision D3).
+   */
+  const moveWithKeyboard = (id: string, key: ArrowKey): boolean => {
+    if (!state) return false;
+    const parentId = state.nodes[id]?.parent_id;
+    if (!parentId || id === state.focusId) return true;
+    const siblings = visibleChildren(state, parentId);
+    const index = siblings.indexOf(id);
+    if (key === 'ArrowUp') {
+      const afterId = index >= 2 ? siblings[index - 2] : null;
+      if (index > 0) applyMove(id, { kind: 'sibling', parentId, afterId });
+      return true;
+    }
+    if (key === 'ArrowDown') {
+      const next = siblings[index + 1];
+      if (next) applyMove(id, { kind: 'sibling', parentId, afterId: next });
+      return true;
+    }
+    if (key === 'ArrowRight') {
+      const previous = siblings[index - 1];
+      if (previous) applyMove(id, { kind: 'child', parentId: previous });
+      return true;
+    }
+    const grandparentId = state.nodes[parentId]?.parent_id;
+    // Outdenting past the focus is not possible: its parent is not on the canvas.
+    if (grandparentId && parentId !== state.focusId) {
+      applyMove(id, { kind: 'child', parentId: grandparentId });
+    }
+    return true;
+  };
+
   const handleKey = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && drag.draggingId) {
+      endDrag();
+      event.preventDefault();
+      return;
+    }
     if (!state || !selectedId || editingId || helpOpen || view.deleteRequest) return;
     if (isInteractiveTarget(event.target)) return;
+    if (event.altKey) {
+      if (!ARROW_KEYS.has(event.key)) return;
+      if (moveWithKeyboard(selectedId, event.key as ArrowKey)) event.preventDefault();
+      return;
+    }
     const handled = runShortcut(event.key, selectedId);
     if (handled) event.preventDefault();
   };
@@ -144,6 +213,18 @@ export function MapPage() {
             ancestors={state.ancestors}
             focusTitle={state.nodes[state.focusId]?.title ?? ''}
             rootId={me.root_node_id}
+            onDropOn={
+              drag.draggingId
+                ? (parentId) => actions.drop({ kind: 'child', parentId })
+                : undefined
+            }
+            acceptsDrop={(parentId) =>
+              Boolean(
+                drag.draggingId &&
+                  state &&
+                  isUsefulTarget(state, drag.draggingId, { kind: 'child', parentId }),
+              )
+            }
           />
         )}
         <div className="map-header-actions">
@@ -168,7 +249,12 @@ export function MapPage() {
         {!state && view.status === 'loading' && <p>Loading…</p>}
         {state && (
           <NodeActionsContext.Provider value={actions}>
-            <MapCanvas state={state} selectedId={selectedId} editingId={editingId} />
+            <MapCanvas
+              state={state}
+              selectedId={selectedId}
+              editingId={editingId}
+              drag={drag}
+            />
           </NodeActionsContext.Provider>
         )}
         {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
