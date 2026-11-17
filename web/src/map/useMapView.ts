@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, type NodeOut } from '../api/client';
+import { ApiError, type NodeDetail, type NodeOut } from '../api/client';
 import { useSession } from '../session';
+import { DetailCache, withoutDescription } from './detailCache';
 import { placeFor, type DropTarget } from './dropTarget';
 import { cacheKey } from './viewCache';
 import {
@@ -68,6 +69,12 @@ function failureNotice(error: unknown): string {
   return error instanceof ApiError && error.status === 409 ? CONFLICT_NOTICE : FAILURE_NOTICE;
 }
 
+function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const copy = { ...record };
+  delete copy[key];
+  return copy;
+}
+
 export type DeleteMode = 'cascade' | 'reparent';
 
 /** Deletion of an inner node waiting for the user's choice in the dialog. */
@@ -79,6 +86,17 @@ export interface DeleteRequest {
   onFocusDeleted: (parentId: string) => void;
 }
 
+/** The selected node's details, as the side panel needs them (slice 3). */
+export type DetailState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ready'; detail: NodeDetail };
+
+export interface DetailsChange {
+  title?: string;
+  description?: string;
+}
+
 export interface MapView {
   status: ViewStatus;
   state: MapState | null;
@@ -86,8 +104,12 @@ export interface MapView {
   editingId: string | null;
   notice: string | null;
   select: (id: string) => void;
+  clearSelection: () => void;
   startCreateChild: (parentId: string, goTo: (id: string) => void) => void;
-  startEdit: (id: string) => void;
+  /** Details of a node, loading them if needed; `null` for nodes that do not exist yet. */
+  detailOf: (id: string) => DetailState | null;
+  retryDetail: (id: string) => void;
+  saveDetails: (id: string, change: DetailsChange) => void;
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;
   toggleCollapse: (id: string) => void;
@@ -105,7 +127,17 @@ export function useMapView(focusId: string, depth: number): MapView {
   const key = cacheKey(focusId, depth);
   const [state, setState] = useState<MapState | null>(null);
   const [status, setStatus] = useState<ViewStatus>('loading');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, selectNode] = useState<string | null>(null);
+  // Escape or a click on the empty canvas clear the selection (slice 3, decision D7); any later
+  // selection, by the user or by the map itself, brings it back.
+  const [selectionCleared, setSelectionCleared] = useState(false);
+  const setSelectedId = useCallback((next: Parameters<typeof selectNode>[0]) => {
+    setSelectionCleared(false);
+    selectNode(next);
+  }, []);
+  const details = useRef(new DetailCache());
+  const [detailStatus, setDetailStatus] = useState<Record<string, 'loading' | 'error'>>({});
+  const [, setDetailsRead] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null);
@@ -155,7 +187,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     return () => {
       cancelled = true;
     };
-  }, [api, cache, commit, focusId, depth, key, reloads]);
+  }, [api, cache, commit, focusId, depth, key, reloads, setSelectedId]);
 
   // Navigating to another focus cancels any pending creation that is not for that focus.
   useEffect(() => {
@@ -176,6 +208,7 @@ export function useMapView(focusId: string, depth: number): MapView {
       call: () => Promise<T>,
       onSuccess: (state: MapState, result: T) => MapState,
       revert?: (state: MapState) => MapState,
+      onFailure?: () => void,
     ) => {
       const before = stateRef.current;
       if (!before) return;
@@ -198,6 +231,7 @@ export function useMapView(focusId: string, depth: number): MapView {
             commit(revert ? revert(stateRef.current) : before);
           }
           setNotice(failureNotice(error));
+          onFailure?.();
           reloadFromServer();
         }
       };
@@ -226,9 +260,10 @@ export function useMapView(focusId: string, depth: number): MapView {
     mutate(
       (state) => patchNode(state, id, { collapsed: collapsing }),
       () => api.updateNode(id, { collapsed: collapsing, version: currentNode(id)?.version ?? 0 }),
-      (state, updated: NodeOut) => {
+      (state, updated: NodeDetail) => {
         if (needsReload) queueMicrotask(reloadFromServer);
-        return patchNode(state, id, updated);
+        details.current.set(updated);
+        return patchNode(state, id, withoutDescription(updated));
       },
     );
   };
@@ -270,11 +305,6 @@ export function useMapView(focusId: string, depth: number): MapView {
     startCreateChild(parent.id, pending.goTo);
   });
 
-  const startEdit = (id: string) => {
-    const node = currentNode(id);
-    if (node && !node.pending) setEditingId(id);
-  };
-
   /** sort_key of the previous sibling, already created in the API when its turn in the queue comes. */
   const afterSortKey = (afterId: string | null | undefined): string | undefined => {
     if (!afterId) return undefined;
@@ -295,6 +325,7 @@ export function useMapView(focusId: string, depth: number): MapView {
       },
       (current, created: NodeOut) => {
         resolvedIds.current.set(node.id, created.id);
+        details.current.setCreated(created);
         setSelectedId((selected) => (selected === node.id ? created.id : selected));
         return replaceNode(current, node.id, created);
       },
@@ -302,11 +333,67 @@ export function useMapView(focusId: string, depth: number): MapView {
     );
   };
 
-  const renameNode = (id: string, title: string) => {
+  const loadDetail = (id: string) => {
+    setDetailStatus((status) => ({ ...status, [id]: 'loading' }));
+    api.getNode(id).then(
+      (detail) => {
+        details.current.set(detail);
+        setDetailStatus((status) => withoutKey(status, id));
+      },
+      () => setDetailStatus((status) => ({ ...status, [id]: 'error' })),
+    );
+  };
+
+  const detailOf = (id: string): DetailState | null => {
+    const node = currentNode(id);
+    if (!node || node.pending) return null;
+    const detail = details.current.get(id);
+    if (detail) return { status: 'ready', detail };
+    return { status: detailStatus[id] === 'error' ? 'error' : 'loading' };
+  };
+
+  // The selected node's details are read on demand, once (S3_FE_AC1, AC2).
+  const visibleSelection = selectionCleared
+    ? null
+    : selectedId && state?.nodes[selectedId]
+      ? selectedId
+      : (state?.focusId ?? null);
+  const selectedPending = visibleSelection ? Boolean(state?.nodes[visibleSelection]?.pending) : true;
+  useEffect(() => {
+    if (!visibleSelection || selectedPending) return;
+    if (details.current.get(visibleSelection) || detailStatus[visibleSelection]) return;
+    loadDetail(visibleSelection);
+  });
+
+  /**
+   * Saves title and/or description from the side panel. The title shows on the canvas at once;
+   * the queue of `mutate` sends saves in order, each with the version the previous one returned
+   * (S3_FE_AC10). On failure the window and the detail are read again (S3_FE_AC11).
+   */
+  const saveDetails = (id: string, change: DetailsChange) => {
+    const node = currentNode(id);
+    if (!node || node.pending) return;
+    // The panel shows the saved value right away; a failure drops it and reads it again.
+    const known = details.current.get(id);
+    if (known) {
+      details.current.set({ ...known, ...change });
+      setDetailsRead((count) => count + 1);
+    }
     mutate(
-      (current) => patchNode(current, id, { title }),
-      () => api.updateNode(id, { title, version: currentNode(id)?.version ?? 0 }),
-      (current, updated: NodeOut) => patchNode(current, id, updated),
+      (current) => (change.title === undefined ? current : patchNode(current, id, { title: change.title })),
+      async () => {
+        const version = currentNode(id)?.version ?? details.current.get(id)?.version ?? 0;
+        const updated = await api.updateNode(id, { ...change, version });
+        details.current.set(updated);
+        setDetailsRead((count) => count + 1);
+        return updated;
+      },
+      (current, updated: NodeDetail) => patchNode(current, id, withoutDescription(updated)),
+      undefined,
+      () => {
+        details.current.delete(id);
+        setDetailStatus((status) => withoutKey(status, id));
+      },
     );
   };
 
@@ -321,8 +408,6 @@ export function useMapView(focusId: string, depth: number): MapView {
         return;
       }
       createNode(node, title);
-    } else if (title && title !== node.title) {
-      renameNode(id, title);
     }
     if (createSibling && node.parent_id && id !== stateRef.current?.focusId) {
       startNewNode(node.parent_id, id);
@@ -334,7 +419,9 @@ export function useMapView(focusId: string, depth: number): MapView {
     const current = stateRef.current;
     const node = current?.nodes[id];
     if (!current || !node?.pending) return;
-    setSelectedId(node.afterId ?? node.parent_id);
+    // The previous sibling may already be created in the API, with its real id (decision D8).
+    const afterId = node.afterId && (resolvedIds.current.get(node.afterId) ?? node.afterId);
+    setSelectedId(afterId ?? node.parent_id);
     commit(removeSubtree(current, id));
   };
 
@@ -455,6 +542,7 @@ export function useMapView(focusId: string, depth: number): MapView {
       return;
     }
     setSelectedId(selectionAfterDelete(current, id));
+    details.current.delete(id);
     mutate(
       (state) => removeSubtree(state, id),
       call,
@@ -465,12 +553,15 @@ export function useMapView(focusId: string, depth: number): MapView {
   return {
     status,
     state,
-    selectedId: selectedId && state?.nodes[selectedId] ? selectedId : (state?.focusId ?? null),
+    selectedId: visibleSelection,
     editingId,
     notice,
     select: setSelectedId,
+    clearSelection: () => setSelectionCleared(true),
     startCreateChild,
-    startEdit,
+    detailOf,
+    retryDetail: loadDetail,
+    saveDetails,
     commitEdit,
     cancelEdit,
     toggleCollapse,

@@ -18,8 +18,10 @@ const selectNode = async (id: string) => {
 
 // React Flow nodes stay `visibility: hidden` in jsdom (they are not measured), so they are
 // looked up by label and not by role.
-const titleInput = () => screen.getByLabelText('Title');
-const queryTitleInput = () => screen.queryByLabelText('Title');
+const titleInput = () => screen.getByLabelText('New idea title');
+const queryTitleInput = () => screen.queryByLabelText('New idea title');
+// Renaming happens in the details panel since slice 3 (S1_FE_AC12 amended).
+const panelTitle = () => screen.getByLabelText('Title');
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -41,22 +43,23 @@ describe('creating nodes', () => {
   });
 
   it("S1_FE_AC11: Enter confirms and creates a sibling with the edited node's after_sort_key", async () => {
+    // Amended in slice 3: Enter only chains siblings during an inline creation.
     const { user, api } = renderApp('/n/f', sampleApi());
-    await selectNode('a');
-    await user.keyboard('{F2}');
-    await user.keyboard('{Enter}');
+    await selectNode('f');
+    await user.keyboard('{Tab}');
+    await user.type(titleInput(), 'First{Enter}');
     await user.type(titleInput(), 'Sibling{Enter}');
-    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(1));
-    expect(api.callsTo('POST', '/api/nodes/f/children')[0].body).toEqual({
-      title: 'Sibling',
-      after_sort_key: 'F',
-    });
-    // The sibling of a just-created node uses the sort_key the API assigned to it.
-    await user.type(titleInput(), 'Third{Enter}');
     await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(2));
+    // The sibling of a just-created node uses the sort_key the API assigned to it.
     expect(api.callsTo('POST', '/api/nodes/f/children')[1].body).toEqual({
+      title: 'Sibling',
+      after_sort_key: 'QV',
+    });
+    await user.type(titleInput(), 'Third{Enter}');
+    await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(3));
+    expect(api.callsTo('POST', '/api/nodes/f/children')[2].body).toEqual({
       title: 'Third',
-      after_sort_key: 'FV',
+      after_sort_key: 'QVV',
     });
     await user.keyboard('{Escape}');
     expect(queryTitleInput()).not.toBeInTheDocument();
@@ -108,13 +111,12 @@ describe('creating nodes', () => {
 });
 
 describe('renaming', () => {
-  it('S1_FE_AC12: F2 and confirming call PATCH with title and version; it takes the new version', async () => {
+  it('S1_FE_AC12: F2 focuses the panel title and confirming calls PATCH with title and version; it takes the new version', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('a');
     await user.keyboard('{F2}');
-    await user.clear(titleInput());
-    await user.type(titleInput(), 'Renamed');
-    fireEvent.blur(titleInput());
+    await user.clear(panelTitle());
+    await user.type(panelTitle(), 'Renamed{Enter}');
     await waitFor(() => expect(api.callsTo('PATCH', '/api/nodes/a')).toHaveLength(1));
     expect(api.callsTo('PATCH', '/api/nodes/a')[0].body).toEqual({
       title: 'Renamed',
@@ -126,22 +128,13 @@ describe('renaming', () => {
     expect(api.callsTo('PATCH', '/api/nodes/a')[1].body).toEqual({ collapsed: true, version: 2 });
   });
 
-  it('S1_FE_AC12: the pencil starts editing', async () => {
-    const { user, api } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Rename Idea B'));
-    await user.clear(titleInput());
-    await user.type(titleInput(), 'Another B{Escape}');
-    expect(api.callsTo('PATCH', /nodes/)).toHaveLength(0);
-    expect(nodeElement('b')).toHaveTextContent('Idea B');
-  });
-
   it('S1_FE_AC12: while editing, Backspace, Delete, Space and the arrows act on the text', async () => {
     const { user, api } = renderApp('/n/a', sampleApi());
     const confirm = vi.spyOn(window, 'confirm');
     await selectNode('a1');
     await user.keyboard('{F2}');
     await user.keyboard('{End}{Backspace}{ArrowLeft}{ArrowRight}{Delete} x');
-    expect(titleInput()).toHaveValue('Idea A x');
+    expect(panelTitle()).toHaveValue('Idea A x');
     expect(currentPath()).toBe('/n/a');
     expect(confirm).not.toHaveBeenCalled();
     expect(api.calls.filter((call) => call.method !== 'GET')).toHaveLength(0);
@@ -152,8 +145,8 @@ describe('renaming', () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await selectNode('b');
     await user.keyboard('{F2}');
-    await user.clear(titleInput());
-    fireEvent.blur(titleInput());
+    await user.clear(panelTitle());
+    fireEvent.blur(panelTitle());
     expect(nodeElement('b')).toHaveTextContent('Idea B');
     expect(api.callsTo('PATCH', /nodes/)).toHaveLength(0);
   });
@@ -329,9 +322,9 @@ describe('optimistic with rollback', () => {
     const { user } = renderApp('/n/f', api);
     await selectNode('b');
     await user.keyboard('{F2}');
-    await user.clear(titleInput());
-    await user.type(titleInput(), 'Change');
-    fireEvent.blur(titleInput());
+    await user.clear(panelTitle());
+    await user.type(panelTitle(), 'Change');
+    fireEvent.blur(panelTitle());
     expect(await screen.findByRole('alert')).toHaveTextContent('changed elsewhere');
     expect(nodeElement('b')).toHaveTextContent('Idea B');
     await waitFor(() => expect(api.callsTo('GET', '/api/nodes/f/view?depth=3')).toHaveLength(2));

@@ -109,6 +109,7 @@ export function MapCanvas({ state, selectedId, editingId, drag = NO_DRAG }: MapC
       edges={edges}
       nodeTypes={NODE_TYPES}
       onNodeClick={(_, node) => node.type === 'renderer' && actions.select(node.id)}
+      onPaneClick={() => actions.clearSelection()}
       onNodeDoubleClick={(_, node) => node.type === 'renderer' && actions.open(node.id)}
       fitView
       minZoom={0.2}

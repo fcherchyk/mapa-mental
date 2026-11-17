@@ -229,7 +229,9 @@ Spanish words, and `web/src/api/schema.ts` carries the English OpenAPI descripti
 → `test_S1_BE_AC22_*` in `api/tests/test_translation.py` (3 tests)
 
 **S1_BE_AC23 — Migrations and history are immutable.**
-The revision ids of `0001_initial.py` are unchanged and there is a single migration file. The
+The revision ids of `0001_initial.py` are unchanged and every later migration extends a single
+linear chain that starts at `0001`. *Amended in slice 3: this used to require a single migration
+file, which forbade the `description` column of slice 3.* The
 history directories `.agents/memory/specs` and `.agents/memory/adr` show no modifications against
 `main`.
 → `test_S1_BE_AC23_*` in `api/tests/test_translation.py` (2 tests)

@@ -43,7 +43,7 @@ export function TitleEditor({ initialTitle, onCommit, onCancel }: TitleEditorPro
     <input
       className="map-node-input nodrag nopan"
       ref={inputRef}
-      aria-label="Title"
+      aria-label="New idea title"
       maxLength={200}
       value={value}
       onChange={(event) => setValue(event.target.value)}
