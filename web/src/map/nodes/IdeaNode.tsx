@@ -62,20 +62,6 @@ export function IdeaNode({ data }: NodeComponentProps) {
       {!editing && !node.pending && (
         <button
           type="button"
-          className="map-node-edit nodrag nopan"
-          aria-label={`Rename ${node.title}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            actions.startEdit(node.id);
-          }}
-          onDoubleClick={(event) => event.stopPropagation()}
-        >
-          ✎
-        </button>
-      )}
-      {!editing && !node.pending && (
-        <button
-          type="button"
           className={addClasses}
           aria-label={`Add an idea inside ${node.title}`}
           onClick={(event) => {

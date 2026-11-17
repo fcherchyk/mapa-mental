@@ -50,7 +50,7 @@ keyboard, and the whole subtree travels with it.
 
 ### Explicitly out
 
-- **The Drive document node, the Google Picker and incremental `drive.file`** — moved to slice 3.
+- **The Drive document node, the Google Picker and incremental `drive.file`** — moved to slice 3, and later to slice 4 when slice 3 became node details.
   The architecture document used to group them with this slice; that grouping is dropped.
 - Touch and pen dragging. Mouse and keyboard only; a mobile-friendly view is a later roadmap item.
 - Dragging more than one node at a time.

@@ -20,7 +20,7 @@ describe('TitleEditor', () => {
 
     render(<TitleEditor initialTitle="" onCommit={vi.fn()} onCancel={vi.fn()} />);
 
-    await waitFor(() => expect(screen.getByLabelText('Title')).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText('New idea title')).toHaveFocus());
     expect(attempts).toBeGreaterThan(2);
   });
 });

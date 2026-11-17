@@ -229,7 +229,9 @@ Spanish words, and `web/src/api/schema.ts` carries the English OpenAPI descripti
 → `test_S1_BE_AC22_*` in `api/tests/test_translation.py` (3 tests)
 
 **S1_BE_AC23 — Migrations and history are immutable.**
-The revision ids of `0001_initial.py` are unchanged and there is a single migration file. The
+The revision ids of `0001_initial.py` are unchanged and every later migration extends a single
+linear chain that starts at `0001`. *Amended in slice 3: this used to require a single migration
+file, which forbade the `description` column of slice 3.* The
 history directories `.agents/memory/specs` and `.agents/memory/adr` show no modifications against
 `main`.
 → `test_S1_BE_AC23_*` in `api/tests/test_translation.py` (2 tests)
@@ -311,15 +313,17 @@ are no level-3 nodes and neither Space nor a click expands it in place. A border
 **S1_FE_AC11 — Create.**
 Given a selected node, when Tab is pressed, then a child appears instantly in edit mode; confirming
 the title calls `POST /api/nodes/{id}/children` with `{title}`. Enter while editing confirms and
-creates a sibling with `after_sort_key` equal to the edited node's `sort_key`. An empty or
+creates a sibling with `after_sort_key` equal to the edited node's `sort_key` (*since slice 3, only
+while creating inline*). An empty or
 whitespace-only title is not sent, leading and trailing spaces are trimmed, and Escape cancels the
 new node without calling the API.
 → `S1_FE_AC11:` in `web/src/editing.test.tsx` (5 tests)
 
 **S1_FE_AC12 — Rename.**
-Given a node with `version = v`, when editing starts with F2 or the pencil and a new title is
-confirmed, then `PATCH /api/nodes/{id}` is called with `{title, version: v}` and the node takes the
-version the server returns. While editing, Backspace, Delete, Space and the arrows act on the text
+Given a node with `version = v`, when F2 puts the focus on the details panel's title and a new
+title is confirmed, then `PATCH /api/nodes/{id}` is called with `{title, version: v}` and the node
+takes the version the server returns. *Amended by slice 3: renaming moved from the inline editor and
+the pencil to the details panel; the `PATCH` contract is unchanged.* While editing, Backspace, Delete, Space and the arrows act on the text
 and not on the map.
 → `S1_FE_AC12:` in `web/src/editing.test.tsx` (3 tests)
 
@@ -370,14 +374,16 @@ the "+" of the focus does not go up a level; a single click on a child's "+" doe
 or focus that node.
 → `S1_FE_AC19:` in `web/src/actions.test.tsx` (3 tests)
 
-**S1_FE_AC20 — Shortcuts keep working after the pencil.**
+**S1_FE_AC20 — Shortcuts keep working after the pencil.** *Superseded by slice 3 (`S3_FE_AC14`):
+there is no pencil any more, and its tests were removed.*
 After confirming a pencil edit with Enter or by blurring, or cancelling it with Escape,
 `document.activeElement` is the map container, so Tab opens a new child in edit mode, F2 renames
 and Space collapses.
 → `S1_FE_AC20:` in `web/src/actions.test.tsx` (5 tests)
 
 **S1_FE_AC21 — Shortcuts keep working after the "+".**
-Given a child created with the "+" button and confirmed, F2 puts the selected node in edit mode and
+Given a child created with the "+" button and confirmed, F2 puts the focus on the details panel's
+title (*amended by slice 3*) and
 Tab on the new child creates a grandchild in edit mode. If the creation is cancelled with Escape,
 focus returns to the map and the shortcuts keep working.
 → `S1_FE_AC21:` in `web/src/actions.test.tsx` (3 tests)
@@ -387,7 +393,8 @@ Clicking the "Keyboard shortcuts" button opens a `role="dialog"` listing the map
 their descriptions, and the button becomes `aria-expanded="true"`. Escape or a second click closes
 the panel, returns focus to the "?" button and sets `aria-expanded="false"`.
 *Amended by slice 2 (`S2_FE_AC17`): this used to require exactly the 8 shortcuts of slice 1, and
-now requires those 8 to be present, since slice 2 adds the `Alt` and `Drag` entries.*
+now requires those 8 to be present, since slice 2 adds the `Alt` and `Drag` entries. Slice 3
+(`S3_FE_AC20`) rewords F2 and Enter and adds Escape.*
 → `S1_FE_AC22:` in `web/src/actions.test.tsx` (2 tests)
 
 **S1_FE_AC23 — The help does not trigger map shortcuts.**

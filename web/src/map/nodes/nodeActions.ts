@@ -32,7 +32,8 @@ export interface NodeActions {
   select: (id: string) => void;
   open: (id: string) => void;
   createChild: (id: string) => void;
-  startEdit: (id: string) => void;
+  /** A click on the empty canvas clears the selection (slice 3, decision D7). */
+  clearSelection: () => void;
   remove: (id: string) => void;
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;

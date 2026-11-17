@@ -5,7 +5,8 @@ const SHORTCUTS: { keys: string; description: string }[] = [
     keys: 'Tab',
     description: 'With the map focused, adds a child to the selected idea and starts editing it.',
   },
-  { keys: 'F2', description: 'Starts editing the title of the selected idea.' },
+  { keys: 'F2', description: 'Edit the selected idea in the details panel.' },
+  { keys: 'Escape', description: 'Clear the selection and close the details panel.' },
   { keys: 'Space', description: 'Collapses or expands the selected idea.' },
   {
     keys: 'Delete',
@@ -15,7 +16,7 @@ const SHORTCUTS: { keys: string; description: string }[] = [
   {
     keys: 'Enter',
     description:
-      'Focuses the selected idea. While you edit a title, confirms it and opens a sibling idea.',
+      'Focuses the selected idea. While you create an idea, confirms it and opens a sibling idea.',
   },
   { keys: 'Backspace', description: 'Goes up one level from the focused idea.' },
   {

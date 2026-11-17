@@ -93,7 +93,17 @@ def test_S1_BE_AC23_migration_revision_ids_are_unchanged() -> None:
     source = (REPO / "api/migrations/versions/0001_initial.py").read_text(encoding="utf-8")
     assert 'revision: str = "0001"' in source
     assert "down_revision: str | None = None" in source
-    assert len(list((REPO / "api/migrations/versions").glob("*.py"))) == 1
+    # Amended in slice 3: later migrations are allowed, as long as the chain stays linear from 0001.
+    revisions = {}
+    for path in (REPO / "api/migrations/versions").glob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        revision = re.search(r'^revision: str = "(\w+)"', text, re.M)
+        down = re.search(r'^down_revision: str \| None = (?:"(\w+)"|None)', text, re.M)
+        assert revision and down, path
+        revisions[revision.group(1)] = down.group(1)
+    downs = [d for d in revisions.values() if d is not None]
+    assert len(downs) == len(set(downs)), "two migrations revise the same parent"
+    assert [r for r, d in revisions.items() if d is None] == ["0001"]
 
 
 def test_S1_BE_AC23_history_directories_are_untouched() -> None:

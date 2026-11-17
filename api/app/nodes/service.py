@@ -14,6 +14,7 @@ from app.nodes import repository
 from app.nodes.schemas import (
     AfterSibling,
     NodeCreate,
+    NodeDetail,
     NodeMove,
     NodeOut,
     NodePatch,
@@ -46,6 +47,17 @@ def to_node_out(db: Session, node: Node) -> NodeOut:
         version=node.version,
         child_count=repository.count_children(db, node.id),
     )
+
+
+def to_node_detail(db: Session, node: Node) -> NodeDetail:
+    return NodeDetail(**to_node_out(db, node).model_dump(), description=node.description)
+
+
+def get_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID) -> NodeDetail:
+    node = repository.get_owned_node(db, owner_id, node_id)
+    if node is None:
+        raise not_found()
+    return to_node_detail(db, node)
 
 
 def get_view(db: Session, owner_id: uuid.UUID, focus_id: uuid.UUID, depth: int) -> NodeView:
@@ -88,7 +100,9 @@ def new_child_sort_key(db: Session, parent_id: uuid.UUID, after: str | None) -> 
     return key_between(after, repository.next_sibling_sort_key(db, parent_id, after))
 
 
-def update_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, patch: NodePatch) -> NodeOut:
+def update_node(
+    db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, patch: NodePatch
+) -> NodeDetail:
     node = repository.get_owned_node(db, owner_id, node_id)
     if node is None:
         raise not_found()
@@ -100,7 +114,7 @@ def update_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, patch: Nod
     except StaleDataError:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, VERSION_CONFLICT) from None
-    return to_node_out(db, node)
+    return to_node_detail(db, node)
 
 
 def apply_patch(node: Node, patch: NodePatch) -> None:
@@ -113,6 +127,8 @@ def apply_patch(node: Node, patch: NodePatch) -> None:
             raise unprocessable(f"invalid props for {node.kind}: {exc}") from None
     if patch.title is not None:
         node.title = patch.title
+    if patch.description is not None:
+        node.description = patch.description
     if patch.collapsed is not None:
         node.collapsed = patch.collapsed
     if patch.sort_key is not None:
