@@ -5,6 +5,7 @@ from typing import Annotated, Any, Literal, NamedTuple
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 DEFAULT_KIND = "idea"
+TASK_KIND = "task"
 
 CHECKLIST_MAX_ITEMS = 30
 ITEM_TEXT_MAX_LENGTH = 100
@@ -71,7 +72,7 @@ class NodeType(NamedTuple):
 NODE_TYPES: dict[str, NodeType] = {
     "idea": NodeType(IdeaProps, allows_children=True),
     # A task is a leaf: it holds a checklist, not other nodes (slice 4A, decision D3).
-    "task": NodeType(TaskProps, allows_children=False),
+    TASK_KIND: NodeType(TaskProps, allows_children=False),
 }
 
 

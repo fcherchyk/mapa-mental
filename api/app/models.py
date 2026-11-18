@@ -70,6 +70,7 @@ class Node(Base):
     __table_args__ = (
         Index("ix_nodes_map_id", "map_id"),
         Index("ix_nodes_parent_id_sort_key", "parent_id", "sort_key"),
+        Index("ix_nodes_map_id_board_rank", "map_id", "board_rank"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -86,6 +87,9 @@ class Node(Base):
     props: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default=text("'{}'::jsonb")
     )
+    # One order for every task of the map, shared by every board (slice 4B, decision D2).
+    # Fractional key like `sort_key`; NULL for kinds that never appear on a board.
+    board_rank: Mapped[str | None] = mapped_column(Text(collation="C"))
     version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

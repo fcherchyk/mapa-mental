@@ -205,3 +205,15 @@ export function selectionAfterDelete(state: MapState, id: string): string {
   const siblings = state.childIds[parent] ?? [];
   return siblings[siblings.indexOf(id) - 1] ?? parent;
 }
+
+/** Root › … › `nodeId`'s parent, as titles with ids, for a node inside the window. */
+export function pathTo(state: MapState, nodeId: string): { id: string; title: string }[] {
+  const inside: { id: string; title: string }[] = [];
+  let id = state.nodes[nodeId]?.parent_id;
+  while (id && state.nodes[id]) {
+    inside.unshift({ id, title: state.nodes[id].title });
+    if (id === state.focusId) break;
+    id = state.nodes[id].parent_id;
+  }
+  return [...state.ancestors.map((a) => ({ id: a.id, title: a.title })), ...inside];
+}

@@ -2,7 +2,7 @@
 
 A web app that lets a person with a Google account build a single mind map of ideas and browse it by focusing one node at a time, seeing at most N levels down. The first slice has the FastAPI API on PostgreSQL (`api/`) and the React + TypeScript SPA with Vite and React Flow (`web/`), which talk to each other over `/api` from the same origin, `localhost:5173`.
 
-**Status: MVP.** What is built today is a minimum viable product: login, a single map, and creating, editing, describing, navigating, moving and deleting ideas and tasks. It is specified criterion by criterion in [`docs/slices/`](docs/slices/), one document per slice. The rest of the vision is in the [Roadmap](#roadmap).
+**Status: MVP.** What is built today is a minimum viable product: login, a single map, creating, editing, describing, navigating, moving and deleting ideas and tasks, and a kanban board of the tasks under any node. It is specified criterion by criterion in [`docs/slices/`](docs/slices/), one document per slice. The rest of the vision is in the [Roadmap](#roadmap).
 
 ### Vision
 
@@ -30,10 +30,15 @@ The map is meant to become the hub for a person's ideas and work:
 - "☑" button on each idea (with the accessible label "Add a task inside …"), next to "+": creates a task in edit mode, same as Shift+Tab. Tasks offer no create button, take no drop and cannot be focused.
 - Details panel on the right: selecting a node shows its title and description, already editable. For a task it also shows a "Status" segmented control and its checklist, where items are added, checked, renamed, removed and reordered by dragging. The status and the checklist are independent: completing every item does not make the task done. Limits: 30 items, 100 characters each. It follows the selection (also with the arrows) without taking the keyboard from the map, and is hidden while an idea is being created inline. Each field saves when it loses focus or the selection changes; Enter in the title saves, Escape discards, and both give the keyboard back to the map. The title can't be empty; the description is plain multi-line text up to 1000 characters, with a counter. Escape on the map or a click on the empty canvas clears the selection and closes the panel. The root can be edited but not deleted, and the panel has no other actions.
 - When an inline creation or a panel edit ends, focus goes back to the map, so the shortcuts keep working without clicking anywhere else.
+- The details panel also shows the node's **path** (root › … › parent) as plain text, in both views.
+- **Board view** (slice 4B): a "Map | Board" toggle in the header switches between the canvas and a kanban board of the focused node, at `/board` (the root) or `/n/:nodeId/board`. The board's title is the focused node's, and its three columns, "To do", "In progress" and "Done", hold every task under the focus at any depth, collapsed or not, as cards with the status stripe, the checklist progress and a 🗑. Breadcrumb entries open the ancestor's board. "Visible levels" is only shown on the map.
+- Cards keep **one global order per map** (`board_rank`): a reorder made on one board holds on every board that shows the same cards, and a new task is placed in tree order. Dragging a card to a gap of another column changes its status and position in one request (`POST /api/nodes/{id}/board-move`); dragging within a column reorders it; dropping where it already is sends nothing, and Escape cancels the drag. Alt+← and Alt+→ move the focused card to the previous or next column and Alt+↑ and Alt+↓ move it within its column; at the edges they do nothing. A status change from the keyboard or from the panel keeps the card's position.
+- A click or Enter on a card opens the same details panel; Escape or a click on the empty board closes it. "Add task" at the bottom of "To do" creates tasks as children of the focus, chained with Enter. 🗑 and Delete remove a card at once, with no dialog. Every board change is optimistic, rolls back with a notice on failure, and clears the map's window cache; the board itself is read again on every visit.
 - Edge nodes show a "+k" indicator with the number of hidden children (focus them to see those); collapsed nodes show "+k" with a dotted border.
 - Optimistic editing with rollback and a notice if the API fails: Tab creates a child idea, Shift+Tab creates a child task, Enter (while creating) creates a sibling, F2 goes to the panel's title, Space collapses or expands, Delete removes (a leaf without asking; a node with children opens the delete dialog), and the arrow keys move the selection.
 - Move ideas by dragging: dropping one on another makes it its last child, and dropping it between two of its own siblings reorders it. Breadcrumb entries also take the drop, which moves the idea up to that ancestor. The whole subtree travels along. With the keyboard, Alt+↑ and Alt+↓ reorder among siblings, Alt+→ makes the idea the last child of the one above it, and Alt+← takes it out to its grandparent. Escape cancels a drag.
 - Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), read one node with its description (`GET /api/nodes/{id}`; the window never carries it), edit title, description and per-kind `props` with version control (`PATCH /api/nodes/{id}`; `kind` is not patchable, and a task's `props` are `{status, checklist}`), move (`POST /api/nodes/{id}/move` with `{parent_id, place, version}`, where `place` is `"first"`, `"last"` or `{"after_id": …}`; the server computes the `sort_key`, refuses to move the root or to put a node inside its own subtree) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed; descriptions are 0 to 1000 characters, stored exactly as sent. Creating a child of a task, or moving a node into one, returns `422`: a task has no children.
+- Board API: `GET /api/nodes/{id}/board` returns `{focus, ancestors, tasks}` with every task descendant ordered by `board_rank`; `POST /api/nodes/{id}/board-move` takes `{status, place?, version}` where `place` is `{before_id}` or `{after_id}` naming another task of the map, sets the status inside `props` and computes the rank on the server (no `place` keeps it); `POST /children` with `kind: "task"` accepts an optional `board_place` of the same shape, and otherwise ranks the task in depth-first tree order. `GET /api/nodes/{id}` (and `PATCH`) also return `path`, the ancestors from the root to the parent. Migration `0003` adds `nodes.board_rank` and backfills existing tasks in tree order.
 - User isolation: a node that belongs to someone else returns `404`, and the SPA shows "Not found".
 - CSRF protection: every mutation requires the `X-CSRF: 1` header. Titles are always rendered as text, and the SPA is served with a `Content-Security-Policy`.
 
@@ -70,6 +75,8 @@ Open `http://localhost:5173` and sign in with Google. All ports are published on
 
 Keyboard (with the map focused, not editing): Tab creates a child, F2 edits the selected idea in the details panel, Escape clears the selection, Space collapses or expands, Delete removes, Enter focuses, Backspace goes up, the arrow keys move the selection and Alt with the arrow keys moves the idea itself. Double-click focuses a node, and double-clicking the focus goes up one level. While creating an idea: Enter confirms and creates a sibling, and Escape cancels.
 
+On the board (with a card focused): Enter opens its details, Delete removes it, Alt+← and Alt+→ change its column, Alt+↑ and Alt+↓ move it within the column, and Escape clears the selection or cancels a drag.
+
 With the mouse or the keyboard you can also reach the actions from the node: the "+" creates a child, the 🗑 deletes the node (with the dialog if it has children), and the "?" in the header shows the list of shortcuts. With focus on a button, Tab moves between the browser's controls and does not create a child.
 
 To run the SPA outside Docker against a local API: `pnpm --dir web dev` (the proxy points to `http://127.0.0.1:8000`, or to `API_PROXY_TARGET`).
@@ -92,7 +99,7 @@ pnpm --dir web exec vitest run --coverage
   4. None: the tests that need the database are skipped and the rest still run. The two tests that validate `docker-compose.yml` are skipped when the Docker CLI is not installed.
 - Frontend: Vitest + Testing Library on jsdom, against an in-memory API (`web/src/test/fakeApi.ts`). It fails if line coverage drops below 80%.
 
-The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus). Moving has `api/tests/test_move.py` (positions, cycles, isolation, versions, key growth) and, on the client, `web/src/map/dropTarget.test.ts` (the drop rules, as pure functions) and `web/src/move.test.tsx` (dragging, the breadcrumb, rollback and the Alt shortcuts).
+The delete tests cover both modes: `api/tests/test_delete_modes.py` (cascade, reparent, atomicity, CSRF, isolation, validation) and `web/src/deleteModes.test.tsx` (button, leaf, dialog, reparent, cancel and focus). The board has `api/tests/test_board.py` (descendants, order, ranks, `board-move`, migration, path) and, on the client, `web/src/board.test.tsx` and `web/src/board/boardOrder.test.ts`. Moving has `api/tests/test_move.py` (positions, cycles, isolation, versions, key growth) and, on the client, `web/src/map/dropTarget.test.ts` (the drop rules, as pure functions) and `web/src/move.test.tsx` (dragging, the breadcrumb, rollback and the Alt shortcuts).
 
 Test names say which acceptance criterion they cover, using the ids from the slice specification in [`docs/slices/`](docs/slices/). Backend tests start with `test_S1_BE_AC<n>_` and frontend test names start with `S1_FE_AC<n>:`, where `S1` is the slice. Run one criterion with `pytest -k S1_BE_AC11` or `vitest run -t S1_FE_AC6`. Tests with no id are supporting unit tests, listed in the slice document.
 
@@ -105,7 +112,7 @@ docs/slices/              slice specifications: what the product does, as accept
 api/
   pyproject.toml, uv.lock uv environment (pytest, pytest-cov, testcontainers in dev)
   Dockerfile
-  alembic.ini, migrations/ migrations (0001: users, sessions, maps, nodes)
+  alembic.ini, migrations/ migrations (0001: users, sessions, maps, nodes; 0002: description; 0003: board_rank)
   scripts/export_openapi.py  writes the OpenAPI without starting the server
   app/
     main.py               create_app: middleware, routers with the /api prefix
@@ -113,7 +120,7 @@ api/
     db.py, models.py      SQLAlchemy 2
     auth/                 Google OAuth, sessions, CSRF, /me
     settings/             user preferences (depth)
-    nodes/                window (recursive CTE), create, edit, move, delete (cascade or reparent), sort_keys
+    nodes/                window (recursive CTE), create, edit, move, delete (cascade or reparent), sort_keys, board (task descendants, board_rank, board-move)
     node_types/           node type registry (idea) and props validation
     integrations/         empty in the first slice
   tests/                  pytest + httpx against an ephemeral PostgreSQL
@@ -129,8 +136,10 @@ web/
     deleteModes.test.tsx  delete tests (🗑 button, leaf, dialog, reparent, cancel, focus)
     move.test.tsx         move tests (dragging, gaps, breadcrumb, rollback, Alt shortcuts)
     detailsPanel.test.tsx details panel tests (loading, saving, keys, creation flow, rollback)
+    board.test.tsx        board tests (routes, toggle, columns, panel, drag, Alt+arrows, add, delete, freshness)
     api/                  fetch client with X-CSRF and the OpenAPI types (schema.ts)
-    components/           login, not-found page ("Not found"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children), DetailsPanel (title and description of the selected node)
+    components/           login, not-found page ("Not found"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children), DetailsPanel (path, title, status, description and checklist of the selected node), ViewToggle (Map | Board)
+    board/                BoardPage, BoardColumn, BoardCard, useBoardView (loading and optimistic mutations), boardOrder.ts (pure column and place rules)
     map/
       tree.ts             normalized window and pure operations (insert, delete, reorder, arrows)
       layout.ts           horizontal tree layout
@@ -154,7 +163,8 @@ web/
 - [x] Move and reorder nodes by dragging and with the keyboard (uses `sort_key`)
 - [x] Node details: description and a side panel to edit title and description
 - [x] Task nodes: status and checklist (slice 4A, the first of the task-oriented series)
-- [ ] Other node kinds: Google Drive documents, spreadsheets, calendar events, repositories or projects
+- [x] Kanban board of the focused node's tasks, with drag between columns and one global card order (slice 4B)
+- [ ] Other node kinds: spreadsheets, calendar events, repositories or projects
 - [ ] Integrations with Google Calendar, Trello and GitHub
 - [ ] Mobile app that reuses the API, starting with a PWA
 - [ ] Deployment beyond local

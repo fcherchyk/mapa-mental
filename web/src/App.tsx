@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Route, Routes } from 'react-router';
 import { ApiError, createApiClient, type Me } from './api/client';
+import { BoardPage } from './board/BoardPage';
 import { LoginScreen } from './components/LoginScreen';
 import { NotFound } from './components/NotFound';
 import { MapPage } from './map/MapPage';
@@ -85,6 +86,8 @@ export function App() {
       <Routes>
         <Route path="/" element={<MapPage />} />
         <Route path="/n/:nodeId" element={<MapPage />} />
+        <Route path="/board" element={<BoardPage />} />
+        <Route path="/n/:nodeId/board" element={<BoardPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </SessionContext.Provider>

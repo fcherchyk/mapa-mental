@@ -16,7 +16,7 @@ run, in Spanish, kept as history) and in `.agents/log.md`.
 | 2 | [slice-2-move-and-reorder.md](slice-2-move-and-reorder.md) — move and reorder nodes by dragging and with the keyboard | Delivered |
 | 3 | [slice-3-node-details.md](slice-3-node-details.md) — node description and details side panel (replaces the pencil) | Delivered |
 | 4A | [slice-4a-task-nodes.md](slice-4a-task-nodes.md) — task nodes: kind, status and checklist | Delivered |
-| 4B | — | Not started: "Drive document" node with the Google Picker and incremental `drive.file` scope |
+| 4B | [slice-4b-kanban-board.md](slice-4b-kanban-board.md) — kanban board of the focused node's tasks, with one global card order | Delivered |
 
 The backlog beyond slice 1 is the [Roadmap in `README.md`](../../README.md#roadmap).
 

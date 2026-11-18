@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from app.models import Node
-from app.node_types import allows_children, validate_props
+from app.node_types import TASK_KIND, allows_children, validate_props
 from app.nodes import repository
+from app.nodes.board import rank_for_new_task
 from app.nodes.schemas import (
     AfterSibling,
     NodeCreate,
@@ -19,6 +20,7 @@ from app.nodes.schemas import (
     NodeOut,
     NodePatch,
     NodeView,
+    PathEntry,
     WindowNode,
 )
 from app.nodes.sort_keys import key_between
@@ -53,15 +55,20 @@ def to_node_out(db: Session, node: Node) -> NodeOut:
     )
 
 
-def to_node_detail(db: Session, node: Node) -> NodeDetail:
-    return NodeDetail(**to_node_out(db, node).model_dump(), description=node.description)
+def to_node_detail(db: Session, owner_id: uuid.UUID, node: Node) -> NodeDetail:
+    # The path is shown in the panel in both views (slice 4B, decision D12).
+    path = [
+        PathEntry(id=row["id"], title=row["title"])
+        for row in repository.fetch_ancestors(db, owner_id, node.id)
+    ]
+    return NodeDetail(**to_node_out(db, node).model_dump(), description=node.description, path=path)
 
 
 def get_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID) -> NodeDetail:
     node = repository.get_owned_node(db, owner_id, node_id)
     if node is None:
         raise not_found()
-    return to_node_detail(db, node)
+    return to_node_detail(db, owner_id, node)
 
 
 def get_view(db: Session, owner_id: uuid.UUID, focus_id: uuid.UUID, depth: int) -> NodeView:
@@ -85,14 +92,22 @@ def create_child(
         raise not_found()
     if not allows_children(parent.kind):
         raise unprocessable(no_children(parent.kind))
+    sort_key = new_child_sort_key(db, parent.id, data.after_sort_key)
+    # Only tasks have a place on the board (slice 4B, decision D2).
+    board_rank = (
+        rank_for_new_task(db, parent, sort_key, data.board_place, owner_id)
+        if data.kind == TASK_KIND
+        else None
+    )
     node = Node(
         map_id=parent.map_id,
         parent_id=parent.id,
         kind=data.kind,
         title=data.title,
-        sort_key=new_child_sort_key(db, parent.id, data.after_sort_key),
+        sort_key=sort_key,
         collapsed=False,
         props=data.props,
+        board_rank=board_rank,
     )
     db.add(node)
     db.commit()
@@ -120,7 +135,7 @@ def update_node(
     except StaleDataError:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, VERSION_CONFLICT) from None
-    return to_node_detail(db, node)
+    return to_node_detail(db, owner_id, node)
 
 
 def apply_patch(node: Node, patch: NodePatch) -> None:

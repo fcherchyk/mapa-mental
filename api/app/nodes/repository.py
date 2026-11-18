@@ -58,6 +58,24 @@ SELECT EXISTS (SELECT 1 FROM chain WHERE parent_id = :ancestor_id)
 """)
 
 
+# Every task under the focus, at any depth and whether or not something is collapsed, in the
+# map's board order (slice 4B, decision D2). The focus itself is never a card.
+BOARD_SQL = text(f"""
+WITH RECURSIVE subtree AS (
+    SELECT n.id, 0 AS level
+    FROM nodes n JOIN maps m ON m.id = n.map_id
+    WHERE n.id = :focus_id AND m.owner_id = :owner_id
+  UNION ALL
+    SELECT c.id, s.level + 1
+    FROM subtree s JOIN nodes c ON c.parent_id = s.id
+)
+SELECT {NODE_COLUMNS}
+FROM subtree s JOIN nodes n ON n.id = s.id
+WHERE s.level > 0 AND n.kind = :task_kind
+ORDER BY n.board_rank, n.id
+""")
+
+
 def fetch_window(
     db: Session, owner_id: uuid.UUID, focus_id: uuid.UUID, depth: int
 ) -> list[dict[str, Any]]:
@@ -135,3 +153,42 @@ def previous_sibling_sort_key(
 def ordered_children(db: Session, parent_id: uuid.UUID) -> list[Node]:
     query = select(Node).where(Node.parent_id == parent_id).order_by(Node.sort_key, Node.id)
     return list(db.scalars(query))
+
+
+def fetch_board_tasks(
+    db: Session, owner_id: uuid.UUID, focus_id: uuid.UUID, task_kind: str
+) -> list[dict[str, Any]]:
+    params = {"focus_id": focus_id, "owner_id": owner_id, "task_kind": task_kind}
+    return [dict(row) for row in db.execute(BOARD_SQL, params).mappings()]
+
+
+def map_outline(db: Session, map_id: uuid.UUID) -> list[Node]:
+    """Every node of the map; enough to lay the tree out in memory and find tree neighbours."""
+    return list(db.scalars(select(Node).where(Node.map_id == map_id)))
+
+
+def ranked(map_id: uuid.UUID, exclude_id: uuid.UUID | None) -> list[Any]:
+    conditions = [Node.map_id == map_id, Node.board_rank.is_not(None)]
+    if exclude_id is not None:
+        conditions.append(Node.id != exclude_id)
+    return conditions
+
+
+def next_board_rank(
+    db: Session, map_id: uuid.UUID, after: str, exclude_id: uuid.UUID | None = None
+) -> str | None:
+    """Smallest `board_rank` in the map greater than `after`."""
+    query = select(func.min(Node.board_rank)).where(
+        *ranked(map_id, exclude_id), Node.board_rank > after
+    )
+    return db.scalar(query)
+
+
+def previous_board_rank(
+    db: Session, map_id: uuid.UUID, before: str, exclude_id: uuid.UUID | None = None
+) -> str | None:
+    """Largest `board_rank` in the map less than `before`."""
+    query = select(func.max(Node.board_rank)).where(
+        *ranked(map_id, exclude_id), Node.board_rank < before
+    )
+    return db.scalar(query)
