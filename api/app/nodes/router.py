@@ -9,8 +9,17 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import current_user, require_csrf
 from app.db import get_db
 from app.models import User
-from app.nodes import service
-from app.nodes.schemas import NodeCreate, NodeDetail, NodeMove, NodeOut, NodePatch, NodeView
+from app.nodes import board, service
+from app.nodes.schemas import (
+    BoardMove,
+    BoardView,
+    NodeCreate,
+    NodeDetail,
+    NodeMove,
+    NodeOut,
+    NodePatch,
+    NodeView,
+)
 from app.settings.schemas import DEPTH_MAX, DEPTH_MIN
 from app.settings.service import read_settings
 
@@ -29,6 +38,18 @@ def view_node(
 ) -> NodeView:
     """Focus, ancestors and up to `depth` levels; without `depth` it uses the user's preference."""
     return service.get_view(db, user.id, node_id, depth or read_settings(user).depth)
+
+
+@router.get("/{node_id}/board", response_model=BoardView)
+def board_view(node_id: uuid.UUID, user: CurrentUser, db: Db) -> BoardView:
+    """Every task under the node, at any depth, in board order (slice 4B)."""
+    return board.get_board(db, user.id, node_id)
+
+
+@router.post("/{node_id}/board-move", response_model=NodeOut, dependencies=[Depends(require_csrf)])
+def board_move(node_id: uuid.UUID, data: BoardMove, user: CurrentUser, db: Db) -> NodeOut:
+    """Sets a task's status and, with `place`, its position among the map's tasks."""
+    return board.board_move(db, user.id, node_id, data)
 
 
 @router.post(

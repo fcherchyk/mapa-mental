@@ -110,6 +110,7 @@ describe('focus navigation', () => {
         title: `Leaf ${i}`,
         sort_key: `${i}`,
         collapsed: false,
+        board_rank: 0,
         version: 1,
         description: '',
         kind: 'idea',

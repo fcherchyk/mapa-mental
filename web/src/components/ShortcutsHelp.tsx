@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 
-const SHORTCUTS: { keys: string; description: string }[] = [
+interface Shortcut {
+  keys: string;
+  description: string;
+}
+
+const MAP_SHORTCUTS: Shortcut[] = [
   {
     keys: 'Tab',
     description:
@@ -55,6 +60,21 @@ const SHORTCUTS: { keys: string; description: string }[] = [
   },
 ];
 
+/** The board's own keys (slice 4B, decision D16). */
+const BOARD_SHORTCUTS: Shortcut[] = [
+  { keys: 'Enter', description: "Opens the focused card's details." },
+  { keys: 'Alt + ← →', description: 'Moves the card to the previous or next column.' },
+  { keys: 'Alt + ↑ ↓', description: 'Moves the card up or down in its column.' },
+  { keys: 'Delete', description: 'Deletes the card.' },
+  { keys: 'Escape', description: 'Clears the selection.' },
+  { keys: 'Drag', description: 'Drag a card to another column or position.' },
+];
+
+const GROUPS: { title: string; shortcuts: Shortcut[] }[] = [
+  { title: 'Map', shortcuts: MAP_SHORTCUTS },
+  { title: 'Board', shortcuts: BOARD_SHORTCUTS },
+];
+
 interface ShortcutsHelpProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -103,16 +123,21 @@ export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
           aria-label="Keyboard shortcuts"
           className="shortcuts-panel"
         >
-          <dl>
-            {SHORTCUTS.map(({ keys, description }) => (
-              <div key={keys}>
-                <dt>
-                  <kbd>{keys}</kbd>
-                </dt>
-                <dd>{description}</dd>
-              </div>
-            ))}
-          </dl>
+          {GROUPS.map((group) => (
+            <section key={group.title} aria-label={group.title}>
+              <h2>{group.title}</h2>
+              <dl>
+                {group.shortcuts.map(({ keys, description }) => (
+                  <div key={keys}>
+                    <dt>
+                      <kbd>{keys}</kbd>
+                    </dt>
+                    <dd>{description}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))}
         </section>
       )}
     </div>

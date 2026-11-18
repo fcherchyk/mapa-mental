@@ -115,6 +115,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/nodes/{node_id}/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Board View
+         * @description Every task under the node, at any depth, in board order (slice 4B).
+         */
+        get: operations["board_view_api_nodes__node_id__board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nodes/{node_id}/board-move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Board Move
+         * @description Sets a task's status and, with `place`, its position among the map's tasks.
+         */
+        post: operations["board_move_api_nodes__node_id__board_move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nodes/{node_id}/children": {
         parameters: {
             query?: never;
@@ -192,6 +232,63 @@ export interface components {
              */
             after_id: string;
         };
+        /**
+         * AfterTask
+         * @description Board position right after a given task, named by id (slice 4B, decision D4).
+         */
+        AfterTask: {
+            /**
+             * After Id
+             * Format: uuid
+             */
+            after_id: string;
+        };
+        /**
+         * BeforeTask
+         * @description Board position right before a given task, named by id (slice 4B, decision D4).
+         */
+        BeforeTask: {
+            /**
+             * Before Id
+             * Format: uuid
+             */
+            before_id: string;
+        };
+        /**
+         * BoardMove
+         * @description A card's new status and, optionally, its new position in the map's board order.
+         *
+         *     One request, so a drop into another column at a given spot is atomic. Without `place` only
+         *     the status changes and the rank is kept (slice 4B, decisions D4 and D5).
+         */
+        BoardMove: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "to_do" | "in_progress" | "done";
+            /** Place */
+            place?: components["schemas"]["BeforeTask"] | components["schemas"]["AfterTask"] | null;
+            /** Version */
+            version: number;
+        };
+        /**
+         * BoardView
+         * @description Every task under the focus, at any depth, in board order (slice 4B).
+         */
+        BoardView: {
+            focus: components["schemas"]["NodeOut"];
+            /**
+             * Ancestors
+             * @description From the root to the focus's parent.
+             */
+            ancestors: components["schemas"]["NodeOut"][];
+            /**
+             * Tasks
+             * @description Task descendants by board_rank, then id.
+             */
+            tasks: components["schemas"]["NodeOut"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -232,6 +329,8 @@ export interface components {
             props?: {
                 [key: string]: unknown;
             };
+            /** Board Place */
+            board_place?: components["schemas"]["BeforeTask"] | components["schemas"]["AfterTask"] | null;
         };
         /**
          * NodeDetail
@@ -263,6 +362,11 @@ export interface components {
             child_count: number;
             /** Description */
             description: string;
+            /**
+             * Path
+             * @description From the root to the node's parent (slice 4B).
+             */
+            path: components["schemas"]["PathEntry"][];
         };
         /**
          * NodeMove
@@ -339,6 +443,16 @@ export interface components {
              * @description By level; siblings by sort_key.
              */
             nodes: components["schemas"]["WindowNode"][];
+        };
+        /** PathEntry */
+        PathEntry: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
         };
         /** SettingsPatch */
         SettingsPatch: {
@@ -550,6 +664,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NodeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    board_view_api_nodes__node_id__board_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    board_move_api_nodes__node_id__board_move_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF"?: string | null;
+            };
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardMove"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeOut"];
                 };
             };
             /** @description Validation Error */

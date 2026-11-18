@@ -10,6 +10,11 @@ export type NodePatch = components['schemas']['NodePatch'];
 export type NodeMove = components['schemas']['NodeMove'];
 /** Where a node lands among its new siblings: first, last, or right after a given one. */
 export type Place = NodeMove['place'];
+export type BoardView = components['schemas']['BoardView'];
+export type BoardMove = components['schemas']['BoardMove'];
+export type PathEntry = components['schemas']['PathEntry'];
+/** A card's position in the map's board order: right before or right after another task (slice 4B). */
+export type BoardPlace = NonNullable<BoardMove['place']>;
 
 /**
  * A task's `props` (slice 4A, decision D1). `props` is `dict[str, Any]` in the OpenAPI document,
@@ -56,10 +61,12 @@ export interface ApiClient {
   logout(): Promise<void>;
   patchSettings(settings: { depth: number }): Promise<UserSettings>;
   getView(nodeId: string, depth: number): Promise<NodeView>;
+  getBoard(nodeId: string): Promise<BoardView>;
   getNode(nodeId: string): Promise<NodeDetail>;
   createChild(parentId: string, data: NodeCreate): Promise<NodeOut>;
   updateNode(nodeId: string, patch: NodePatch): Promise<NodeDetail>;
   moveNode(nodeId: string, move: NodeMove): Promise<NodeOut>;
+  boardMove(nodeId: string, move: BoardMove): Promise<NodeOut>;
   deleteNode(nodeId: string, options?: DeleteOptions): Promise<void>;
 }
 
@@ -87,10 +94,12 @@ export function createApiClient(onUnauthorized: () => void = () => {}): ApiClien
     logout: () => request('POST', '/auth/logout'),
     patchSettings: (settings) => request('PATCH', '/me/settings', settings),
     getView: (nodeId, depth) => request('GET', `${node(nodeId)}/view?depth=${depth}`),
+    getBoard: (nodeId) => request('GET', `${node(nodeId)}/board`),
     getNode: (nodeId) => request('GET', node(nodeId)),
     createChild: (parentId, data) => request('POST', `${node(parentId)}/children`, data),
     updateNode: (nodeId, patch) => request('PATCH', node(nodeId), patch),
     moveNode: (nodeId, move) => request('POST', `${node(nodeId)}/move`, move),
+    boardMove: (nodeId, move) => request('POST', `${node(nodeId)}/board-move`, move),
     deleteNode: (nodeId, options) =>
       request(
         'DELETE',

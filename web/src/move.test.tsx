@@ -435,7 +435,11 @@ describe('the shortcuts panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
 
-    const panel = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    // The map's group of the panel; the board has its own since slice 4B (S4B_FE_AC20).
+    const panel = within(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).getByRole(
+      'region',
+      { name: 'Map' },
+    );
     for (const keys of ['Alt + ↑ ↓', 'Alt + →', 'Alt + ←', 'Drag']) {
       expect(within(panel).getByText(keys)).toBeInTheDocument();
     }

@@ -1,5 +1,14 @@
 import { vi } from 'vitest';
-import type { Me, NodeDetail, NodeOut, NodeView, TaskProps } from '../api/client';
+import type {
+  BoardPlace,
+  BoardView,
+  Me,
+  NodeDetail,
+  NodeOut,
+  NodeView,
+  PathEntry,
+  TaskProps,
+} from '../api/client';
 import { defaultTaskProps, TASK_KIND } from '../map/nodes/taskProps';
 
 export interface FakeNode {
@@ -12,6 +21,8 @@ export interface FakeNode {
   description?: string;
   kind?: string;
   props?: Record<string, unknown>;
+  /** Board order (slice 4B); tasks without one get it in tree order, as the migration does. */
+  board_rank?: number;
 }
 
 /** Kinds that take children, as `app/node_types` decides on the server (slice 4A, decision D3). */
@@ -58,10 +69,18 @@ export class FakeApi {
         collapsed: false,
         version: 1,
         description: '',
+        board_rank: 0,
         ...node,
         kind,
         props: propsFor(kind, node.props),
       });
+    }
+    let rank = 0;
+    for (const node of this.treeOrder()) {
+      if (node.kind !== TASK_KIND) continue;
+      rank += 1;
+      const given = nodes.find((n) => n.id === node.id)?.board_rank;
+      this.nodes.set(node.id, { ...node, board_rank: given ?? rank });
     }
   }
 
@@ -126,11 +145,13 @@ export class FakeApi {
       return json(200, { depth: this.depth });
     }
     const match = url.match(
-      /^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children|\/move|\?children=(cascade|reparent))?$/,
+      /^\/api\/nodes\/([^/?]+)(\/view\?depth=(\d+)|\/children|\/move|\/board|\/board-move|\?children=(cascade|reparent))?$/,
     );
     const node = match && this.nodes.get(decodeURIComponent(match[1]));
     if (!match || !node) return json(404, { detail: 'node not found' });
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
+    if (method === 'GET' && match[2] === '/board') return json(200, this.board(node.id));
+    if (method === 'POST' && match[2] === '/board-move') return this.boardMove(node, call);
     if (method === 'GET' && !match[2]) return json(200, this.detail(node));
     if (method === 'POST' && match[2] === '/children') {
       if (!allowsChildren(node.kind))
@@ -169,18 +190,105 @@ export class FakeApi {
     return [id, ...this.children(id).flatMap((child) => this.subtree(child.id))];
   }
 
-  /** The window never carries the description (slice 3, decision D2). */
+  /** The window never carries `board_rank` either: the API orders the board itself. */
   private out(node: Required<FakeNode>): NodeOut {
     const rest: Partial<Required<FakeNode>> = { ...node };
     delete rest.description;
+    delete rest.board_rank;
     return {
-      ...(rest as Omit<Required<FakeNode>, 'description'>),
+      ...(rest as Omit<Required<FakeNode>, 'description' | 'board_rank'>),
       child_count: this.children(node.id).length,
     };
   }
 
   detail(node: Required<FakeNode>): NodeDetail {
-    return { ...this.out(node), description: node.description };
+    return { ...this.out(node), description: node.description, path: this.path(node) };
+  }
+
+  private path(node: Required<FakeNode>): PathEntry[] {
+    const path: PathEntry[] = [];
+    for (let id = node.parent_id; id; id = this.nodes.get(id)!.parent_id) {
+      const ancestor = this.nodes.get(id)!;
+      path.unshift({ id: ancestor.id, title: ancestor.title });
+    }
+    return path;
+  }
+
+  /** Every node, depth first, siblings by `sort_key`. */
+  private treeOrder(): Required<FakeNode>[] {
+    const walk = (id: string): Required<FakeNode>[] =>
+      this.children(id).flatMap((child) => [child, ...walk(child.id)]);
+    const root = this.nodes.get(this.rootId)!;
+    return [root, ...walk(root.id)];
+  }
+
+  private rankedTasks(): Required<FakeNode>[] {
+    return [...this.nodes.values()]
+      .filter((node) => node.kind === TASK_KIND)
+      .sort((a, b) => a.board_rank - b.board_rank || (a.id < b.id ? -1 : 1));
+  }
+
+  board(focusId: string): BoardView {
+    const { focus, ancestors } = this.view(focusId, 1);
+    const under = new Set(this.subtree(focusId));
+    under.delete(focusId);
+    const tasks = this.rankedTasks()
+      .filter((task) => under.has(task.id))
+      .map((task) => this.out(task));
+    return { focus, ancestors, tasks };
+  }
+
+  /** A rank right before or after the task `place` names, or `null` if it is not a task. */
+  private rankAt(place: BoardPlace, excludeId?: string): number | null {
+    const anchorId = 'before_id' in place ? place.before_id : place.after_id;
+    const anchor = this.nodes.get(anchorId);
+    if (!anchor || anchor.kind !== TASK_KIND || anchor.id === excludeId) return null;
+    const ranks = this.rankedTasks()
+      .filter((task) => task.id !== excludeId)
+      .map((task) => task.board_rank);
+    const index = ranks.indexOf(anchor.board_rank);
+    if ('before_id' in place) {
+      const lower = ranks[index - 1];
+      return lower === undefined ? anchor.board_rank - 1 : (lower + anchor.board_rank) / 2;
+    }
+    const upper = ranks[index + 1];
+    return upper === undefined ? anchor.board_rank + 1 : (anchor.board_rank + upper) / 2;
+  }
+
+  /** Tree-order rank for a task that was just added (slice 4B, decision D3). */
+  private treeOrderRank(id: string): number {
+    const order = this.treeOrder().filter((node) => node.kind === TASK_KIND);
+    const index = order.findIndex((node) => node.id === id);
+    const before = order[index - 1];
+    const after = order[index + 1];
+    const ranks = this.rankedTasks()
+      .filter((task) => task.id !== id)
+      .map((task) => task.board_rank);
+    if (before) {
+      const next = ranks.find((rank) => rank > before.board_rank);
+      return next === undefined ? before.board_rank + 1 : (before.board_rank + next) / 2;
+    }
+    if (after) {
+      const previous = [...ranks].reverse().find((rank) => rank < after.board_rank);
+      return previous === undefined ? after.board_rank - 1 : (previous + after.board_rank) / 2;
+    }
+    return 1;
+  }
+
+  private boardMove(node: Required<FakeNode>, call: RecordedCall): Response {
+    const body = call.body as { status: string; place?: BoardPlace | null; version: number };
+    if (node.kind !== TASK_KIND) return json(422, { detail: 'only a task can be moved' });
+    if (body.version !== node.version) return json(409, { detail: 'the node changed' });
+    let rank = node.board_rank;
+    if (body.place) {
+      const next = this.rankAt(body.place, node.id);
+      if (next === null) return json(422, { detail: 'place must name another task' });
+      rank = next;
+    }
+    const props = { ...node.props, status: body.status };
+    const updated = { ...node, props, board_rank: rank, version: node.version + 1 };
+    this.nodes.set(node.id, updated);
+    return json(200, this.out(updated));
   }
 
   view(focusId: string, depth: number): NodeView {
@@ -204,6 +312,7 @@ export class FakeApi {
       after_sort_key?: string;
       kind?: string;
       props?: Record<string, unknown>;
+      board_place?: BoardPlace;
     };
     const kind = body.kind ?? 'idea';
     const siblings = this.children(parent.id);
@@ -219,9 +328,14 @@ export class FakeApi {
       description: '',
       kind,
       props: propsFor(kind, body.props),
+      board_rank: 0,
     };
     this.nodes.set(node.id, node);
-    return this.out(node);
+    if (kind === TASK_KIND) {
+      const rank = body.board_place ? this.rankAt(body.board_place) : this.treeOrderRank(node.id);
+      this.nodes.set(node.id, { ...node, board_rank: rank ?? this.treeOrderRank(node.id) });
+    }
+    return this.out(this.nodes.get(node.id)!);
   }
 
   /**

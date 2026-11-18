@@ -23,3 +23,8 @@ export function useSession(): Session {
 export function pathFor(nodeId: string, rootId: string): string {
   return nodeId === rootId ? '/' : `/n/${nodeId}`;
 }
+
+/** The board of a node (slice 4B, decision D1): the root's lives at `/board`. */
+export function boardPathFor(nodeId: string, rootId: string): string {
+  return nodeId === rootId ? '/board' : `/n/${nodeId}/board`;
+}
