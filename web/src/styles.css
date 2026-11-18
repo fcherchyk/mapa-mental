@@ -11,7 +11,11 @@
   --status-to-do: #2563eb;
   --status-in-progress: #eab308;
   --status-done: #16a34a;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   color: var(--text);
   background: var(--bg);
 }

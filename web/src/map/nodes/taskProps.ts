@@ -69,7 +69,10 @@ export interface Progress {
 }
 
 export function progressOf(props: TaskProps): Progress {
-  return { done: props.checklist.filter((item) => item.done).length, total: props.checklist.length };
+  return {
+    done: props.checklist.filter((item) => item.done).length,
+    total: props.checklist.length,
+  };
 }
 
 /** `props` as the API client carries it: an opaque record validated per kind on the server. */

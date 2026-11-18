@@ -77,7 +77,9 @@ def upgrade() -> None:
         sa.Column("title", sa.Text(), nullable=False),
         sa.Column("sort_key", sa.Text(collation="C"), nullable=False),
         sa.Column("collapsed", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("props", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "props", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
         sa.Column("version", sa.Integer(), nullable=False, server_default=sa.text("1")),
         timestamp("created_at"),
         timestamp("updated_at"),

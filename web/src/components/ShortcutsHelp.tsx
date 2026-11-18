@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react';
 const SHORTCUTS: { keys: string; description: string }[] = [
   {
     keys: 'Tab',
-    description: 'With the map focused, adds a child idea to the selected idea and starts editing it.',
+    description:
+      'With the map focused, adds a child idea to the selected idea and starts editing it.',
   },
   {
     keys: 'Shift + Tab',
@@ -26,7 +27,8 @@ const SHORTCUTS: { keys: string; description: string }[] = [
   { keys: 'Backspace', description: 'Goes up one level from the focused idea.' },
   {
     keys: 'Arrows',
-    description: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.',
+    description:
+      'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.',
   },
   {
     keys: 'Alt + ↑ ↓',
@@ -43,7 +45,8 @@ const SHORTCUTS: { keys: string; description: string }[] = [
   },
   {
     keys: 'Double click',
-    description: 'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.',
+    description:
+      'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.',
   },
   {
     keys: 'Drag',

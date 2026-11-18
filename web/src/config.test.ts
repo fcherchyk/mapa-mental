@@ -14,7 +14,9 @@ const config = viteConfig as UserConfig & {
 /** Block of the `name` service inside docker-compose.yml (up to the next service). */
 function composeService(name: string): string {
   const compose = repoFile('docker-compose.yml');
-  const match = compose.match(new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  \\w[\\w-]*:\\n|\\nvolumes:)`));
+  const match = compose.match(
+    new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  \\w[\\w-]*:\\n|\\nvolumes:)`),
+  );
   return match?.[1] ?? '';
 }
 

@@ -216,12 +216,7 @@ function ChecklistRow({
         <span className="checklist-handle" aria-hidden="true">
           ⠿
         </span>
-        <input
-          type="checkbox"
-          aria-label={item.text}
-          checked={item.done}
-          onChange={onToggle}
-        />
+        <input type="checkbox" aria-label={item.text} checked={item.done} onChange={onToggle} />
         <input
           className="checklist-text"
           aria-label={`Edit ${item.text}`}

@@ -20,7 +20,8 @@ const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName))
+    (target.isContentEditable ||
+      ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName))
   );
 }
 
@@ -247,15 +248,13 @@ export function MapPage() {
             focusTitle={state.nodes[state.focusId]?.title ?? ''}
             rootId={me.root_node_id}
             onDropOn={
-              drag.draggingId
-                ? (parentId) => actions.drop({ kind: 'child', parentId })
-                : undefined
+              drag.draggingId ? (parentId) => actions.drop({ kind: 'child', parentId }) : undefined
             }
             acceptsDrop={(parentId) =>
               Boolean(
                 drag.draggingId &&
-                  state &&
-                  isUsefulTarget(state, drag.draggingId, { kind: 'child', parentId }),
+                state &&
+                isUsefulTarget(state, drag.draggingId, { kind: 'child', parentId }),
               )
             }
           />
@@ -278,33 +277,28 @@ export function MapPage() {
         </div>
       )}
       <div className="map-body">
-      <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
-        {view.status === 'error' && <p role="alert">Could not load the map.</p>}
-        {!state && view.status === 'loading' && <p>Loading…</p>}
-        {state && (
-          <NodeActionsContext.Provider value={actions}>
-            <MapCanvas
-              state={state}
-              selectedId={selectedId}
-              editingId={editingId}
-              drag={drag}
-            />
-          </NodeActionsContext.Provider>
+        <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
+          {view.status === 'error' && <p role="alert">Could not load the map.</p>}
+          {!state && view.status === 'loading' && <p>Loading…</p>}
+          {state && (
+            <NodeActionsContext.Provider value={actions}>
+              <MapCanvas state={state} selectedId={selectedId} editingId={editingId} drag={drag} />
+            </NodeActionsContext.Provider>
+          )}
+          {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
+        </main>
+        {panelNode && panelDetail && (
+          <DetailsPanel
+            nodeId={panelNode.id}
+            kind={panelNode.kind}
+            title={panelNode.title}
+            detail={panelDetail}
+            titleRef={titleFieldRef}
+            onSave={view.saveDetails}
+            onRetry={view.retryDetail}
+            onDone={focusMap}
+          />
         )}
-        {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
-      </main>
-      {panelNode && panelDetail && (
-        <DetailsPanel
-          nodeId={panelNode.id}
-          kind={panelNode.kind}
-          title={panelNode.title}
-          detail={panelDetail}
-          titleRef={titleFieldRef}
-          onSave={view.saveDetails}
-          onRetry={view.retryDetail}
-          onDone={focusMap}
-        />
-      )}
       </div>
       {view.deleteRequest && (
         <DeleteDialog

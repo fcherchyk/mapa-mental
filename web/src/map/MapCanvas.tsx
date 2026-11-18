@@ -25,11 +25,7 @@ interface MapCanvasProps {
   drag?: DragState;
 }
 
-function dropStateOf(
-  state: MapState,
-  drag: DragState,
-  id: string,
-): 'valid' | 'refused' | null {
+function dropStateOf(state: MapState, drag: DragState, id: string): 'valid' | 'refused' | null {
   const { draggingId, hover } = drag;
   if (!draggingId || !hover || hover.kind !== 'child' || hover.parentId !== id) return null;
   return isUsefulTarget(state, draggingId, hover) ? 'valid' : 'refused';
@@ -72,8 +68,7 @@ export function toFlowElements(
     const parentId = state.nodes[drag.draggingId]?.parent_id;
     for (const slot of gapSlots(state, drag.draggingId, positions)) {
       if (!parentId) break;
-      const hovered =
-        drag.hover?.kind === 'sibling' && drag.hover.afterId === slot.afterId;
+      const hovered = drag.hover?.kind === 'sibling' && drag.hover.afterId === slot.afterId;
       nodes.push({
         id: `gap-${slot.afterId ?? 'first'}`,
         type: 'gap' as const,

@@ -47,7 +47,10 @@ const openTask = async () => {
 
 describe('S4A_FE_AC12: the panel adapts to the kind', () => {
   it('S4A_FE_AC12: a task shows title, status, description and checklist, in that order', async () => {
-    renderApp('/n/f', taskApi({ status: 'in_progress', checklist: [item('1', 'Find the number')] }));
+    renderApp(
+      '/n/f',
+      taskApi({ status: 'in_progress', checklist: [item('1', 'Find the number')] }),
+    );
     await screen.findByTestId('node-t');
 
     await openTask();

@@ -198,15 +198,30 @@ describe('S1_FE_AC22: opening and closing the help', () => {
     fireEvent.click(help);
     const panel = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
     const expected = [
-      { key: 'Tab', desc: 'With the map focused, adds a child idea to the selected idea and starts editing it.' },
+      {
+        key: 'Tab',
+        desc: 'With the map focused, adds a child idea to the selected idea and starts editing it.',
+      },
       // F2 amended in slice 3 (S3_FE_AC20); the rest, in slice 4A (S4A_FE_AC23).
       { key: 'F2', desc: 'Edit the selected idea or task in the details panel.' },
       { key: 'Space', desc: 'Collapses or expands the selected idea.' },
-      { key: 'Delete', desc: 'Deletes the selected idea or task. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.' },
-      { key: 'Enter', desc: 'Focuses the selected idea. While you create one, confirms it and opens a sibling of the same kind.' },
+      {
+        key: 'Delete',
+        desc: 'Deletes the selected idea or task. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
+      },
+      {
+        key: 'Enter',
+        desc: 'Focuses the selected idea. While you create one, confirms it and opens a sibling of the same kind.',
+      },
       { key: 'Backspace', desc: 'Goes up one level from the focused idea.' },
-      { key: 'Arrows', desc: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.' },
-      { key: 'Double click', desc: 'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.' },
+      {
+        key: 'Arrows',
+        desc: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.',
+      },
+      {
+        key: 'Double click',
+        desc: 'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.',
+      },
     ];
     for (const { key, desc } of expected) {
       expect(within(panel).getByText(key)).toBeInTheDocument();

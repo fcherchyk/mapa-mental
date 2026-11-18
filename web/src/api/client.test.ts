@@ -70,7 +70,9 @@ describe('API client', () => {
   it('a 401 notifies onUnauthorized and rejects with ApiError', async () => {
     stubFetch(401, { detail: 'invalid or expired session' });
     const onUnauthorized = vi.fn();
-    const error = await createApiClient(onUnauthorized).getMe().catch((e: unknown) => e);
+    const error = await createApiClient(onUnauthorized)
+      .getMe()
+      .catch((e: unknown) => e);
     expect(onUnauthorized).toHaveBeenCalledOnce();
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 401, message: 'invalid or expired session' });

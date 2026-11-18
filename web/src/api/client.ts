@@ -49,7 +49,7 @@ export interface DeleteOptions {
   children?: 'cascade' | 'reparent';
 }
 
-type Method ='GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 export interface ApiClient {
   getMe(): Promise<Me>;
@@ -92,7 +92,10 @@ export function createApiClient(onUnauthorized: () => void = () => {}): ApiClien
     updateNode: (nodeId, patch) => request('PATCH', node(nodeId), patch),
     moveNode: (nodeId, move) => request('POST', `${node(nodeId)}/move`, move),
     deleteNode: (nodeId, options) =>
-      request('DELETE', `${node(nodeId)}${options?.children === 'reparent' ? '?children=reparent' : ''}`),
+      request(
+        'DELETE',
+        `${node(nodeId)}${options?.children === 'reparent' ? '?children=reparent' : ''}`,
+      ),
   };
 }
 

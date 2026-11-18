@@ -90,9 +90,7 @@ export interface DeleteRequest {
 
 /** The selected node's details, as the side panel needs them (slice 3). */
 export type DetailState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; detail: NodeDetail };
+  { status: 'loading' } | { status: 'error' } | { status: 'ready'; detail: NodeDetail };
 
 export interface DetailsChange {
   title?: string;
@@ -370,7 +368,9 @@ export function useMapView(focusId: string, depth: number): MapView {
     : selectedId && state?.nodes[selectedId]
       ? selectedId
       : (state?.focusId ?? null);
-  const selectedPending = visibleSelection ? Boolean(state?.nodes[visibleSelection]?.pending) : true;
+  const selectedPending = visibleSelection
+    ? Boolean(state?.nodes[visibleSelection]?.pending)
+    : true;
   useEffect(() => {
     if (!visibleSelection || selectedPending) return;
     if (details.current.get(visibleSelection) || detailStatus[visibleSelection]) return;
@@ -401,7 +401,8 @@ export function useMapView(focusId: string, depth: number): MapView {
       ...(body.props === undefined ? {} : { props: body.props }),
     };
     mutate(
-      (current) => (Object.keys(onCanvas).length === 0 ? current : patchNode(current, id, onCanvas)),
+      (current) =>
+        Object.keys(onCanvas).length === 0 ? current : patchNode(current, id, onCanvas),
       async () => {
         const version = currentNode(id)?.version ?? details.current.get(id)?.version ?? 0;
         const updated = await api.updateNode(id, { ...body, version });
@@ -452,7 +453,9 @@ export function useMapView(focusId: string, depth: number): MapView {
     const node = current?.nodes[id];
     if (!current || !node || node.pending || isBorder(current, id)) return;
     const collapsing = !node.collapsed;
-    if (collapsing ? visibleChildren(current, id).length === 0 : hiddenChildCount(current, id) === 0) {
+    if (
+      collapsing ? visibleChildren(current, id).length === 0 : hiddenChildCount(current, id) === 0
+    ) {
       return;
     }
     setCollapsed(id, collapsing);
@@ -527,11 +530,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     );
   };
 
-  const deleteNode = (
-    id: string,
-    mode: DeleteMode,
-    onFocusDeleted: (parentId: string) => void,
-  ) => {
+  const deleteNode = (id: string, mode: DeleteMode, onFocusDeleted: (parentId: string) => void) => {
     const current = stateRef.current;
     const node = current?.nodes[id];
     if (!current || !node || node.parent_id === null) return;

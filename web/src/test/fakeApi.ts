@@ -19,7 +19,10 @@ function allowsChildren(kind: string): boolean {
   return kind !== TASK_KIND;
 }
 
-function propsFor(kind: string, props: Record<string, unknown> | undefined): Record<string, unknown> {
+function propsFor(
+  kind: string,
+  props: Record<string, unknown> | undefined,
+): Record<string, unknown> {
   if (kind !== TASK_KIND) return props ?? {};
   return { ...defaultTaskProps(), ...(props as Partial<TaskProps>) };
 }
@@ -130,7 +133,8 @@ export class FakeApi {
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
     if (method === 'GET' && !match[2]) return json(200, this.detail(node));
     if (method === 'POST' && match[2] === '/children') {
-      if (!allowsChildren(node.kind)) return json(422, { detail: `a ${node.kind} cannot have children` });
+      if (!allowsChildren(node.kind))
+        return json(422, { detail: `a ${node.kind} cannot have children` });
       return json(201, this.create(node, call));
     }
     if (method === 'POST' && match[2] === '/move') return this.move(node, call);
