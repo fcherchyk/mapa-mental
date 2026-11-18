@@ -146,12 +146,20 @@ function DetailsForm({
   // Escape in a field is the panel's, not the map's "clear the selection".
   const stop = (event: KeyboardEvent) => event.stopPropagation();
 
+  // Where the node lives, as plain text (slice 4B, decision D12). The root has no path.
+  const path = detail.status === 'ready' ? detail.detail.path : [];
+
   return (
     <aside
       className="details-panel"
       aria-label={task ? 'Task details' : 'Idea details'}
       onKeyDown={stop}
     >
+      {path.length > 0 && (
+        <p className="details-path" aria-label="Path">
+          {path.map((entry) => entry.title).join(' › ')}
+        </p>
+      )}
       <label className="details-field">
         <span>Title</span>
         <input

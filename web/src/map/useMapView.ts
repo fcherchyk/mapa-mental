@@ -14,6 +14,7 @@ import {
   insertChild,
   isBorder,
   patchNode,
+  pathTo,
   removeSubtree,
   reorderChild,
   replaceNode,
@@ -335,7 +336,7 @@ export function useMapView(focusId: string, depth: number): MapView {
       },
       (current, created: NodeOut) => {
         resolvedIds.current.set(node.id, created.id);
-        details.current.setCreated(created);
+        details.current.setCreated(created, pathTo(current, node.id));
         setSelectedId((selected) => (selected === node.id ? created.id : selected));
         return replaceNode(current, node.id, created);
       },
@@ -406,6 +407,7 @@ export function useMapView(focusId: string, depth: number): MapView {
       async () => {
         const version = currentNode(id)?.version ?? details.current.get(id)?.version ?? 0;
         const updated = await api.updateNode(id, { ...body, version });
+        if (body.title !== undefined) details.current.keepOnly(id);
         details.current.set(updated);
         setDetailsRead((count) => count + 1);
         return updated;

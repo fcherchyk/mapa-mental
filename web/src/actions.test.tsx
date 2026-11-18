@@ -196,7 +196,11 @@ describe('S1_FE_AC22: opening and closing the help', () => {
     const help = helpButton();
     expect(help).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(help);
-    const panel = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    // Since slice 4B the panel has a "Map" and a "Board" group (S4B_FE_AC20).
+    const panel = within(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).getByRole(
+      'region',
+      { name: 'Map' },
+    );
     const expected = [
       {
         key: 'Tab',
@@ -498,7 +502,10 @@ describe('S3_FE_AC20: the help describes the details panel', () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(helpButton());
-    const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    const help = within(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).getByRole(
+      'region',
+      { name: 'Map' },
+    );
     // Amended in slice 4A (S4A_FE_AC23): the panel edits a task too.
     expect(
       within(help).getByText('Edit the selected idea or task in the details panel.'),
@@ -533,5 +540,29 @@ describe('S4A_FE_AC23: the help describes the task shortcuts', () => {
         'Makes the selected idea or task the last child of the idea above it. A task takes nothing inside it.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('S4B_FE_AC20: the help describes the board', () => {
+  it('S4B_FE_AC20: the "Board" group lists its keys with the wording of decision D16', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(helpButton());
+    const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    const group = within(help).getByRole('region', { name: 'Board' });
+
+    const expected = [
+      { key: 'Enter', desc: "Opens the focused card's details." },
+      { key: 'Alt + ← →', desc: 'Moves the card to the previous or next column.' },
+      { key: 'Alt + ↑ ↓', desc: 'Moves the card up or down in its column.' },
+      { key: 'Delete', desc: 'Deletes the card.' },
+      { key: 'Escape', desc: 'Clears the selection.' },
+      { key: 'Drag', desc: 'Drag a card to another column or position.' },
+    ];
+    for (const { key, desc } of expected) {
+      expect(within(group).getByText(key)).toBeInTheDocument();
+      expect(within(group).getByText(desc)).toBeInTheDocument();
+    }
+    expect(within(help).getByRole('region', { name: 'Map' })).toBeInTheDocument();
   });
 });

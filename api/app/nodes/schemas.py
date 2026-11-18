@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.node_types import DEFAULT_KIND, is_known_kind, validate_props
+from app.node_types import DEFAULT_KIND, TASK_KIND, TaskStatus, is_known_kind, validate_props
 from app.nodes.sort_keys import SORT_KEY_PATTERN
 
 TITLE_MAX_LENGTH = 200
@@ -33,6 +33,25 @@ def check_known_kind(kind: str | None) -> str | None:
     return kind
 
 
+class BeforeTask(BaseModel):
+    """Board position right before a given task, named by id (slice 4B, decision D4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    before_id: uuid.UUID
+
+
+class AfterTask(BaseModel):
+    """Board position right after a given task, named by id (slice 4B, decision D4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    after_id: uuid.UUID
+
+
+BoardPlace = BeforeTask | AfterTask
+
+
 class NodeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -40,6 +59,8 @@ class NodeCreate(BaseModel):
     after_sort_key: SortKey | None = None
     kind: str = DEFAULT_KIND
     props: dict[str, Any] = Field(default_factory=dict)
+    # Where the new task goes on the board; without it, tree order (slice 4B, decision D3).
+    board_place: BoardPlace | None = None
 
     @field_validator("kind")
     @classmethod
@@ -52,6 +73,8 @@ class NodeCreate(BaseModel):
             self.props = validate_props(self.kind, self.props)
         except ValueError as exc:
             raise ValueError(f"invalid props for {self.kind}: {exc}") from None
+        if self.board_place is not None and self.kind != TASK_KIND:
+            raise ValueError("board_place only applies to tasks")
         return self
 
 
@@ -99,6 +122,20 @@ class NodeMove(BaseModel):
     version: Annotated[int, Field(strict=True, ge=1)]
 
 
+class BoardMove(BaseModel):
+    """A card's new status and, optionally, its new position in the map's board order.
+
+    One request, so a drop into another column at a given spot is atomic. Without `place` only
+    the status changes and the rank is kept (slice 4B, decisions D4 and D5).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: TaskStatus
+    place: BoardPlace | None = None
+    version: Annotated[int, Field(strict=True, ge=1)]
+
+
 class NodeOut(BaseModel):
     id: uuid.UUID
     parent_id: uuid.UUID | None
@@ -111,10 +148,16 @@ class NodeOut(BaseModel):
     child_count: int
 
 
+class PathEntry(BaseModel):
+    id: uuid.UUID
+    title: str
+
+
 class NodeDetail(NodeOut):
     """A single node with the fields the window does not carry (slice 3, decision D2)."""
 
     description: str
+    path: list[PathEntry] = Field(description="From the root to the node's parent (slice 4B).")
 
 
 class WindowNode(NodeOut):
@@ -125,3 +168,11 @@ class NodeView(BaseModel):
     focus: NodeOut
     ancestors: list[NodeOut] = Field(description="From the root to the focus's parent.")
     nodes: list[WindowNode] = Field(description="By level; siblings by sort_key.")
+
+
+class BoardView(BaseModel):
+    """Every task under the focus, at any depth, in board order (slice 4B)."""
+
+    focus: NodeOut
+    ancestors: list[NodeOut] = Field(description="From the root to the focus's parent.")
+    tasks: list[NodeOut] = Field(description="Task descendants by board_rank, then id.")

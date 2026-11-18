@@ -59,6 +59,12 @@ describe('environment', () => {
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
 
+  it('S4B_FE_AC22: the board suite runs under the same coverage threshold', () => {
+    expect(existsSync(resolve(webDir, 'src/board.test.tsx'))).toBe(true);
+    expect(existsSync(resolve(webDir, 'src/board/boardOrder.test.ts'))).toBe(true);
+    expect(config.test.coverage.thresholds.lines).toBe(80);
+  });
+
   it('S3_FE_AC22: the details panel suite runs under the same coverage threshold', () => {
     expect(existsSync(resolve(webDir, 'src/detailsPanel.test.tsx'))).toBe(true);
     expect(config.test.coverage.thresholds.lines).toBe(80);

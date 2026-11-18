@@ -6,6 +6,7 @@ import { DetailsPanel } from '../components/DetailsPanel';
 import { NotFound } from '../components/NotFound';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { ShortcutsHelp } from '../components/ShortcutsHelp';
+import { ViewToggle } from '../components/ViewToggle';
 import { pathFor, useSession } from '../session';
 import { isUsefulTarget, type DropTarget } from './dropTarget';
 import { MapCanvas, type DragState } from './MapCanvas';
@@ -260,6 +261,7 @@ export function MapPage() {
           />
         )}
         <div className="map-header-actions">
+          <ViewToggle focusId={focusId} rootId={me.root_node_id} current="map" />
           <ShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
           <SettingsPanel depth={depth} onDepthChange={setDepth} />
           <span className="user-name">{me.name}</span>

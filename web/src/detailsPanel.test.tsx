@@ -349,3 +349,54 @@ describe('F2 and creation', () => {
     expect(titleField()).not.toHaveValue('Idea B');
   });
 });
+
+// --- S4B_FE_AC8: the path line (slice 4B) ------------------------------------------------------
+
+describe('S4B_FE_AC8: the panel shows the path', () => {
+  it('S4B_FE_AC8: the ancestors from the root to the parent, as text, and nothing for the root', async () => {
+    const api = sampleApi();
+    renderApp('/n/f', api);
+    await openDetails('a1', 'Idea A1');
+
+    const path = within(panel()).getByLabelText('Path');
+    expect(path).toHaveTextContent('My map › Focus › Idea A');
+    expect(within(path).queryByRole('link')).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByTestId('node-f'));
+    await waitFor(() => expect(titleField()).toHaveValue('Focus'));
+    expect(within(panel()).getByLabelText('Path')).toHaveTextContent('My map');
+
+    renderApp('/', sampleApi());
+    const roots = await screen.findAllByTestId('node-root');
+    fireEvent.click(roots[roots.length - 1]);
+    const panels = await screen.findAllByRole('complementary', { name: 'Idea details' });
+    const rootPanel = panels[panels.length - 1];
+    await waitFor(() => expect(within(rootPanel).getByLabelText('Title')).toHaveValue('My map'));
+    expect(within(rootPanel).queryByLabelText('Path')).not.toBeInTheDocument();
+  });
+
+  it('S4B_FE_AC8: on the board the path of a deep task reaches its parent', async () => {
+    const api = sampleApi();
+    api.nodes.set('t', {
+      id: 't',
+      parent_id: 'a1',
+      title: 'Deep task',
+      sort_key: 'F',
+      collapsed: false,
+      version: 1,
+      description: '',
+      kind: 'task',
+      props: { status: 'to_do', checklist: [] },
+      board_rank: 1,
+    });
+    renderApp('/n/f/board', api);
+    fireEvent.click(await screen.findByTestId('card-t'));
+
+    const taskPanel = await screen.findByRole('complementary', { name: 'Task details' });
+    await waitFor(() =>
+      expect(within(taskPanel).getByLabelText('Path')).toHaveTextContent(
+        'My map › Focus › Idea A › Idea A1',
+      ),
+    );
+  });
+});

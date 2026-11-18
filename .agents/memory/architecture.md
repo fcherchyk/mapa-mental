@@ -29,6 +29,13 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
 - **Frontend (SPA)**
   - **Routes**: `/` shows the root and `/n/:nodeId` shows a focused node. Since the focus lives in
     the URL, the "back" button, links and page reloads work.
+  - **Views**: the map (the canvas) and the board (`/board`, `/n/:nodeId/board`), switched with
+    the Map | Board toggle in the header; both keep the focus (slice 4B).
+  - **`BoardPage`**: the focused node's task descendants, at any depth, as cards in three status
+    columns. `useBoardView` reads `GET /board` on every mount (no cache), applies optimistic
+    changes through one serialized queue, and clears the window cache after each one so the map
+    is fresh when the user switches back. `boardOrder.ts` holds the pure rules: columns from the
+    ordered list, the `place` for a gap or for Alt+↑/↓, and local reordering.
   - **`MapPage`**: requests the window for the current focus from the server, draws it, and owns
     the keyboard shortcuts and the first-use hint (decision 13A).
   - **`MapCanvas`**: React Flow. The horizontal tree layout is computed on the client over the
@@ -74,11 +81,18 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
     - When an edit ends, focus returns to the map container, so the shortcuts keep working.
   - **State**: optimistic updates with rollback and a cache of windows by `(nodeId, N)` that is
     invalidated when something changes.
+  - **Panel path**: the panel shows root › … › parent as text, from `NodeDetail.path`; a title
+    save drops the other cached details so no path keeps a stale title.
   - **API client**: typed, generated from FastAPI's OpenAPI into `web/src/api/schema.ts`.
 - **Backend (FastAPI, Python 3.12)**
   - `auth`: login, OAuth callback, logout and `/me`.
   - `nodes`: service and repository for the tree. Includes the window query, a recursive CTE with
     maximum depth `depth`, and the fractional `sort_key` arithmetic.
+  - `nodes/board.py`: the board. One global order for the tasks of a map, `board_rank`, a
+    fractional key like `sort_key`: every board is a subset of the same order, so a reorder made
+    on one holds on every other. A new task is ranked in depth-first tree order (or where
+    `board_place` says); later tree moves never touch ranks. `board-move` sets the status and the
+    rank in one write.
   - `settings`: user preferences, validated with Pydantic (`depth` between 1 and 10).
   - `node_types`: registry of node types, each with its Pydantic schema for `props` and a flag
     saying whether it takes children. `idea` has empty props and nests; `task` has
@@ -91,6 +105,11 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
   - `GET /nodes/{id}/view?depth=N` returns `{ focus, ancestors[], nodes[] }`.
     - Each node includes `child_count`.
     - If `depth` is missing, the user's own is used.
+  - `GET /nodes/{id}/board` returns `{ focus, ancestors[], tasks[] }`: every task under the node,
+    at any depth and ignoring `collapsed`, by `board_rank`.
+  - `POST /nodes/{id}/board-move` takes `{ status, place?, version }`, `place` being
+    `{ before_id }` or `{ after_id }` of another task of the map. Without `place` only the
+    status changes. Only tasks; `422` otherwise.
   - `POST /nodes/{id}/children` takes `{ title, after_sort_key?, kind?, props? }`; `kind` defaults
     to `idea` and the kind's schema fills in the defaults for `props`. A task parent answers `422`.
   - `PATCH /nodes/{id}` changes `title`, `description`, `collapsed`, `sort_key` or `props` and
@@ -124,6 +143,8 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
   - `collapsed` (boolean).
   - `props` (jsonb): `{}` for an idea, `{status, checklist}` for a task. Validated per kind, so a
     checklist never reaches the database unchecked.
+  - `board_rank` (text, collation C, nullable): the task's place in the map's board order; `NULL`
+    for ideas. Index `(map_id, board_rank)`.
   - `version`, `created_at` and `updated_at`.
   - Indexes: `(map_id)` and `(parent_id, sort_key)`. The second one is used by the window CTE and
     by the `child_count` calculation.

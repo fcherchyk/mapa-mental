@@ -6,6 +6,8 @@ interface BreadcrumbProps {
   ancestors: NodeOut[];
   focusTitle: string;
   rootId: string;
+  /** Where an ancestor leads: its map by default, or its board (slice 4B, decision D1). */
+  linkTo?: (ancestorId: string, rootId: string) => string;
   /** Set while a node is being dragged: dropping on an ancestor moves the node into it. */
   onDropOn?: (ancestorId: string) => void;
   acceptsDrop?: (ancestorId: string) => boolean;
@@ -15,6 +17,7 @@ export function Breadcrumb({
   ancestors,
   focusTitle,
   rootId,
+  linkTo = pathFor,
   onDropOn,
   acceptsDrop,
 }: BreadcrumbProps) {
@@ -34,7 +37,7 @@ export function Breadcrumb({
               onDropOn(ancestor.id);
             }}
           >
-            <Link to={pathFor(ancestor.id, rootId)}>{ancestor.title}</Link>
+            <Link to={linkTo(ancestor.id, rootId)}>{ancestor.title}</Link>
           </li>
         ))}
         <li aria-current="page">{focusTitle}</li>
