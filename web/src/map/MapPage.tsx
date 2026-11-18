@@ -10,6 +10,7 @@ import { pathFor, useSession } from '../session';
 import { isUsefulTarget, type DropTarget } from './dropTarget';
 import { MapCanvas, type DragState } from './MapCanvas';
 import { NodeActionsContext, type NodeActions } from './nodes/nodeActions';
+import { allowsChildren, TASK_KIND } from './nodes/taskProps';
 import { isRealRoot, moveSelection, visibleChildren, type ArrowKey } from './tree';
 import { useMapView } from './useMapView';
 
@@ -73,6 +74,8 @@ export function MapPage() {
   const open = (id: string) => {
     if (!state || state.nodes[id]?.pending) return;
     if (id !== state.focusId) {
+      // A leaf kind has nothing to show when focused (slice 4A, decision D10).
+      if (!allowsChildren(state.nodes[id]?.kind ?? '')) return;
       goTo(id);
       return;
     }
@@ -92,7 +95,7 @@ export function MapPage() {
   const actions: NodeActions = {
     select: view.select,
     open,
-    createChild: (id) => view.startCreateChild(id, goTo),
+    createChild: (id, kind) => view.startCreateChild(id, goTo, kind),
     clearSelection: view.clearSelection,
     remove: (id) => view.remove(id, goTo),
     commitEdit: view.commitEdit,
@@ -178,6 +181,12 @@ export function MapPage() {
     if (event.altKey) {
       if (!ARROW_KEYS.has(event.key)) return;
       if (moveWithKeyboard(selectedId, event.key as ArrowKey)) event.preventDefault();
+      return;
+    }
+    // Shift+Tab creates a task where Tab creates an idea (slice 4A, decision D9).
+    if (event.key === 'Tab' && event.shiftKey) {
+      view.startCreateChild(selectedId, goTo, TASK_KIND);
+      event.preventDefault();
       return;
     }
     const handled = runShortcut(event.key, selectedId);
@@ -287,6 +296,7 @@ export function MapPage() {
       {panelNode && panelDetail && (
         <DetailsPanel
           nodeId={panelNode.id}
+          kind={panelNode.kind}
           title={panelNode.title}
           detail={panelDetail}
           titleRef={titleFieldRef}

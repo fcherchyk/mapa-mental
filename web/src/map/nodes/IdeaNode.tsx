@@ -1,55 +1,31 @@
 import { Handle, Position } from '@xyflow/react';
 import { useNodeActions, type NodeComponentProps } from './nodeActions';
+import { DeleteButton, dragHandlers, nodeClasses } from './nodeChrome';
+import { TASK_KIND } from './taskProps';
 import { TitleEditor } from './TitleEditor';
 
 export function IdeaNode({ data }: NodeComponentProps) {
-  const { node, isFocus, selected, editing, hiddenCount, draggable, dragging, dropState } = data;
+  const { node, isFocus, selected, editing, hiddenCount, draggable } = data;
   const actions = useNodeActions();
-  const classes = [
-    'map-node',
-    // Without `nopan` React Flow's pan handler takes the mousedown and calls d3-drag's
-    // `dragDisable`, which suppresses the browser's `dragstart` on the window: the node could
-    // never be picked up. React Flow only adds the class to nodes it drags itself, and it does
-    // not drag these (ADR 0003: the layout owns every position).
-    'nopan',
-    isFocus && 'is-focus',
-    selected && 'is-selected',
-    dragging && 'is-dragging',
-    dropState === 'valid' && 'is-drop-target',
-    dropState === 'refused' && 'is-drop-refused',
-  ]
-    .filter(Boolean)
-    .join(' ');
-  // Dropping on a node's body always appends it as the last child (decision D2).
-  const asChild = { kind: 'child', parentId: node.id } as const;
-  // The "+" always shows on the focus and the selected node; on the rest, on mouse hover (CSS).
-  const addClasses = ['map-node-add', 'nodrag', 'nopan', (isFocus || selected) && 'is-visible']
-    .filter(Boolean)
-    .join(' ');
+  // The create buttons always show on the focus and the selected node; on the rest, on hover (CSS).
+  const addClasses = (extra: string) =>
+    ['map-node-add', extra, 'nodrag', 'nopan', (isFocus || selected) && 'is-visible']
+      .filter(Boolean)
+      .join(' ');
 
   return (
     <div
-      className={classes}
+      className={nodeClasses(data, 'is-idea')}
       data-testid={`node-${node.id}`}
       aria-selected={selected}
       draggable={draggable}
-      onDragStart={(event) => {
-        event.dataTransfer?.setData('text/plain', node.id);
-        actions.dragStart(node.id);
-      }}
-      onDragEnd={() => actions.dragEnd()}
-      onDragOver={(event) => {
-        if (actions.dragOver(asChild)) event.preventDefault();
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        actions.drop(asChild);
-      }}
+      {...dragHandlers(node, actions)}
     >
       <Handle type="target" position={Position.Left} isConnectable={false} />
       {editing ? (
         <TitleEditor
           initialTitle={node.title}
+          label="New idea title"
           onCommit={(title, createSibling) => actions.commitEdit(node.id, title, createSibling)}
           onCancel={() => actions.cancelEdit(node.id)}
         />
@@ -62,7 +38,7 @@ export function IdeaNode({ data }: NodeComponentProps) {
       {!editing && !node.pending && (
         <button
           type="button"
-          className={addClasses}
+          className={addClasses('')}
           aria-label={`Add an idea inside ${node.title}`}
           onClick={(event) => {
             event.stopPropagation();
@@ -73,21 +49,22 @@ export function IdeaNode({ data }: NodeComponentProps) {
           +
         </button>
       )}
-      {!editing && !node.pending && node.parent_id !== null && (
+      {/* Only ideas offer it: a task takes no children (slice 4A, decision D9). */}
+      {!editing && !node.pending && (
         <button
           type="button"
-          className="map-node-delete nodrag nopan"
-          aria-label={`Delete ${node.title}`}
+          className={addClasses('map-node-add-task')}
+          aria-label={`Add a task inside ${node.title}`}
           onClick={(event) => {
             event.stopPropagation();
-            actions.select(node.id);
-            actions.remove(node.id);
+            actions.createChild(node.id, TASK_KIND);
           }}
           onDoubleClick={(event) => event.stopPropagation()}
         >
-          🗑
+          ☑
         </button>
       )}
+      {!editing && <DeleteButton node={node} />}
       {hiddenCount > 0 && (
         <span
           className={`map-node-hidden ${node.collapsed ? 'is-collapsed' : 'is-border'}`}

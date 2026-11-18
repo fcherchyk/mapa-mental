@@ -484,7 +484,7 @@ def test_S1_BE_AC17_patch_changing_kind_returns_422(client: TestClient) -> None:
     root = root_id(client)
     node = add(client, root, "Idea")
 
-    # Trying to change from "idea" to another kind returns 422
+    # `kind` is not a patchable field at all (slice 4A, decision D2); see S4A_BE_AC7.
     response = patch(client, node, kind="document")
     assert response.status_code == 422
 
@@ -507,10 +507,11 @@ def test_S1_BE_AC17_patch_with_invalid_kind_or_props_returns_422(
     )
 
 
-def test_S1_BE_AC17_patch_with_valid_kind_and_props_is_accepted(client: TestClient) -> None:
+def test_S1_BE_AC17_patch_with_valid_props_is_accepted(client: TestClient) -> None:
     node = add(client, root_id(client), "Idea")
 
-    response = patch(client, node, kind="idea", props={})
+    # An idea's props are empty and stay empty; `kind` is never sent (slice 4A, decision D2).
+    response = patch(client, node, props={})
 
     assert response.status_code == 200
 

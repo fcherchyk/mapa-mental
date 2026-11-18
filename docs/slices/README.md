@@ -15,7 +15,8 @@ run, in Spanish, kept as history) and in `.agents/log.md`.
 | 1 | [slice-1-mvp.md](slice-1-mvp.md) — MVP: Google login, one map, create/edit/navigate/delete ideas | Delivered |
 | 2 | [slice-2-move-and-reorder.md](slice-2-move-and-reorder.md) — move and reorder nodes by dragging and with the keyboard | Delivered |
 | 3 | [slice-3-node-details.md](slice-3-node-details.md) — node description and details side panel (replaces the pencil) | Delivered |
-| 4 | — | Not started: "Drive document" node with the Google Picker and incremental `drive.file` scope |
+| 4A | [slice-4a-task-nodes.md](slice-4a-task-nodes.md) — task nodes: kind, status and checklist | Delivered |
+| 4B | — | Not started: "Drive document" node with the Google Picker and incremental `drive.file` scope |
 
 The backlog beyond slice 1 is the [Roadmap in `README.md`](../../README.md#roadmap).
 
@@ -32,7 +33,8 @@ S<slice>_<layer>_AC<number>
   `FE` — verified by the frontend suite (`web/src/`, Vitest).
 - `AC<number>` — the criterion's number **within that slice and layer**. Numbers are not reused.
 
-Examples: `S1_BE_AC11` (visible window), `S1_FE_AC25` (first-use hint).
+Examples: `S1_BE_AC11` (visible window), `S1_FE_AC25` (first-use hint), `S4A_BE_AC8` (a task
+cannot have children). A slice split into parts keeps the letter in the id, as `S4A` does.
 
 ## How criteria map to tests
 

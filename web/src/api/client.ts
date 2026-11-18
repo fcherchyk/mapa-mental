@@ -11,6 +11,24 @@ export type NodeMove = components['schemas']['NodeMove'];
 /** Where a node lands among its new siblings: first, last, or right after a given one. */
 export type Place = NodeMove['place'];
 
+/**
+ * A task's `props` (slice 4A, decision D1). `props` is `dict[str, Any]` in the OpenAPI document,
+ * because it is validated per kind on the server (ADR 0013), so these types are written by hand
+ * and must stay in step with `api/app/node_types`.
+ */
+export type TaskStatus = 'to_do' | 'in_progress' | 'done';
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface TaskProps {
+  status: TaskStatus;
+  checklist: ChecklistItem[];
+}
+
 export const API_PREFIX = '/api';
 export const LOGIN_URL = `${API_PREFIX}/auth/login`;
 // The API rejects every mutation without this header (ADR 0006).

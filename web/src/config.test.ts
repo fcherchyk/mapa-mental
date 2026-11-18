@@ -61,4 +61,10 @@ describe('environment', () => {
     expect(existsSync(resolve(webDir, 'src/detailsPanel.test.tsx'))).toBe(true);
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
+
+  it('S4A_FE_AC25: the task suites run under the same coverage threshold', () => {
+    expect(existsSync(resolve(webDir, 'src/tasks.test.tsx'))).toBe(true);
+    expect(existsSync(resolve(webDir, 'src/taskPanel.test.tsx'))).toBe(true);
+    expect(config.test.coverage.thresholds.lines).toBe(80);
+  });
 });

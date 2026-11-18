@@ -321,8 +321,6 @@ export interface components {
             collapsed?: boolean | null;
             /** Sort Key */
             sort_key?: string | null;
-            /** Kind */
-            kind?: string | null;
             /** Props */
             props?: {
                 [key: string]: unknown;

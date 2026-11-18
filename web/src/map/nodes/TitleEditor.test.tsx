@@ -18,7 +18,7 @@ describe('TitleEditor', () => {
       if (attempts > 2) realFocus.call(this, options);
     });
 
-    render(<TitleEditor initialTitle="" onCommit={vi.fn()} onCancel={vi.fn()} />);
+    render(<TitleEditor initialTitle="" label="New idea title" onCommit={vi.fn()} onCancel={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByLabelText('New idea title')).toHaveFocus());
     expect(attempts).toBeGreaterThan(2);

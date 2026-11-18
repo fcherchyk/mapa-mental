@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from app.models import Node
-from app.node_types import validate_props
+from app.node_types import allows_children, validate_props
 from app.nodes import repository
 from app.nodes.schemas import (
     AfterSibling,
@@ -25,6 +25,10 @@ from app.nodes.sort_keys import key_between
 
 NOT_FOUND = "node not found"
 VERSION_CONFLICT = "the node changed; fetch it again"
+
+
+def no_children(kind: str) -> str:
+    return f"a {kind} cannot have children"
 
 
 def not_found() -> HTTPException:
@@ -79,6 +83,8 @@ def create_child(
     parent = repository.get_owned_node(db, owner_id, parent_id)
     if parent is None:
         raise not_found()
+    if not allows_children(parent.kind):
+        raise unprocessable(no_children(parent.kind))
     node = Node(
         map_id=parent.map_id,
         parent_id=parent.id,
@@ -118,8 +124,6 @@ def update_node(
 
 
 def apply_patch(node: Node, patch: NodePatch) -> None:
-    if patch.kind is not None and patch.kind != node.kind:
-        raise unprocessable("a node's kind cannot be changed")
     if patch.props is not None:
         try:
             node.props = validate_props(node.kind, patch.props)
@@ -153,6 +157,8 @@ def move_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, data: NodeMo
         raise not_found()
     if parent.id == node.id or repository.is_descendant(db, node.id, parent.id):
         raise unprocessable("a node cannot be moved inside itself")
+    if not allows_children(parent.kind):
+        raise unprocessable(no_children(parent.kind))
     sort_key = destination_sort_key(db, owner_id, node, parent.id, data.place)
     try:
         node.parent_id = parent.id

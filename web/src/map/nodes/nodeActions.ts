@@ -31,7 +31,8 @@ export interface NodeComponentProps {
 export interface NodeActions {
   select: (id: string) => void;
   open: (id: string) => void;
-  createChild: (id: string) => void;
+  /** Creates a child of the given kind; `idea` by default (slice 4A, decision D9). */
+  createChild: (id: string, kind?: string) => void;
   /** A click on the empty canvas clears the selection (slice 3, decision D7). */
   clearSelection: () => void;
   remove: (id: string) => void;

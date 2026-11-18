@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import type { Me, NodeDetail, NodeOut, NodeView } from '../api/client';
+import type { Me, NodeDetail, NodeOut, NodeView, TaskProps } from '../api/client';
+import { defaultTaskProps, TASK_KIND } from '../map/nodes/taskProps';
 
 export interface FakeNode {
   id: string;
@@ -9,6 +10,18 @@ export interface FakeNode {
   collapsed?: boolean;
   version?: number;
   description?: string;
+  kind?: string;
+  props?: Record<string, unknown>;
+}
+
+/** Kinds that take children, as `app/node_types` decides on the server (slice 4A, decision D3). */
+function allowsChildren(kind: string): boolean {
+  return kind !== TASK_KIND;
+}
+
+function propsFor(kind: string, props: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (kind !== TASK_KIND) return props ?? {};
+  return { ...defaultTaskProps(), ...(props as Partial<TaskProps>) };
 }
 
 export interface RecordedCall {
@@ -37,7 +50,15 @@ export class FakeApi {
 
   constructor(nodes: FakeNode[]) {
     for (const node of nodes) {
-      this.nodes.set(node.id, { collapsed: false, version: 1, description: '', ...node });
+      const kind = node.kind ?? 'idea';
+      this.nodes.set(node.id, {
+        collapsed: false,
+        version: 1,
+        description: '',
+        ...node,
+        kind,
+        props: propsFor(kind, node.props),
+      });
     }
   }
 
@@ -108,7 +129,10 @@ export class FakeApi {
     if (!match || !node) return json(404, { detail: 'node not found' });
     if (method === 'GET' && match[3]) return json(200, this.view(node.id, Number(match[3])));
     if (method === 'GET' && !match[2]) return json(200, this.detail(node));
-    if (method === 'POST' && match[2] === '/children') return json(201, this.create(node, call));
+    if (method === 'POST' && match[2] === '/children') {
+      if (!allowsChildren(node.kind)) return json(422, { detail: `a ${node.kind} cannot have children` });
+      return json(201, this.create(node, call));
+    }
     if (method === 'POST' && match[2] === '/move') return this.move(node, call);
     if (method === 'PATCH') return this.patch(node, call);
     if (method === 'DELETE') {
@@ -147,8 +171,6 @@ export class FakeApi {
     delete rest.description;
     return {
       ...(rest as Omit<Required<FakeNode>, 'description'>),
-      kind: 'idea',
-      props: {},
       child_count: this.children(node.id).length,
     };
   }
@@ -173,7 +195,13 @@ export class FakeApi {
   }
 
   private create(parent: Required<FakeNode>, call: RecordedCall): NodeOut {
-    const body = call.body as { title: string; after_sort_key?: string };
+    const body = call.body as {
+      title: string;
+      after_sort_key?: string;
+      kind?: string;
+      props?: Record<string, unknown>;
+    };
+    const kind = body.kind ?? 'idea';
     const siblings = this.children(parent.id);
     const last = siblings[siblings.length - 1]?.sort_key;
     this.created += 1;
@@ -185,6 +213,8 @@ export class FakeApi {
       collapsed: false,
       version: 1,
       description: '',
+      kind,
+      props: propsFor(kind, body.props),
     };
     this.nodes.set(node.id, node);
     return this.out(node);
@@ -203,6 +233,9 @@ export class FakeApi {
     if (body.version !== node.version) return json(409, { detail: 'the node changed' });
     const parent = this.nodes.get(body.parent_id);
     if (!parent) return json(404, { detail: 'node not found' });
+    if (!allowsChildren(parent.kind)) {
+      return json(422, { detail: `a ${parent.kind} cannot have children` });
+    }
     const siblings = this.children(parent.id).filter((sibling) => sibling.id !== node.id);
     const place = body.place;
     let index = siblings.length;
@@ -231,13 +264,18 @@ export class FakeApi {
       title?: string;
       description?: string;
       collapsed?: boolean;
+      kind?: string;
+      props?: Record<string, unknown>;
     };
+    // `kind` is not a patchable field (slice 4A, decision D2).
+    if (body.kind !== undefined) return json(422, { detail: 'unknown field: kind' });
     if (body.version !== node.version) return json(409, { detail: 'the node changed' });
     const updated = {
       ...node,
       title: body.title ?? node.title,
       description: body.description ?? node.description,
       collapsed: body.collapsed ?? node.collapsed,
+      props: body.props ?? node.props,
       version: node.version + 1,
     };
     this.nodes.set(node.id, updated);

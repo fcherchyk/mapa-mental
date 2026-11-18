@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, type NodeDetail, type NodeOut } from '../api/client';
+import { ApiError, type NodeDetail, type NodeOut, type TaskProps } from '../api/client';
 import { useSession } from '../session';
 import { DetailCache, withoutDescription } from './detailCache';
 import { placeFor, type DropTarget } from './dropTarget';
+import { allowsChildren, asProps, DEFAULT_KIND, propsForNewNode } from './nodes/taskProps';
 import { cacheKey } from './viewCache';
 import {
   childOfFocusToward,
@@ -37,20 +38,21 @@ interface PendingCreate {
   focusId: string;
   goTo: (id: string) => void;
   expanding: boolean;
+  kind: string;
 }
 
 let temporaryIds = 0;
 
-function newPendingNode(parentId: string, afterId: string | null): MapNode {
+function newPendingNode(parentId: string, afterId: string | null, kind: string): MapNode {
   temporaryIds += 1;
   return {
     id: `tmp-${temporaryIds}`,
     parent_id: parentId,
-    kind: 'idea',
+    kind,
     title: '',
     sort_key: '',
     collapsed: false,
-    props: {},
+    props: propsForNewNode(kind),
     version: 0,
     child_count: 0,
     pending: true,
@@ -95,6 +97,8 @@ export type DetailState =
 export interface DetailsChange {
   title?: string;
   description?: string;
+  /** A task's whole props: status and checklist always travel together (slice 4A, decision D5). */
+  props?: TaskProps;
 }
 
 export interface MapView {
@@ -105,7 +109,7 @@ export interface MapView {
   notice: string | null;
   select: (id: string) => void;
   clearSelection: () => void;
-  startCreateChild: (parentId: string, goTo: (id: string) => void) => void;
+  startCreateChild: (parentId: string, goTo: (id: string) => void, kind?: string) => void;
   /** Details of a node, loading them if needed; `null` for nodes that do not exist yet. */
   detailOf: (id: string) => DetailState | null;
   retryDetail: (id: string) => void;
@@ -242,10 +246,10 @@ export function useMapView(focusId: string, depth: number): MapView {
 
   const currentNode = (id: string): MapNode | undefined => stateRef.current?.nodes[id];
 
-  const startNewNode = (parentId: string, afterId: string | null) => {
+  const startNewNode = (parentId: string, afterId: string | null, kind: string) => {
     const current = stateRef.current;
     if (!current) return;
-    const node = newPendingNode(parentId, afterId);
+    const node = newPendingNode(parentId, afterId, kind);
     commit(insertChild(current, parentId, node, afterId));
     setSelectedId(node.id);
     setEditingId(node.id);
@@ -273,20 +277,26 @@ export function useMapView(focusId: string, depth: number): MapView {
    * on the border the focus moves one level down towards the node, and a collapsed node expands;
    * only then is the child created.
    */
-  const startCreateChild = (parentId: string, goTo: (id: string) => void) => {
+  const startCreateChild = (
+    parentId: string,
+    goTo: (id: string) => void,
+    kind: string = DEFAULT_KIND,
+  ) => {
     const current = stateRef.current;
     const parent = current?.nodes[parentId];
     if (!current || !parent || parent.pending) return;
+    // A leaf kind takes no children (slice 4A, decision D10); the API refuses it too.
+    if (!allowsChildren(parent.kind)) return;
     if (isBorder(current, parentId)) {
       const step = childOfFocusToward(current, parentId);
       if (!step) return;
-      pendingCreate.current = { parentId, focusId: step, goTo, expanding: false };
+      pendingCreate.current = { parentId, focusId: step, goTo, expanding: false, kind };
       goTo(step);
     } else if (parent.collapsed) {
-      pendingCreate.current = { parentId, focusId: current.focusId, goTo, expanding: true };
+      pendingCreate.current = { parentId, focusId: current.focusId, goTo, expanding: true, kind };
       setCollapsed(parentId, false);
     } else {
-      startNewNode(parentId, null);
+      startNewNode(parentId, null, kind);
     }
   };
 
@@ -302,7 +312,7 @@ export function useMapView(focusId: string, depth: number): MapView {
     }
     if (pending.expanding && !hasLoadedChildren(state, parent.id)) return;
     pendingCreate.current = null;
-    startCreateChild(parent.id, pending.goTo);
+    startCreateChild(parent.id, pending.goTo, pending.kind);
   });
 
   /** sort_key of the previous sibling, already created in the API when its turn in the queue comes. */
@@ -318,9 +328,11 @@ export function useMapView(focusId: string, depth: number): MapView {
       (current) => patchNode(current, node.id, { title }),
       () => {
         const after = afterSortKey(node.afterId);
+        // Props are left out: the API fills in the kind's defaults (slice 4A, S4A_BE_AC1).
+        const kind = node.kind === DEFAULT_KIND ? {} : { kind: node.kind };
         return api.createChild(
           parentId,
-          after === undefined ? { title } : { title, after_sort_key: after },
+          after === undefined ? { title, ...kind } : { title, after_sort_key: after, ...kind },
         );
       },
       (current, created: NodeOut) => {
@@ -373,17 +385,26 @@ export function useMapView(focusId: string, depth: number): MapView {
   const saveDetails = (id: string, change: DetailsChange) => {
     const node = currentNode(id);
     if (!node || node.pending) return;
+    // `props` is typed per kind in the panel and opaque in the API (slice 4A, decision D1).
+    const { props, ...rest } = change;
+    const body: { title?: string; description?: string; props?: Record<string, unknown> } =
+      props === undefined ? rest : { ...rest, props: asProps(props) };
     // The panel shows the saved value right away; a failure drops it and reads it again.
     const known = details.current.get(id);
     if (known) {
-      details.current.set({ ...known, ...change });
+      details.current.set({ ...known, ...body });
       setDetailsRead((count) => count + 1);
     }
+    // Title and props show on the canvas at once; the description lives only in the panel.
+    const onCanvas: Partial<MapNode> = {
+      ...(body.title === undefined ? {} : { title: body.title }),
+      ...(body.props === undefined ? {} : { props: body.props }),
+    };
     mutate(
-      (current) => (change.title === undefined ? current : patchNode(current, id, { title: change.title })),
+      (current) => (Object.keys(onCanvas).length === 0 ? current : patchNode(current, id, onCanvas)),
       async () => {
         const version = currentNode(id)?.version ?? details.current.get(id)?.version ?? 0;
-        const updated = await api.updateNode(id, { ...change, version });
+        const updated = await api.updateNode(id, { ...body, version });
         details.current.set(updated);
         setDetailsRead((count) => count + 1);
         return updated;
@@ -409,8 +430,9 @@ export function useMapView(focusId: string, depth: number): MapView {
       }
       createNode(node, title);
     }
+    // The chain keeps the kind: Enter after a task opens another task (decision D9).
     if (createSibling && node.parent_id && id !== stateRef.current?.focusId) {
-      startNewNode(node.parent_id, id);
+      startNewNode(node.parent_id, id, node.kind);
     }
   };
 

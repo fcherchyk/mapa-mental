@@ -440,7 +440,8 @@ describe('the shortcuts panel', () => {
       expect(within(panel).getByText(keys)).toBeInTheDocument();
     }
     expect(
-      within(panel).getByText('Move the selected idea up or down among its siblings.'),
+      // Amended in slice 4A (S4A_FE_AC23): a task moves with the same keys.
+      within(panel).getByText('Move the selected idea or task up or down among its siblings.'),
     ).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import type { Place } from '../api/client';
 import { NODE_HEIGHT, SIBLING_GAP, type Position } from './layout';
+import { allowsChildren } from './nodes/taskProps';
 import { visibleChildren, type MapState } from './tree';
 
 /**
@@ -42,6 +43,10 @@ export function isUsefulTarget(state: MapState, draggedId: string, target: DropT
   if (target.parentId === draggedId || isDescendant(state, draggedId, target.parentId)) {
     return false;
   }
+  // A leaf kind takes nothing inside it (slice 4A, decision D3). An ancestor in the breadcrumb is
+  // not in `nodes`, and ancestors always have children, so an unknown parent is accepted.
+  const parent = state.nodes[target.parentId];
+  if (parent && !allowsChildren(parent.kind)) return false;
   if (target.kind === 'child') {
     const children = state.childIds[target.parentId] ?? [];
     // Appending where it already sits last changes nothing.

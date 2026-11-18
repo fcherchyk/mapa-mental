@@ -6,6 +6,11 @@
   --accent: #2563eb;
   --border: #d0d7de;
   --warning: #b45309;
+  --surface-muted: #f1f3f5;
+  /* Task status (slice 4A, decision D8): blue to do, yellow in progress, green done. */
+  --status-to-do: #2563eb;
+  --status-in-progress: #eab308;
+  --status-done: #16a34a;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -164,6 +169,121 @@ button {
   color: var(--warning);
 }
 
+/* A task's status and checklist in the panel (slice 4A, decisions D12 and D13). */
+.status-control {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.status-control legend {
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.status-options {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.status-option {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.status-option:has(input:checked) {
+  border-color: currentcolor;
+  font-weight: 600;
+}
+
+.status-option.is-to_do:has(input:checked) {
+  color: var(--status-to-do);
+  background: color-mix(in srgb, var(--status-to-do) 10%, var(--surface));
+}
+
+.status-option.is-in_progress:has(input:checked) {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--status-in-progress) 20%, var(--surface));
+}
+
+.status-option.is-done:has(input:checked) {
+  color: var(--status-done);
+  background: color-mix(in srgb, var(--status-done) 10%, var(--surface));
+}
+
+.status-option:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.checklist-items {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.15rem 0;
+}
+
+.checklist-item.is-dragging {
+  opacity: 0.5;
+}
+
+.checklist-handle {
+  color: var(--muted);
+  cursor: grab;
+}
+
+.checklist-text {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+}
+
+.checklist-text:hover,
+.checklist-text:focus {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.checklist-item button {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* The insertion line, drawn only while an item is dragged. */
+.checklist-gap {
+  height: 10px;
+  margin: -4px 0;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+}
+
+.checklist-gap.is-hovered {
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
 /* The container gets focus when an edit ends; the selected node already shows where it is. */
 .map-canvas:focus {
   outline: none;
@@ -320,6 +440,39 @@ button {
 .map-node-hidden.is-collapsed {
   border: 1px dashed var(--muted);
   color: var(--muted);
+}
+
+/* Tasks (slice 4A, decision D8): a left stripe in the status colour and the checklist progress. */
+.map-node.is-task {
+  position: relative;
+  padding-left: 0.9rem;
+}
+
+.map-node-status {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 6px;
+  border-radius: 8px 0 0 8px;
+  background: var(--status-to-do);
+}
+
+.map-node-status.is-in_progress {
+  background: var(--status-in-progress);
+}
+
+.map-node-status.is-done {
+  background: var(--status-done);
+}
+
+.map-node-progress {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .map-node-delete {

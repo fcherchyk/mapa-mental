@@ -3,20 +3,25 @@ import { useEffect, useRef } from 'react';
 const SHORTCUTS: { keys: string; description: string }[] = [
   {
     keys: 'Tab',
-    description: 'With the map focused, adds a child to the selected idea and starts editing it.',
+    description: 'With the map focused, adds a child idea to the selected idea and starts editing it.',
   },
-  { keys: 'F2', description: 'Edit the selected idea in the details panel.' },
+  {
+    keys: 'Shift + Tab',
+    description:
+      "With the map focused, adds a task inside the selected idea and starts editing it. Tasks can't contain anything.",
+  },
+  { keys: 'F2', description: 'Edit the selected idea or task in the details panel.' },
   { keys: 'Escape', description: 'Clear the selection and close the details panel.' },
   { keys: 'Space', description: 'Collapses or expands the selected idea.' },
   {
     keys: 'Delete',
     description:
-      'Deletes the selected idea. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
+      'Deletes the selected idea or task. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
   },
   {
     keys: 'Enter',
     description:
-      'Focuses the selected idea. While you create an idea, confirms it and opens a sibling idea.',
+      'Focuses the selected idea. While you create one, confirms it and opens a sibling of the same kind.',
   },
   { keys: 'Backspace', description: 'Goes up one level from the focused idea.' },
   {
@@ -25,21 +30,25 @@ const SHORTCUTS: { keys: string; description: string }[] = [
   },
   {
     keys: 'Alt + ↑ ↓',
-    description: 'Move the selected idea up or down among its siblings.',
+    description: 'Move the selected idea or task up or down among its siblings.',
   },
   {
     keys: 'Alt + →',
-    description: 'Makes the selected idea the last child of the idea above it.',
+    description:
+      'Makes the selected idea or task the last child of the idea above it. A task takes nothing inside it.',
   },
   {
     keys: 'Alt + ←',
-    description: 'Takes the selected idea out, as the last child of its grandparent.',
+    description: 'Takes the selected idea or task out, as the last child of its grandparent.',
   },
-  { keys: 'Double click', description: 'Focuses the idea; on the focused idea, goes up one level.' },
+  {
+    keys: 'Double click',
+    description: 'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.',
+  },
   {
     keys: 'Drag',
     description:
-      'Drop an idea on another to make it its last child, or between its own siblings to reorder it. Breadcrumb entries also accept the drop.',
+      'Drop an idea or task on an idea to make it its last child, or between its own siblings to reorder it. Breadcrumb entries also accept the drop; a task never does.',
   },
 ];
 
