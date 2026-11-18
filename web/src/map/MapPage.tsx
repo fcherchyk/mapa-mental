@@ -10,6 +10,7 @@ import { pathFor, useSession } from '../session';
 import { isUsefulTarget, type DropTarget } from './dropTarget';
 import { MapCanvas, type DragState } from './MapCanvas';
 import { NodeActionsContext, type NodeActions } from './nodes/nodeActions';
+import { allowsChildren, TASK_KIND } from './nodes/taskProps';
 import { isRealRoot, moveSelection, visibleChildren, type ArrowKey } from './tree';
 import { useMapView } from './useMapView';
 
@@ -19,7 +20,8 @@ const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName))
+    (target.isContentEditable ||
+      ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName))
   );
 }
 
@@ -73,6 +75,8 @@ export function MapPage() {
   const open = (id: string) => {
     if (!state || state.nodes[id]?.pending) return;
     if (id !== state.focusId) {
+      // A leaf kind has nothing to show when focused (slice 4A, decision D10).
+      if (!allowsChildren(state.nodes[id]?.kind ?? '')) return;
       goTo(id);
       return;
     }
@@ -92,7 +96,7 @@ export function MapPage() {
   const actions: NodeActions = {
     select: view.select,
     open,
-    createChild: (id) => view.startCreateChild(id, goTo),
+    createChild: (id, kind) => view.startCreateChild(id, goTo, kind),
     clearSelection: view.clearSelection,
     remove: (id) => view.remove(id, goTo),
     commitEdit: view.commitEdit,
@@ -180,6 +184,12 @@ export function MapPage() {
       if (moveWithKeyboard(selectedId, event.key as ArrowKey)) event.preventDefault();
       return;
     }
+    // Shift+Tab creates a task where Tab creates an idea (slice 4A, decision D9).
+    if (event.key === 'Tab' && event.shiftKey) {
+      view.startCreateChild(selectedId, goTo, TASK_KIND);
+      event.preventDefault();
+      return;
+    }
     const handled = runShortcut(event.key, selectedId);
     if (handled) event.preventDefault();
   };
@@ -238,15 +248,13 @@ export function MapPage() {
             focusTitle={state.nodes[state.focusId]?.title ?? ''}
             rootId={me.root_node_id}
             onDropOn={
-              drag.draggingId
-                ? (parentId) => actions.drop({ kind: 'child', parentId })
-                : undefined
+              drag.draggingId ? (parentId) => actions.drop({ kind: 'child', parentId }) : undefined
             }
             acceptsDrop={(parentId) =>
               Boolean(
                 drag.draggingId &&
-                  state &&
-                  isUsefulTarget(state, drag.draggingId, { kind: 'child', parentId }),
+                state &&
+                isUsefulTarget(state, drag.draggingId, { kind: 'child', parentId }),
               )
             }
           />
@@ -269,32 +277,28 @@ export function MapPage() {
         </div>
       )}
       <div className="map-body">
-      <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
-        {view.status === 'error' && <p role="alert">Could not load the map.</p>}
-        {!state && view.status === 'loading' && <p>Loading…</p>}
-        {state && (
-          <NodeActionsContext.Provider value={actions}>
-            <MapCanvas
-              state={state}
-              selectedId={selectedId}
-              editingId={editingId}
-              drag={drag}
-            />
-          </NodeActionsContext.Provider>
+        <main className="map-canvas" ref={canvasRef} tabIndex={-1}>
+          {view.status === 'error' && <p role="alert">Could not load the map.</p>}
+          {!state && view.status === 'loading' && <p>Loading…</p>}
+          {state && (
+            <NodeActionsContext.Provider value={actions}>
+              <MapCanvas state={state} selectedId={selectedId} editingId={editingId} drag={drag} />
+            </NodeActionsContext.Provider>
+          )}
+          {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
+        </main>
+        {panelNode && panelDetail && (
+          <DetailsPanel
+            nodeId={panelNode.id}
+            kind={panelNode.kind}
+            title={panelNode.title}
+            detail={panelDetail}
+            titleRef={titleFieldRef}
+            onSave={view.saveDetails}
+            onRetry={view.retryDetail}
+            onDone={focusMap}
+          />
         )}
-        {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
-      </main>
-      {panelNode && panelDetail && (
-        <DetailsPanel
-          nodeId={panelNode.id}
-          title={panelNode.title}
-          detail={panelDetail}
-          titleRef={titleFieldRef}
-          onSave={view.saveDetails}
-          onRetry={view.retryDetail}
-          onDone={focusMap}
-        />
-      )}
       </div>
       {view.deleteRequest && (
         <DeleteDialog

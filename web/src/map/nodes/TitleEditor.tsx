@@ -21,12 +21,14 @@ function focusWhenVisible(input: HTMLInputElement): () => void {
 
 interface TitleEditorProps {
   initialTitle: string;
+  /** Names the field after what is being created: "New idea title" or "New task title". */
+  label: string;
   onCommit: (title: string, createSibling: boolean) => void;
   onCancel: () => void;
 }
 
 /** Title editing field; keys act on the text and not on the map. */
-export function TitleEditor({ initialTitle, onCommit, onCancel }: TitleEditorProps) {
+export function TitleEditor({ initialTitle, label, onCommit, onCancel }: TitleEditorProps) {
   const [value, setValue] = useState(initialTitle);
   const inputRef = useRef<HTMLInputElement>(null);
   const finished = useRef(false);
@@ -43,7 +45,7 @@ export function TitleEditor({ initialTitle, onCommit, onCancel }: TitleEditorPro
     <input
       className="map-node-input nodrag nopan"
       ref={inputRef}
-      aria-label="New idea title"
+      aria-label={label}
       maxLength={200}
       value={value}
       onChange={(event) => setValue(event.target.value)}

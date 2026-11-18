@@ -112,6 +112,8 @@ describe('focus navigation', () => {
         collapsed: false,
         version: 1,
         description: '',
+        kind: 'idea',
+        props: {},
       });
     }
     api.depth = 1;

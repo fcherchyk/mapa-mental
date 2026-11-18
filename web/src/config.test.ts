@@ -14,7 +14,9 @@ const config = viteConfig as UserConfig & {
 /** Block of the `name` service inside docker-compose.yml (up to the next service). */
 function composeService(name: string): string {
   const compose = repoFile('docker-compose.yml');
-  const match = compose.match(new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  \\w[\\w-]*:\\n|\\nvolumes:)`));
+  const match = compose.match(
+    new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  \\w[\\w-]*:\\n|\\nvolumes:)`),
+  );
   return match?.[1] ?? '';
 }
 
@@ -59,6 +61,12 @@ describe('environment', () => {
 
   it('S3_FE_AC22: the details panel suite runs under the same coverage threshold', () => {
     expect(existsSync(resolve(webDir, 'src/detailsPanel.test.tsx'))).toBe(true);
+    expect(config.test.coverage.thresholds.lines).toBe(80);
+  });
+
+  it('S4A_FE_AC25: the task suites run under the same coverage threshold', () => {
+    expect(existsSync(resolve(webDir, 'src/tasks.test.tsx'))).toBe(true);
+    expect(existsSync(resolve(webDir, 'src/taskPanel.test.tsx'))).toBe(true);
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
 });

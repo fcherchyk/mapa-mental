@@ -198,15 +198,30 @@ describe('S1_FE_AC22: opening and closing the help', () => {
     fireEvent.click(help);
     const panel = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
     const expected = [
-      { key: 'Tab', desc: 'With the map focused, adds a child to the selected idea and starts editing it.' },
-      // F2 amended in slice 3 (S3_FE_AC20).
-      { key: 'F2', desc: 'Edit the selected idea in the details panel.' },
+      {
+        key: 'Tab',
+        desc: 'With the map focused, adds a child idea to the selected idea and starts editing it.',
+      },
+      // F2 amended in slice 3 (S3_FE_AC20); the rest, in slice 4A (S4A_FE_AC23).
+      { key: 'F2', desc: 'Edit the selected idea or task in the details panel.' },
       { key: 'Space', desc: 'Collapses or expands the selected idea.' },
-      { key: 'Delete', desc: 'Deletes the selected idea. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.' },
-      { key: 'Enter', desc: 'Focuses the selected idea. While you create an idea, confirms it and opens a sibling idea.' },
+      {
+        key: 'Delete',
+        desc: 'Deletes the selected idea or task. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
+      },
+      {
+        key: 'Enter',
+        desc: 'Focuses the selected idea. While you create one, confirms it and opens a sibling of the same kind.',
+      },
       { key: 'Backspace', desc: 'Goes up one level from the focused idea.' },
-      { key: 'Arrows', desc: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.' },
-      { key: 'Double click', desc: 'Focuses the idea; on the focused idea, goes up one level.' },
+      {
+        key: 'Arrows',
+        desc: 'Move the selection: → to the first child, ← to the parent, ↑ and ↓ between siblings.',
+      },
+      {
+        key: 'Double click',
+        desc: 'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.',
+      },
     ];
     for (const { key, desc } of expected) {
       expect(within(panel).getByText(key)).toBeInTheDocument();
@@ -484,10 +499,39 @@ describe('S3_FE_AC20: the help describes the details panel', () => {
     await screen.findByTestId('node-f');
     fireEvent.click(helpButton());
     const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
-    expect(within(help).getByText('Edit the selected idea in the details panel.')).toBeInTheDocument();
+    // Amended in slice 4A (S4A_FE_AC23): the panel edits a task too.
+    expect(
+      within(help).getByText('Edit the selected idea or task in the details panel.'),
+    ).toBeInTheDocument();
     expect(within(help).getByText('Escape')).toBeInTheDocument();
     expect(
       within(help).getByText('Clear the selection and close the details panel.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('S4A_FE_AC23: the help describes the task shortcuts', () => {
+  it('S4A_FE_AC23: Shift + Tab creates a task, and the drag entry names what a task refuses', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(helpButton());
+    const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+
+    expect(within(help).getByText('Shift + Tab')).toBeInTheDocument();
+    expect(
+      within(help).getByText(
+        "With the map focused, adds a task inside the selected idea and starts editing it. Tasks can't contain anything.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(help).getByText(
+        'Drop an idea or task on an idea to make it its last child, or between its own siblings to reorder it. Breadcrumb entries also accept the drop; a task never does.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(help).getByText(
+        'Makes the selected idea or task the last child of the idea above it. A task takes nothing inside it.',
+      ),
     ).toBeInTheDocument();
   });
 });

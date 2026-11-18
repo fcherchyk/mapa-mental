@@ -63,13 +63,9 @@ class NodePatch(BaseModel):
     description: Description | None = None
     collapsed: bool | None = None
     sort_key: SortKey | None = None
-    kind: str | None = None
+    # `kind` is not patchable: a node is born its kind (slice 4A, decision D2). `extra="forbid"`
+    # turns a `kind` in the body into a 422.
     props: dict[str, Any] | None = None
-
-    @field_validator("kind")
-    @classmethod
-    def check_kind(cls, kind: str | None) -> str | None:
-        return check_known_kind(kind)
 
     @field_validator("description", mode="before")
     @classmethod

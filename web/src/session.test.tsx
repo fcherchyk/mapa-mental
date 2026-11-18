@@ -16,7 +16,9 @@ describe('session', () => {
       api.loggedIn = false;
       renderApp(path, api);
       expect(await screen.findByRole('heading', { name: 'Mind Map' })).toBeInTheDocument();
-      expect(screen.getByText('Sign in with your Google account to see your map.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Sign in with your Google account to see your map.'),
+      ).toBeInTheDocument();
       const button = screen.getByRole('link', { name: 'Sign in with Google' });
       expect(button).toHaveAttribute('href', '/api/auth/login');
       expect(api.callsTo('GET', /view/)).toHaveLength(0);

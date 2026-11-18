@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import type { ChecklistItem, TaskStatus } from '../api/client';
+import { isTask, taskPropsOf } from '../map/nodes/taskProps';
 import type { DetailState, DetailsChange } from '../map/useMapView';
+import { ChecklistEditor } from './ChecklistEditor';
+import { StatusControl } from './StatusControl';
 
 export const DESCRIPTION_MAX_LENGTH = 1000;
 const EMPTY_TITLE_ERROR = "Title can't be empty";
 
 interface DetailsPanelProps {
   nodeId: string;
+  /** The node's kind, which decides what the panel offers (slice 4A, decision D11). */
+  kind: string;
   /** The title as the canvas shows it: the window is its source of truth. */
   title: string;
   detail: DetailState;
@@ -26,8 +32,24 @@ export function DetailsPanel(props: DetailsPanelProps) {
   return <DetailsForm key={props.nodeId} {...props} />;
 }
 
-function DetailsForm({ nodeId, title, detail, titleRef, onSave, onRetry, onDone }: DetailsPanelProps) {
+function DetailsForm({
+  nodeId,
+  kind,
+  title,
+  detail,
+  titleRef,
+  onSave,
+  onRetry,
+  onDone,
+}: DetailsPanelProps) {
   const savedDescription = detail.status === 'ready' ? detail.detail.description : '';
+  // A task's own fields come from the window's `props`, which always carries them (decision D1).
+  const task = isTask({ kind });
+  const props = taskPropsOf(detail.status === 'ready' ? detail.detail : undefined);
+
+  const saveStatus = (status: TaskStatus) => onSave(nodeId, { props: { ...props, status } });
+  const saveChecklist = (checklist: ChecklistItem[]) =>
+    onSave(nodeId, { props: { ...props, checklist } });
   const [titleDraft, setTitleDraft] = useState(title);
   const [descriptionDraft, setDescriptionDraft] = useState(savedDescription);
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -125,7 +147,11 @@ function DetailsForm({ nodeId, title, detail, titleRef, onSave, onRetry, onDone 
   const stop = (event: KeyboardEvent) => event.stopPropagation();
 
   return (
-    <aside className="details-panel" aria-label="Idea details" onKeyDown={stop}>
+    <aside
+      className="details-panel"
+      aria-label={task ? 'Task details' : 'Idea details'}
+      onKeyDown={stop}
+    >
       <label className="details-field">
         <span>Title</span>
         <input
@@ -149,6 +175,9 @@ function DetailsForm({ nodeId, title, detail, titleRef, onSave, onRetry, onDone 
           {titleError}
         </p>
       )}
+      {task && detail.status === 'ready' && (
+        <StatusControl status={props.status} onChange={saveStatus} />
+      )}
       <label className="details-field">
         <span>Description</span>
         <textarea
@@ -169,6 +198,9 @@ function DetailsForm({ nodeId, title, detail, titleRef, onSave, onRetry, onDone 
       <p className="details-counter" aria-live="polite">
         {descriptionDraft.length} / {DESCRIPTION_MAX_LENGTH}
       </p>
+      {task && detail.status === 'ready' && (
+        <ChecklistEditor checklist={props.checklist} onChange={saveChecklist} onDone={onDone} />
+      )}
       {detail.status === 'loading' && <p className="details-status">Loading…</p>}
       {detail.status === 'error' && (
         <p role="alert" className="details-error">

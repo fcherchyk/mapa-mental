@@ -7,11 +7,11 @@ be built lives only in `README.md`, and what each delivered slice guarantees liv
 ## Summary
 
 A web application that lets a person with a Google account build their mind map, which is a single
-one: they create ideas, organize them in a tree and navigate by focusing nodes. Double-clicking a
-node makes it the visible root, and the screen shows at most N levels down. Each user chooses N,
-and it defaults to 3. Only `idea` nodes exist, and everything runs locally with docker compose. The
-model and the API already allow a node to later be a Drive document, a spreadsheet, an event, a
-task or a repository, and a mobile app to use the same backend.
+one: they create ideas and tasks, organize them in a tree and navigate by focusing nodes.
+Double-clicking a node makes it the visible root, and the screen shows at most N levels down. Each
+user chooses N, and it defaults to 3. Two kinds of node exist, `idea` and `task`, and everything
+runs locally with docker compose. The model and the API already allow a node to later be a Drive
+document, a spreadsheet, an event or a repository, and a mobile app to use the same backend.
 
 ## Components
 
@@ -38,8 +38,11 @@ task or a repository, and a mobile app to use the same backend.
     line (`GapDropZone`) is drawn in each gap among the dragged node's own siblings. The rules
     live in `map/dropTarget.ts`.
   - **`Breadcrumb`**: shows root › … › focus, and each ancestor is clickable.
-  - **`NodeRenderer`**: picks the component by `kind`. Only `IdeaNode` exists. Border nodes show
-    "+k", the number of hidden direct children, and cannot be expanded (12A).
+  - **`NodeRenderer`**: picks the component by `kind`, `IdeaNode` or `TaskNode`; `nodeChrome`
+    holds what both share (classes, drag wiring, 🗑). Border nodes show "+k", the number of hidden
+    direct children, and cannot be expanded (12A). A task draws a left stripe coloured by its
+    status (blue to do, yellow in progress, green done) and its checklist progress `done/total`;
+    the status word is only an accessible label, and lives visibly in the panel.
   - **`SettingsPanel`**: a control for N between 1 and 10 that saves through `PATCH /me/settings`
     (11A).
   - **`ShortcutsHelp`**: the "?" button and the panel listing the shortcuts.
@@ -52,16 +55,21 @@ task or a repository, and a mobile app to use the same backend.
     - Shortcuts that do not replace double-click: the breadcrumb, the "back" button, Enter to focus
       and Backspace to go up.
   - **Editing**:
-    - Tab or the "+" button creates a child.
-    - Enter, while creating inline, creates a sibling.
+    - Tab or the "+" button creates a child idea; Shift+Tab or the "☑" button creates a child
+      task. A task takes no children, so it offers neither button and is not focusable (slice 4A).
+    - Enter, while creating inline, creates a sibling of the same kind.
     - The arrow keys move the selection.
     - Space collapses or expands.
     - Selecting a node opens a details panel on the right with its title and description,
-      editable and saved on blur; F2 goes to its title. There is no pencil (slice 3).
+      editable and saved on blur; F2 goes to its title. There is no pencil (slice 3). For a task
+      the panel also carries a status segmented control (`StatusControl`) and a checklist editor
+      (`ChecklistEditor`) with add, toggle, rename, remove and drag reorder; each change sends the
+      whole `props` (slice 4A).
     - Delete or the 🗑 button deletes.
-    - Dragging, or Alt with the arrow keys, moves an idea: Alt+↑ and Alt+↓ among its siblings,
-      Alt+→ into the idea above it and Alt+← out to its grandparent. A new parent always takes it
-      as the last child, so moving somewhere and placing it precisely are two gestures.
+    - Dragging, or Alt with the arrow keys, moves an idea or a task: Alt+↑ and Alt+↓ among its
+      siblings, Alt+→ into the idea above it and Alt+← out to its grandparent. A task never takes
+      the drop. A new parent always takes it as the last child, so moving somewhere and placing
+      it precisely are two gestures.
     - Breadcrumb entries accept a drop, which moves the idea up to that ancestor.
     - When an edit ends, focus returns to the map container, so the shortcuts keep working.
   - **State**: optimistic updates with rollback and a cache of windows by `(nodeId, N)` that is
@@ -72,8 +80,9 @@ task or a repository, and a mobile app to use the same backend.
   - `nodes`: service and repository for the tree. Includes the window query, a recursive CTE with
     maximum depth `depth`, and the fractional `sort_key` arithmetic.
   - `settings`: user preferences, validated with Pydantic (`depth` between 1 and 10).
-  - `node_types`: registry of node types, each with its Pydantic schema for `props`. Only `idea`
-    exists.
+  - `node_types`: registry of node types, each with its Pydantic schema for `props` and a flag
+    saying whether it takes children. `idea` has empty props and nests; `task` has
+    `{status, checklist}` and is a leaf (at most 30 items of at most 100 characters).
   - `integrations`: empty. It will have a `Provider` interface per external service.
   - Persistence with SQLAlchemy 2 and migrations with Alembic.
 - **REST API**
@@ -82,13 +91,17 @@ task or a repository, and a mobile app to use the same backend.
   - `GET /nodes/{id}/view?depth=N` returns `{ focus, ancestors[], nodes[] }`.
     - Each node includes `child_count`.
     - If `depth` is missing, the user's own is used.
-  - `POST /nodes/{id}/children` takes `{ title, after_sort_key? }`.
-  - `PATCH /nodes/{id}` changes `title`, `collapsed` or `sort_key` and requires `version`. If the
-    version is stale, it responds `409`.
+  - `POST /nodes/{id}/children` takes `{ title, after_sort_key?, kind?, props? }`; `kind` defaults
+    to `idea` and the kind's schema fills in the defaults for `props`. A task parent answers `422`.
+  - `PATCH /nodes/{id}` changes `title`, `description`, `collapsed`, `sort_key` or `props` and
+    requires `version`. If the version is stale, it responds `409`. `kind` is **not** patchable:
+    a node is born its kind and changing it means deleting and creating another (slice 4A).
+    `props` is validated by the stored kind and always replaced whole.
   - `POST /nodes/{id}/move` takes `{ parent_id, place, version }`, where `place` is `"first"`,
     `"last"` or `{ "after_id": … }`. The server computes the `sort_key`, so the client never does
-    fractional-index arithmetic. It refuses to move the root or to put a node inside its own
-    subtree (`422`), and only the moved row is written: the subtree follows its parent.
+    fractional-index arithmetic. It refuses to move the root, to put a node inside its own
+    subtree, or to give a leaf kind children (`422`), and only the moved row is written: the
+    subtree follows its parent.
   - `DELETE /nodes/{id}?children=cascade|reparent` deletes the node. With `cascade`, the default,
     the whole subtree goes; with `reparent`, only the node goes and its direct children move up to
     its parent, in its place and order, in one transaction. The root cannot be deleted (`422`).
@@ -105,11 +118,12 @@ task or a repository, and a mobile app to use the same backend.
     maps means dropping the `unique`, with no data migration.
 - **nodes**:
   - `id` (uuid), `map_id` and `parent_id` (empty only on the root).
-  - `kind` (text, `'idea'` today) and `title`.
+  - `kind` (text, `'idea'` or `'task'`) and `title`.
   - `sort_key` (text with a fractional index). There is always a key between two keys, so inserting
     between siblings, or moving one, only writes that node's row.
   - `collapsed` (boolean).
-  - `props` (jsonb, `{}`).
+  - `props` (jsonb): `{}` for an idea, `{status, checklist}` for a task. Validated per kind, so a
+    checklist never reaches the database unchecked.
   - `version`, `created_at` and `updated_at`.
   - Indexes: `(map_id)` and `(parent_id, sort_key)`. The second one is used by the window CTE and
     by the `child_count` calculation.
