@@ -13,6 +13,11 @@
     "gen:api": "uv run --directory ../api python scripts/export_openapi.py ../web/openapi.json && openapi-typescript openapi.json -o src/api/schema.ts --default-non-nullable=false"
   },
   "dependencies": {
+    "@tiptap/extension-list": "^3.34.0",
+    "@tiptap/markdown": "^3.34.0",
+    "@tiptap/pm": "^3.34.0",
+    "@tiptap/react": "^3.34.0",
+    "@tiptap/starter-kit": "^3.34.0",
     "@xyflow/react": "^12.6.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

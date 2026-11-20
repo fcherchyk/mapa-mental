@@ -1,17 +1,16 @@
 import { Handle, Position } from '@xyflow/react';
 import { useNodeActions, type NodeComponentProps } from './nodeActions';
 import { DeleteButton, dragHandlers, nodeClasses } from './nodeChrome';
-import { TASK_KIND } from './taskProps';
+import { KindMenu } from './KindMenu';
 import { TitleEditor } from './TitleEditor';
 
 export function IdeaNode({ data }: NodeComponentProps) {
-  const { node, isFocus, selected, editing, hiddenCount, draggable } = data;
+  const { node, isFocus, selected, editing, hiddenCount, draggable, menuOpen } = data;
   const actions = useNodeActions();
-  // The create buttons always show on the focus and the selected node; on the rest, on hover (CSS).
-  const addClasses = (extra: string) =>
-    ['map-node-add', extra, 'nodrag', 'nopan', (isFocus || selected) && 'is-visible']
-      .filter(Boolean)
-      .join(' ');
+  // "+" always shows on the focus and the selected node; on the rest, on hover (CSS).
+  const addClasses = ['map-node-add', 'nodrag', 'nopan', (isFocus || selected) && 'is-visible']
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
@@ -35,34 +34,29 @@ export function IdeaNode({ data }: NodeComponentProps) {
           {node.title}
         </span>
       )}
+      {/* One "+" for every kind: it opens the kind menu (slice 5, decision D8). */}
       {!editing && !node.pending && (
         <button
           type="button"
-          className={addClasses('')}
-          aria-label={`Add an idea inside ${node.title}`}
+          className={addClasses}
+          aria-label={`Add inside ${node.title}`}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           onClick={(event) => {
             event.stopPropagation();
-            actions.createChild(node.id);
+            actions.toggleKindMenu(node.id);
           }}
           onDoubleClick={(event) => event.stopPropagation()}
         >
           +
         </button>
       )}
-      {/* Only ideas offer it: a task takes no children (slice 4A, decision D9). */}
-      {!editing && !node.pending && (
-        <button
-          type="button"
-          className={addClasses('map-node-add-task')}
-          aria-label={`Add a task inside ${node.title}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            actions.createChild(node.id, TASK_KIND);
-          }}
-          onDoubleClick={(event) => event.stopPropagation()}
-        >
-          ☑
-        </button>
+      {menuOpen && !editing && !node.pending && (
+        <KindMenu
+          parentTitle={node.title}
+          onChoose={(kind) => actions.createChild(node.id, kind)}
+          onClose={actions.closeKindMenu}
+        />
       )}
       {!editing && <DeleteButton node={node} />}
       {hiddenCount > 0 && (

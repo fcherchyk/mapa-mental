@@ -363,6 +363,11 @@ export interface components {
             /** Description */
             description: string;
             /**
+             * Content
+             * @description A document's Markdown body; empty for other kinds (slice 5).
+             */
+            content: string;
+            /**
              * Path
              * @description From the root to the node's parent (slice 4B).
              */
@@ -421,6 +426,8 @@ export interface components {
             title?: string | null;
             /** Description */
             description?: string | null;
+            /** Content */
+            content?: string | null;
             /** Collapsed */
             collapsed?: boolean | null;
             /** Sort Key */

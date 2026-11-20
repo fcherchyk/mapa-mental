@@ -23,6 +23,8 @@ interface MapCanvasProps {
   selectedId: string | null;
   editingId: string | null;
   drag?: DragState;
+  /** The idea whose kind menu is open (slice 5, decision D8). */
+  kindMenuFor?: string | null;
 }
 
 function dropStateOf(state: MapState, drag: DragState, id: string): 'valid' | 'refused' | null {
@@ -45,6 +47,7 @@ export function toFlowElements(
   selectedId: string | null,
   editingId: string | null,
   drag: DragState = NO_DRAG,
+  kindMenuFor: string | null = null,
 ): { nodes: (MapFlowNode | GapFlowNode)[]; edges: Edge[] } {
   const { positions, edges } = layoutTree(state.focusId, (id) => visibleChildren(state, id));
   const nodes: (MapFlowNode | GapFlowNode)[] = Object.entries(positions).map(([id, position]) => ({
@@ -52,6 +55,8 @@ export function toFlowElements(
     type: 'renderer' as const,
     position,
     draggable: false,
+    // The open menu hangs below its node: it must be drawn over the nodes underneath.
+    ...(id === kindMenuFor ? { zIndex: 1000 } : {}),
     data: {
       node: state.nodes[id],
       isFocus: id === state.focusId,
@@ -61,6 +66,7 @@ export function toFlowElements(
       draggable: isDraggable(state, id, editingId),
       dragging: id === drag.draggingId,
       dropState: dropStateOf(state, drag, id),
+      menuOpen: id === kindMenuFor,
     },
   }));
   // The insertion lines only exist while a node is dragged, and only among its own siblings.
@@ -89,11 +95,17 @@ export function toFlowElements(
   };
 }
 
-export function MapCanvas({ state, selectedId, editingId, drag = NO_DRAG }: MapCanvasProps) {
+export function MapCanvas({
+  state,
+  selectedId,
+  editingId,
+  drag = NO_DRAG,
+  kindMenuFor = null,
+}: MapCanvasProps) {
   const actions = useNodeActions();
   const { nodes, edges } = useMemo(
-    () => toFlowElements(state, selectedId, editingId, drag),
-    [state, selectedId, editingId, drag],
+    () => toFlowElements(state, selectedId, editingId, drag, kindMenuFor),
+    [state, selectedId, editingId, drag, kindMenuFor],
   );
 
   return (

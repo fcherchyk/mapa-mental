@@ -18,10 +18,17 @@ function HistoryProbe() {
   );
 }
 
-/** Mounts the SPA at `path` against a simulated API. */
-export function renderApp(path: string, api: FakeApi) {
+/**
+ * Mounts the SPA at `path` against a simulated API. `advanceTimers` lets user-event drive fake
+ * timers (the document autosave, slice 5).
+ */
+export function renderApp(
+  path: string,
+  api: FakeApi,
+  options: { advanceTimers?: (delay: number) => unknown } = {},
+) {
   vi.stubGlobal('fetch', api.fetch);
-  const user = userEvent.setup();
+  const user = userEvent.setup(options);
   const result = render(
     <MemoryRouter initialEntries={[path]}>
       <App />
