@@ -7,10 +7,10 @@ be built lives only in `README.md`, and what each delivered slice guarantees liv
 ## Summary
 
 A web application that lets a person with a Google account build their mind map, which is a single
-one: they create ideas and tasks, organize them in a tree and navigate by focusing nodes.
-Double-clicking a node makes it the visible root, and the screen shows at most N levels down. Each
-user chooses N, and it defaults to 3. Two kinds of node exist, `idea` and `task`, and everything
-runs locally with docker compose. The model and the API already allow a node to later be a Drive
+one: they create ideas, tasks and documents, organize them in a tree and navigate by focusing
+nodes. Double-clicking a node makes it the visible root, and the screen shows at most N levels
+down. Each user chooses N, and it defaults to 3. Three kinds of node exist, `idea`, `task` and
+`document`, and everything runs locally with docker compose. The model and the API already allow a node to later be a Drive
 document, a spreadsheet, an event or a repository, and a mobile app to use the same backend.
 
 ## Components
@@ -45,8 +45,10 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
     line (`GapDropZone`) is drawn in each gap among the dragged node's own siblings. The rules
     live in `map/dropTarget.ts`.
   - **`Breadcrumb`**: shows root › … › focus, and each ancestor is clickable.
-  - **`NodeRenderer`**: picks the component by `kind`, `IdeaNode` or `TaskNode`; `nodeChrome`
-    holds what both share (classes, drag wiring, 🗑). Border nodes show "+k", the number of hidden
+  - **`NodeRenderer`**: picks the component by `kind`, `IdeaNode`, `TaskNode` or `DocumentNode`;
+    `nodeChrome` holds what they share (classes, drag wiring, 🗑). `map/nodes/kinds.ts` is the
+    SPA's kind registry: which kinds are leaves, their names, and the order of the kind menu.
+    A document is drawn as a page (folded corner, 📄) with the footprint of an idea (slice 5). Border nodes show "+k", the number of hidden
     direct children, and cannot be expanded (12A). A task draws a left stripe coloured by its
     status (blue to do, yellow in progress, green done) and its checklist progress `done/total`;
     the status word is only an accessible label, and lives visibly in the panel.
@@ -62,16 +64,23 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
     - Shortcuts that do not replace double-click: the breadcrumb, the "back" button, Enter to focus
       and Backspace to go up.
   - **Editing**:
-    - Tab or the "+" button creates a child idea; Shift+Tab or the "☑" button creates a child
-      task. A task takes no children, so it offers neither button and is not focusable (slice 4A).
-    - Enter, while creating inline, creates a sibling of the same kind.
+    - Tab creates a child idea. The "+" button or Shift+Tab opens the kind menu (`KindMenu`):
+      1 Idea, 2 Task, 3 Document, chosen by number, arrows or click (slice 5). Tasks and
+      documents take no children, so they offer no "+" and are not focusable.
+    - Enter, while creating inline, creates a sibling of the same kind; on a new document it
+      opens the document's editor instead (slice 5).
     - The arrow keys move the selection.
     - Space collapses or expands.
     - Selecting a node opens a details panel on the right with its title and description,
       editable and saved on blur; F2 goes to its title. There is no pencil (slice 3). For a task
       the panel also carries a status segmented control (`StatusControl`) and a checklist editor
       (`ChecklistEditor`) with add, toggle, rename, remove and drag reorder; each change sends the
-      whole `props` (slice 4A).
+      whole `props` (slice 4A). For a document the panel is wider, has no description, and holds
+      `DocumentEditor`: raw Markdown in a textarea or rich text with TipTap
+      (`RichDocumentEditor`, lazy-loaded, ADR 0014), the mode remembered in `localStorage`. The
+      body saves on blur, after two idle seconds and when the panel goes away, through the same
+      queue as other edits but without rollback: a `409` keeps the draft and offers Overwrite or
+      Discard. "Expand editor" makes the panel cover the map (slice 5).
     - Delete or the 🗑 button deletes.
     - Dragging, or Alt with the arrow keys, moves an idea or a task: Alt+↑ and Alt+↓ among its
       siblings, Alt+→ into the idea above it and Alt+← out to its grandparent. A task never takes
@@ -94,9 +103,10 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
     `board_place` says); later tree moves never touch ranks. `board-move` sets the status and the
     rank in one write.
   - `settings`: user preferences, validated with Pydantic (`depth` between 1 and 10).
-  - `node_types`: registry of node types, each with its Pydantic schema for `props` and a flag
-    saying whether it takes children. `idea` has empty props and nests; `task` has
-    `{status, checklist}` and is a leaf (at most 30 items of at most 100 characters).
+  - `node_types`: registry of node types, each with its Pydantic schema for `props`, a flag
+    saying whether it takes children and one saying whether it has a Markdown body. `idea` has
+    empty props and nests; `task` has `{status, checklist}` and is a leaf (at most 30 items of at
+    most 100 characters); `document` has empty props, is a leaf and has a body (slice 5).
   - `integrations`: empty. It will have a `Provider` interface per external service.
   - Persistence with SQLAlchemy 2 and migrations with Alembic.
 - **REST API**
@@ -112,8 +122,12 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
     status changes. Only tasks; `422` otherwise.
   - `POST /nodes/{id}/children` takes `{ title, after_sort_key?, kind?, props? }`; `kind` defaults
     to `idea` and the kind's schema fills in the defaults for `props`. A task parent answers `422`.
-  - `PATCH /nodes/{id}` changes `title`, `description`, `collapsed`, `sort_key` or `props` and
-    requires `version`. If the version is stale, it responds `409`. `kind` is **not** patchable:
+  - `GET /nodes/{id}` returns `NodeDetail`: the node plus `description`, `content` (a
+    document's Markdown body, `""` for other kinds) and `path`. The window never carries either
+    text.
+  - `PATCH /nodes/{id}` changes `title`, `description`, `content`, `collapsed`, `sort_key` or
+    `props` and requires `version`. `content` is only for documents and `description` is refused
+    on them (`422`). If the version is stale, it responds `409`. `kind` is **not** patchable:
     a node is born its kind and changing it means deleting and creating another (slice 4A).
     `props` is validated by the stored kind and always replaced whole.
   - `POST /nodes/{id}/move` takes `{ parent_id, place, version }`, where `place` is `"first"`,
@@ -137,7 +151,8 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
     maps means dropping the `unique`, with no data migration.
 - **nodes**:
   - `id` (uuid), `map_id` and `parent_id` (empty only on the root).
-  - `kind` (text, `'idea'` or `'task'`) and `title`.
+  - `kind` (text, `'idea'`, `'task'` or `'document'`), `title` and `description` (text, up to
+    1000 characters; not used by documents).
   - `sort_key` (text with a fractional index). There is always a key between two keys, so inserting
     between siblings, or moving one, only writes that node's row.
   - `collapsed` (boolean).
@@ -148,6 +163,10 @@ document, a spreadsheet, an event or a repository, and a mobile app to use the s
   - `version`, `created_at` and `updated_at`.
   - Indexes: `(map_id)` and `(parent_id, sort_key)`. The second one is used by the window CTE and
     by the `child_count` calculation.
+- **node_documents** (slice 5): `node_id` (primary key, references `nodes.id` with
+  `ON DELETE CASCADE`) and `content` (text, up to 100,000 characters of raw Markdown). One row per
+  document, created with the node. Kept apart so the window queries never read long texts; a
+  content change touches `nodes.updated_at` so the node's `version` is checked and bumped.
 
 **How collapsing and depth combine**: `collapsed` is stored per node and respected inside the
 window. If a collapsed node is within the N levels, it still hides its children. Nodes at level N
@@ -192,7 +211,9 @@ show "+k", and to see what is below them you have to focus them.
   - **IDOR** (access to other users' nodes): every node query joins on `maps.owner_id = user`.
     There are specific tests, including `/view` on another user's node.
   - **Expensive queries**: `depth` is limited to 1–10 and the CTE has a depth cap.
-  - **XSS**: React escapes titles, user HTML is never rendered and there is a CSP.
+  - **XSS**: React escapes titles, user HTML is never rendered and there is a CSP. A document's
+    Markdown is rendered by ProseMirror, which only draws the nodes of its schema (no raw HTML),
+    and links are limited to `http(s)://` and `mailto:`.
   - **Mass deletions**: if the node has descendants, confirmation is requested, stating how many
     will be deleted and offering to keep them by moving them up.
   - **Exposure**: ports are published only on `127.0.0.1`.
@@ -246,7 +267,8 @@ show "+k", and to see what is below them you have to focus them.
 - **Justified dependencies** (standard):
   - FastAPI, SQLAlchemy/Alembic and Authlib on the backend.
   - React Flow and React Router on the frontend. React Router is needed so the focus lives in the
-    URL.
+    URL. TipTap (with its official Markdown extension) for the document editor, loaded lazily
+    (ADR 0014).
 - **Web first, with the API separate from the frontend** (request).
 - **Google login** (request).
 - **Nodes with `kind` and `props`, and external references in a separate table** (request).

@@ -2,7 +2,7 @@
 
 A web app that lets a person with a Google account build a single mind map of ideas and browse it by focusing one node at a time, seeing at most N levels down. The first slice has the FastAPI API on PostgreSQL (`api/`) and the React + TypeScript SPA with Vite and React Flow (`web/`), which talk to each other over `/api` from the same origin, `localhost:5173`.
 
-**Status: MVP.** What is built today is a minimum viable product: login, a single map, creating, editing, describing, navigating, moving and deleting ideas and tasks, and a kanban board of the tasks under any node. It is specified criterion by criterion in [`docs/slices/`](docs/slices/), one document per slice. The rest of the vision is in the [Roadmap](#roadmap).
+**Status: MVP.** What is built today is a minimum viable product: login, a single map, creating, editing, describing, navigating, moving and deleting ideas, tasks and Markdown documents, and a kanban board of the tasks under any node. It is specified criterion by criterion in [`docs/slices/`](docs/slices/), one document per slice. The rest of the vision is in the [Roadmap](#roadmap).
 
 ### Vision
 
@@ -21,13 +21,13 @@ The map is meant to become the hub for a person's ideas and work:
 - React Flow canvas: horizontal tree laid out automatically, with zoom and pan.
 - Focus lives in the URL (`/` is the root, `/n/:nodeId` is any other node); back, forward and reload work.
 - Navigation: double-click focuses a node, and double-clicking the focus goes up one level; breadcrumb; Enter focuses the selected node and Backspace goes up.
-- "+" button on each node: creates a child in edit mode, same as Tab. It shows on the focused and selected nodes, and on the others when hovered. It does not show while the node is being edited or is pending. On a node at the edge, focus moves one level toward it and the child is created there; on a collapsed node, it is expanded first.
+- "+" button on each idea (accessible label "Add inside …"): opens the **kind menu**, "1 Idea", "2 Task", "3 Document", the same as Shift+Tab; the number keys, the arrows with Enter, or a click choose, and Escape closes it. The chosen kind is created in edit mode (Tab still creates an idea directly). "+" shows on the focused and selected nodes, and on the others when hovered. It does not show while the node is being edited or is pending. On a node at the edge, focus moves one level toward it and the child is created there; on a collapsed node, it is expanded first.
 - 🗑 button on each node (with the accessible label "Delete …"), like the "+" button: it shows on the focus, on the selected node and on hover. It does not show on the real root of the map or on pending nodes. It does the same as Delete.
 - Deleting a leaf (no visible or hidden children) asks for no confirmation. Deleting a node with children opens a dialog that is accessible by keyboard, with the initial focus on "Cancel", and three options: "Delete everything from here", which removes the node and its whole subtree and shows how many descendants there are; "Delete only this one and move its children up", where the children move to the parent, in the node's place and order, with their subtrees intact; or "Cancel". Escape also cancels.
-- "?" button in the header: opens a panel with the keyboard shortcuts. Escape or another click closes it and returns focus to the button.
+- "?" button in the header: opens a panel with the keyboard shortcuts, with one tab per section (Map, Board, Document) opened on the section of the view you are in — Board on the board, Document while a document's panel is open, Map otherwise. Escape or another click closes it and returns focus to the button; a click anywhere outside the panel also closes it.
 - Hint "Tap + or Tab to add an idea" while the focus is on the root and it has no children.
-- Two kinds of node: **ideas**, which hold other nodes, and **tasks**, which are leaves. A task has a status (to do, in progress, done) and a checklist, and is drawn with a left stripe in its status colour (blue, yellow, green) and its checklist progress (`2/5`). A node's kind is fixed when it is created: to change it, delete the node and create another.
-- "☑" button on each idea (with the accessible label "Add a task inside …"), next to "+": creates a task in edit mode, same as Shift+Tab. Tasks offer no create button, take no drop and cannot be focused.
+- Three kinds of node: **ideas**, which hold other nodes, and **tasks** and **documents**, which are leaves. A task has a status (to do, in progress, done) and a checklist, and is drawn with a left stripe in its status colour (blue, yellow, green) and its checklist progress (`2/5`). A document has a Markdown body instead of a description and is drawn as a page, with a folded corner and a 📄 icon. A node's kind is fixed when it is created: to change it, delete the node and create another. Tasks and documents offer no "+", take no drop and cannot be focused.
+- **Documents** (slice 5): selecting one opens a wider panel with its title and its body, up to 100,000 characters, in **Plain text** (the raw Markdown) or **Rich text** (TipTap, with a toolbar for headings, bold, italic, strikethrough, inline code, lists, checklists, quotes, code blocks, links and rules, whose tooltips show each tool's keyboard shortcut and Markdown, and the Markdown typing shortcuts). Tab writes a tab in both modes (in a rich text list it nests the item, and at the start of a rich text line the indent is an em space so it never becomes a code block); Escape is the way out of the editor. The mode is remembered by the browser. The body saves on blur, two seconds after the last change and when the selection moves away; closing the tab with unsaved text asks first. A save that collides with a change made elsewhere keeps your text and offers "Overwrite" or "Discard mine and reload"; other failures offer "Retry". "Expand editor" makes the panel cover the map, and Escape collapses it or, if it is not expanded, saves and returns to the map. Confirming a new document's title with Enter opens its editor. Saving from rich text may reformat the Markdown; links only accept `http(s)://` and `mailto:` addresses.
 - Details panel on the right: selecting a node shows its title and description, already editable. For a task it also shows a "Status" segmented control and its checklist, where items are added, checked, renamed, removed and reordered by dragging. The status and the checklist are independent: completing every item does not make the task done. Limits: 30 items, 100 characters each. It follows the selection (also with the arrows) without taking the keyboard from the map, and is hidden while an idea is being created inline. Each field saves when it loses focus or the selection changes; Enter in the title saves, Escape discards, and both give the keyboard back to the map. The title can't be empty; the description is plain multi-line text up to 1000 characters, with a counter. Escape on the map or a click on the empty canvas clears the selection and closes the panel. The root can be edited but not deleted, and the panel has no other actions.
 - When an inline creation or a panel edit ends, focus goes back to the map, so the shortcuts keep working without clicking anywhere else.
 - The details panel also shows the node's **path** (root › … › parent) as plain text, in both views.
@@ -35,9 +35,10 @@ The map is meant to become the hub for a person's ideas and work:
 - Cards keep **one global order per map** (`board_rank`): a reorder made on one board holds on every board that shows the same cards, and a new task is placed in tree order. Dragging a card to a gap of another column changes its status and position in one request (`POST /api/nodes/{id}/board-move`); dragging within a column reorders it; dropping where it already is sends nothing, and Escape cancels the drag. Alt+← and Alt+→ move the focused card to the previous or next column and Alt+↑ and Alt+↓ move it within its column; at the edges they do nothing. A status change from the keyboard or from the panel keeps the card's position.
 - A click or Enter on a card opens the same details panel; Escape or a click on the empty board closes it. "Add task" at the bottom of "To do" creates tasks as children of the focus, chained with Enter. 🗑 and Delete remove a card at once, with no dialog. Every board change is optimistic, rolls back with a notice on failure, and clears the map's window cache; the board itself is read again on every visit.
 - Edge nodes show a "+k" indicator with the number of hidden children (focus them to see those); collapsed nodes show "+k" with a dotted border.
-- Optimistic editing with rollback and a notice if the API fails: Tab creates a child idea, Shift+Tab creates a child task, Enter (while creating) creates a sibling, F2 goes to the panel's title, Space collapses or expands, Delete removes (a leaf without asking; a node with children opens the delete dialog), and the arrow keys move the selection.
+- Optimistic editing with rollback and a notice if the API fails: Tab creates a child idea, Shift+Tab opens the kind menu, Enter (while creating) creates a sibling (or, for a document, opens its editor), F2 goes to the panel's title, Space collapses or expands, Delete removes (a leaf without asking; a node with children opens the delete dialog), and the arrow keys move the selection.
 - Move ideas by dragging: dropping one on another makes it its last child, and dropping it between two of its own siblings reorders it. Breadcrumb entries also take the drop, which moves the idea up to that ancestor. The whole subtree travels along. With the keyboard, Alt+↑ and Alt+↓ reorder among siblings, Alt+→ makes the idea the last child of the one above it, and Alt+← takes it out to its grandparent. Escape cancels a drag.
-- Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), read one node with its description (`GET /api/nodes/{id}`; the window never carries it), edit title, description and per-kind `props` with version control (`PATCH /api/nodes/{id}`; `kind` is not patchable, and a task's `props` are `{status, checklist}`), move (`POST /api/nodes/{id}/move` with `{parent_id, place, version}`, where `place` is `"first"`, `"last"` or `{"after_id": …}`; the server computes the `sort_key`, refuses to move the root or to put a node inside its own subtree) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed; descriptions are 0 to 1000 characters, stored exactly as sent. Creating a child of a task, or moving a node into one, returns `422`: a task has no children.
+- Create children (`POST /api/nodes/{id}/children`, with an optional `after_sort_key`), read one node with its description (`GET /api/nodes/{id}`; the window never carries it), edit title, description and per-kind `props` with version control (`PATCH /api/nodes/{id}`; `kind` is not patchable, and a task's `props` are `{status, checklist}`), move (`POST /api/nodes/{id}/move` with `{parent_id, place, version}`, where `place` is `"first"`, `"last"` or `{"after_id": …}`; the server computes the `sort_key`, refuses to move the root or to put a node inside its own subtree) and delete (`DELETE /api/nodes/{id}`). With `?children=cascade` (the default) the whole subtree is deleted; with `?children=reparent` only the node is deleted and its direct children move to its parent, in one transaction, with new `sort_key` values between their siblings and each child's subtree intact. Any other value returns `422`. Titles are 1 to 200 characters, with leading and trailing spaces trimmed; descriptions are 0 to 1000 characters, stored exactly as sent. Creating a child of a task or a document, or moving a node into one, returns `422`: they have no children.
+- Document API: `POST /children` with `kind: "document"` creates an empty document; `GET /api/nodes/{id}` returns its Markdown in `content` (`""` for other kinds; the window never carries it); `PATCH` with `{content, version}` saves it, stored exactly as sent, up to 100,000 characters. `content` on another kind and `description` on a document return `422`. Migration `0004` adds the `node_documents` table, one row per document, deleted with the node.
 - Board API: `GET /api/nodes/{id}/board` returns `{focus, ancestors, tasks}` with every task descendant ordered by `board_rank`; `POST /api/nodes/{id}/board-move` takes `{status, place?, version}` where `place` is `{before_id}` or `{after_id}` naming another task of the map, sets the status inside `props` and computes the rank on the server (no `place` keeps it); `POST /children` with `kind: "task"` accepts an optional `board_place` of the same shape, and otherwise ranks the task in depth-first tree order. `GET /api/nodes/{id}` (and `PATCH`) also return `path`, the ancestors from the root to the parent. Migration `0003` adds `nodes.board_rank` and backfills existing tasks in tree order.
 - User isolation: a node that belongs to someone else returns `404`, and the SPA shows "Not found".
 - CSRF protection: every mutation requires the `X-CSRF: 1` header. Titles are always rendered as text, and the SPA is served with a `Content-Security-Policy`.
@@ -73,11 +74,11 @@ docker compose up --build
 
 Open `http://localhost:5173` and sign in with Google. All ports are published only on `127.0.0.1`.
 
-Keyboard (with the map focused, not editing): Tab creates a child, F2 edits the selected idea in the details panel, Escape clears the selection, Space collapses or expands, Delete removes, Enter focuses, Backspace goes up, the arrow keys move the selection and Alt with the arrow keys moves the idea itself. Double-click focuses a node, and double-clicking the focus goes up one level. While creating an idea: Enter confirms and creates a sibling, and Escape cancels.
+Keyboard (with the map focused, not editing): Tab creates a child idea, Shift+Tab opens the kind menu (1 idea, 2 task, 3 document), F2 edits the selected idea in the details panel, Escape clears the selection, Space collapses or expands, Delete removes, Enter focuses, Backspace goes up, the arrow keys move the selection and Alt with the arrow keys moves the idea itself. Double-click focuses a node, and double-clicking the focus goes up one level. While creating an idea: Enter confirms and creates a sibling, and Escape cancels.
 
 On the board (with a card focused): Enter opens its details, Delete removes it, Alt+← and Alt+→ change its column, Alt+↑ and Alt+↓ move it within the column, and Escape clears the selection or cancels a drag.
 
-With the mouse or the keyboard you can also reach the actions from the node: the "+" creates a child, the 🗑 deletes the node (with the dialog if it has children), and the "?" in the header shows the list of shortcuts. With focus on a button, Tab moves between the browser's controls and does not create a child.
+With the mouse or the keyboard you can also reach the actions from the node: the "+" opens the kind menu to create a child, the 🗑 deletes the node (with the dialog if it has children), and the "?" in the header shows the list of shortcuts. With focus on a button, Tab moves between the browser's controls and does not create a child.
 
 To run the SPA outside Docker against a local API: `pnpm --dir web dev` (the proxy points to `http://127.0.0.1:8000`, or to `API_PROXY_TARGET`).
 
@@ -112,7 +113,7 @@ docs/slices/              slice specifications: what the product does, as accept
 api/
   pyproject.toml, uv.lock uv environment (pytest, pytest-cov, testcontainers in dev)
   Dockerfile
-  alembic.ini, migrations/ migrations (0001: users, sessions, maps, nodes; 0002: description; 0003: board_rank)
+  alembic.ini, migrations/ migrations (0001: users, sessions, maps, nodes; 0002: description; 0003: board_rank; 0004: node_documents)
   scripts/export_openapi.py  writes the OpenAPI without starting the server
   app/
     main.py               create_app: middleware, routers with the /api prefix
@@ -121,7 +122,7 @@ api/
     auth/                 Google OAuth, sessions, CSRF, /me
     settings/             user preferences (depth)
     nodes/                window (recursive CTE), create, edit, move, delete (cascade or reparent), sort_keys, board (task descendants, board_rank, board-move)
-    node_types/           node type registry (idea) and props validation
+    node_types/           node type registry (idea, task, document: props schema, leaf, Markdown body)
     integrations/         empty in the first slice
   tests/                  pytest + httpx against an ephemeral PostgreSQL
 web/
@@ -137,19 +138,21 @@ web/
     move.test.tsx         move tests (dragging, gaps, breadcrumb, rollback, Alt shortcuts)
     detailsPanel.test.tsx details panel tests (loading, saving, keys, creation flow, rollback)
     board.test.tsx        board tests (routes, toggle, columns, panel, drag, Alt+arrows, add, delete, freshness)
+    documents.test.tsx    kind menu and document node tests (menu, creation, canvas, leaf rules)
+    documentPanel.test.tsx document editor tests (modes, saving, autosave, conflicts, rich editor, expand)
     api/                  fetch client with X-CSRF and the OpenAPI types (schema.ts)
-    components/           login, not-found page ("Not found"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children), DetailsPanel (path, title, status, description and checklist of the selected node), ViewToggle (Map | Board)
+    components/           login, not-found page ("Not found"), SettingsPanel, ShortcutsHelp ("?" button and shortcuts panel), DeleteDialog (deleting nodes with children), DetailsPanel (path, title, status, description and checklist of the selected node, or a document's editor), ViewToggle (Map | Board), document/ (DocumentEditor, the lazy RichDocumentEditor with TipTap, the Markdown schema and limits)
     board/                BoardPage, BoardColumn, BoardCard, useBoardView (loading and optimistic mutations), boardOrder.ts (pure column and place rules)
     map/
       tree.ts             normalized window and pure operations (insert, delete, reorder, arrows)
       layout.ts           horizontal tree layout
       dropTarget.ts       drop rules: what can be dragged, which targets move it, where the gaps go
       viewCache.ts        window cache by (node, N)
-      detailCache.ts      node details (description) by id, read on demand
+      detailCache.ts      node details (description, document content) by id, read on demand
       useMapView.ts       loading and optimistic mutations
       MapPage.tsx         map page, keyboard shortcuts, drag state, first-use hint and focus after editing
       MapCanvas.tsx       React Flow
-      nodes/              NodeRenderer (picks the component by kind), IdeaNode, TitleEditor, GapDropZone, nodeActions.ts
+      nodes/              NodeRenderer (picks the component by kind), IdeaNode, TaskNode, DocumentNode, KindMenu, kinds.ts (kind registry), TitleEditor, GapDropZone, nodeActions.ts
     test/                 jsdom setup, the fake API (fakeApi.ts) and helpers
 ```
 
@@ -164,6 +167,7 @@ web/
 - [x] Node details: description and a side panel to edit title and description
 - [x] Task nodes: status and checklist (slice 4A, the first of the task-oriented series)
 - [x] Kanban board of the focused node's tasks, with drag between columns and one global card order (slice 4B)
+- [x] Document nodes: Markdown body with a plain and a rich text editor, and a kind menu on "+" (slice 5)
 - [ ] Other node kinds: spreadsheets, calendar events, repositories or projects
 - [ ] Integrations with Google Calendar, Trello and GitHub
 - [ ] Mobile app that reuses the API, starting with a PWA

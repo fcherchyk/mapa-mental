@@ -111,8 +111,10 @@ button {
   background: none;
 }
 
-/* Canvas and details panel side by side: the panel takes width, it never covers the map. */
+/* Canvas and details panel side by side: the panel takes width, it never covers the map, except
+   for a document's expanded editor (slice 5, decision D6). */
 .map-body {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -316,12 +318,35 @@ button {
   top: calc(100% + 0.5rem);
   right: 0;
   z-index: 10;
-  width: min(22rem, 90vw);
+  width: min(44rem, 90vw);
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* One tab per section (slice 5, S5_FE_AC28). */
+.shortcuts-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcuts-tabs [role='tab'] {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  padding: 0.3rem 0.75rem;
+  color: var(--muted);
+}
+
+.shortcuts-tabs [role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .shortcuts-panel dl {
@@ -332,7 +357,7 @@ button {
 
 .shortcuts-panel dl > div {
   display: grid;
-  grid-template-columns: 6.5rem 1fr;
+  grid-template-columns: 8rem 1fr;
   gap: 0.5rem;
 }
 
@@ -342,6 +367,7 @@ button {
 }
 
 .map-node {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -700,7 +726,305 @@ button {
   overflow-wrap: anywhere;
 }
 
-.shortcuts-panel h2 {
-  margin: 0.5rem 0 0.25rem;
+/* The kind menu of "+" and Shift+Tab (slice 5, decision D8), hanging below its idea. */
+.map-kind-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+  font-weight: 400;
+}
+
+.map-kind-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.map-kind-menu button:hover,
+.map-kind-menu button:focus-visible {
+  background: var(--surface-muted);
+  outline: none;
+}
+
+.map-kind-menu kbd {
+  min-width: 1.2rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Documents (slice 5, decision D7): a page with a folded corner, the same footprint as an idea. */
+.map-node.is-document {
+  border-radius: 3px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--surface) 0,
+    var(--surface) 10px,
+    var(--surface-muted) 10px,
+    var(--surface-muted) 11px
+  );
+}
+
+.map-node.is-document::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  border-bottom-left-radius: 3px;
+  background: linear-gradient(to bottom left, var(--bg) 50%, var(--border) 50%);
+  pointer-events: none;
+}
+
+.map-node-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* A document's panel is wider; expanded, it covers the map (slice 5, decision D6). */
+.details-panel.is-document {
+  width: 36rem;
+}
+
+.details-panel.is-expanded {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: auto;
+  border-left: none;
+}
+
+.document-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.document-editor-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.document-modes {
+  display: flex;
+}
+
+.document-modes button {
+  border-radius: 0;
+}
+
+.document-modes button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.document-modes button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.document-modes button[aria-pressed='true'],
+.document-toolbar button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.document-plain {
+  tab-size: 4;
+  flex: 1;
+  min-height: 20rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.document-rich {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
+}
+
+.document-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.document-toolbar button {
+  min-width: 2rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.85rem;
+}
+
+/* Tooltips of the toolbar (slice 5, S5_FE_AC26): shown on hover and on keyboard focus. */
+.document-toolbar button {
+  position: relative;
+}
+
+.document-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 30;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms ease,
+    visibility 0s linear 120ms;
+}
+
+.document-tooltip.is-start {
+  left: 0;
+}
+
+.document-tooltip.is-center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.document-tooltip.is-end {
+  right: 0;
+}
+
+.document-toolbar button:hover .document-tooltip,
+.document-toolbar button:focus-visible .document-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 250ms, 250ms;
+}
+
+.document-rich > div:last-child {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.document-rich-content {
+  tab-size: 4;
+  flex: 1;
+  min-height: 20rem;
+  padding: 0.6rem 0.8rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  line-height: 1.5;
+}
+
+.document-rich-content:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.document-rich-content > :first-child {
+  margin-top: 0;
+}
+
+.document-rich-content blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.8rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.document-rich-content pre {
+  padding: 0.6rem;
+  border-radius: 4px;
+  background: var(--surface-muted);
+  overflow-x: auto;
+}
+
+.document-rich-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.document-rich-content :not(pre) > code {
+  padding: 0 0.2rem;
+  border-radius: 3px;
+  background: var(--surface-muted);
+}
+
+.document-rich-content ul[data-type='taskList'] {
+  padding-left: 0.2rem;
+  list-style: none;
+}
+
+.document-rich-content ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.document-rich-content ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+
+.document-rich-content ul[data-type='taskList'] p {
+  margin: 0;
+}
+
+.document-rich-content a {
+  color: var(--accent);
+}
+
+.document-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.document-footer .details-status {
+  text-align: left;
+}
+
+.document-conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--warning);
+  border-radius: 4px;
+  background: #fef3c7;
+  color: var(--warning);
+}
+
+.document-conflict p {
+  flex-basis: 100%;
+  margin: 0;
 }

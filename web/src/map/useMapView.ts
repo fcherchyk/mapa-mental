@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, type NodeDetail, type NodeOut, type TaskProps } from '../api/client';
 import { useSession } from '../session';
-import { DetailCache, withoutDescription } from './detailCache';
+import { DetailCache, withoutDetailFields } from './detailCache';
 import { placeFor, type DropTarget } from './dropTarget';
-import { allowsChildren, asProps, DEFAULT_KIND, propsForNewNode } from './nodes/taskProps';
+import { allowsChildren, DEFAULT_KIND, DOCUMENT_KIND } from './nodes/kinds';
+import { asProps, propsForNewNode } from './nodes/taskProps';
 import { cacheKey } from './viewCache';
 import {
   childOfFocusToward,
@@ -29,6 +30,9 @@ export type ViewStatus = 'loading' | 'ready' | 'notFound' | 'error';
 const CONFLICT_NOTICE = 'The idea changed elsewhere: the change was undone and the map reloaded.';
 const FAILURE_NOTICE = 'Could not save the change: it was undone.';
 const movedAwayNotice = (title: string) => `The idea moved into "${title}", outside this view.`;
+const DOCUMENT_CONFLICT_NOTICE =
+  'The document changed elsewhere: your last changes to it were not saved.';
+const DOCUMENT_FAILURE_NOTICE = 'Could not save your last changes to the document.';
 
 /**
  * Creating a child that waits for the right window to arrive: the focus moved one level down
@@ -100,6 +104,24 @@ export interface DetailsChange {
   props?: TaskProps;
 }
 
+/** How a document save ended; a conflict leaves the choice to the user (slice 5, D5). */
+export type ContentSaveOutcome = 'saved' | 'conflict' | 'failed';
+
+/** What the document editor needs from the view it lives in (slice 5). */
+export interface DocumentActions {
+  /**
+   * Saves a document's body, in turn with every other save. `detached` is for a save the editor
+   * will not be around to report: the map shows a notice if it fails.
+   */
+  save: (
+    id: string,
+    content: string,
+    options?: { detached?: boolean },
+  ) => Promise<ContentSaveOutcome>;
+  /** Reads the node again; resolves with its latest detail, or `null` if that failed. */
+  refresh: (id: string) => Promise<NodeDetail | null>;
+}
+
 export interface MapView {
   status: ViewStatus;
   state: MapState | null;
@@ -113,6 +135,10 @@ export interface MapView {
   detailOf: (id: string) => DetailState | null;
   retryDetail: (id: string) => void;
   saveDetails: (id: string, change: DetailsChange) => void;
+  documentActions: DocumentActions;
+  /** The document whose editor takes the focus as soon as it shows (slice 5, decision D9). */
+  editorFocusFor: string | null;
+  consumeEditorFocus: () => void;
   commitEdit: (id: string, title: string, createSibling: boolean) => void;
   cancelEdit: (id: string) => void;
   toggleCollapse: (id: string) => void;
@@ -142,6 +168,8 @@ export function useMapView(focusId: string, depth: number): MapView {
   const [detailStatus, setDetailStatus] = useState<Record<string, 'loading' | 'error'>>({});
   const [, setDetailsRead] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorFocusFor, setEditorFocusFor] = useState<string | null>(null);
+  const consumeEditorFocus = useCallback(() => setEditorFocusFor(null), []);
   const [notice, setNotice] = useState<string | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null);
   const [reloads, setReloads] = useState(0);
@@ -266,7 +294,7 @@ export function useMapView(focusId: string, depth: number): MapView {
       (state, updated: NodeDetail) => {
         if (needsReload) queueMicrotask(reloadFromServer);
         details.current.set(updated);
-        return patchNode(state, id, withoutDescription(updated));
+        return patchNode(state, id, withoutDetailFields(updated));
       },
     );
   };
@@ -338,9 +366,11 @@ export function useMapView(focusId: string, depth: number): MapView {
         resolvedIds.current.set(node.id, created.id);
         details.current.setCreated(created, pathTo(current, node.id));
         setSelectedId((selected) => (selected === node.id ? created.id : selected));
+        setEditorFocusFor((waiting) => (waiting === node.id ? created.id : waiting));
         return replaceNode(current, node.id, created);
       },
       (current) => removeSubtree(current, node.id),
+      () => setEditorFocusFor((waiting) => (waiting === node.id ? null : waiting)),
     );
   };
 
@@ -412,7 +442,7 @@ export function useMapView(focusId: string, depth: number): MapView {
         setDetailsRead((count) => count + 1);
         return updated;
       },
-      (current, updated: NodeDetail) => patchNode(current, id, withoutDescription(updated)),
+      (current, updated: NodeDetail) => patchNode(current, id, withoutDetailFields(updated)),
       undefined,
       () => {
         details.current.delete(id);
@@ -420,6 +450,67 @@ export function useMapView(focusId: string, depth: number): MapView {
       },
     );
   };
+
+  /** Puts a fresh detail in the cache and its node fields on the canvas. */
+  const applyDetail = (windowKey: string, updated: NodeDetail) => {
+    details.current.set(updated);
+    setDetailsRead((count) => count + 1);
+    const current = stateRef.current;
+    if (keyRef.current !== windowKey || !current?.nodes[updated.id]) {
+      cache.clear();
+      return;
+    }
+    const next = patchNode(current, updated.id, withoutDetailFields(updated));
+    commit(next);
+    cache.clear();
+    cache.set(windowKey, withoutPending(next));
+  };
+
+  /**
+   * Saves a document's body (slice 5, decision D5). Unlike `mutate`, a failure never rolls the
+   * editor back nor reloads the map: a long draft must survive a conflict.
+   */
+  const saveContent: DocumentActions['save'] = (id, content, options = {}) =>
+    new Promise((resolve) => {
+      const windowKey = keyRef.current;
+      const run = async () => {
+        // A node deleted meanwhile has nothing left to save.
+        if (!currentNode(id) && !details.current.get(id)) {
+          resolve('failed');
+          return;
+        }
+        try {
+          const version = currentNode(id)?.version ?? details.current.get(id)?.version ?? 0;
+          applyDetail(windowKey, await api.updateNode(id, { content, version }));
+          resolve('saved');
+        } catch (error) {
+          const outcome = error instanceof ApiError && error.status === 409 ? 'conflict' : 'failed';
+          const expired = error instanceof ApiError && error.status === 401;
+          if (options.detached && !expired) {
+            setNotice(outcome === 'conflict' ? DOCUMENT_CONFLICT_NOTICE : DOCUMENT_FAILURE_NOTICE);
+          }
+          resolve(outcome);
+        }
+      };
+      queueRef.current = queueRef.current.then(run);
+    });
+
+  /** Reads one node again, in turn, so the next save carries its current version (D5). */
+  const refreshNode: DocumentActions['refresh'] = (id) =>
+    new Promise((resolve) => {
+      const windowKey = keyRef.current;
+      const run = async () => {
+        try {
+          const fresh = await api.getNode(id);
+          applyDetail(windowKey, fresh);
+          resolve(fresh);
+        } catch {
+          setNotice(FAILURE_NOTICE);
+          resolve(null);
+        }
+      };
+      queueRef.current = queueRef.current.then(run);
+    });
 
   const commitEdit = (id: string, rawTitle: string, createSibling: boolean) => {
     const node = currentNode(id);
@@ -432,6 +523,11 @@ export function useMapView(focusId: string, depth: number): MapView {
         return;
       }
       createNode(node, title);
+    }
+    // Enter on a new document opens its editor instead of a sibling (slice 5, decision D9).
+    if (createSibling && node.pending && title && node.kind === DOCUMENT_KIND) {
+      setEditorFocusFor(id);
+      return;
     }
     // The chain keeps the kind: Enter after a task opens another task (decision D9).
     if (createSibling && node.parent_id && id !== stateRef.current?.focusId) {
@@ -585,6 +681,9 @@ export function useMapView(focusId: string, depth: number): MapView {
     detailOf,
     retryDetail: loadDetail,
     saveDetails,
+    documentActions: { save: saveContent, refresh: refreshNode },
+    editorFocusFor,
+    consumeEditorFocus,
     commitEdit,
     cancelEdit,
     toggleCollapse,

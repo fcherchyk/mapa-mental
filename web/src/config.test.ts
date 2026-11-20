@@ -75,4 +75,13 @@ describe('environment', () => {
     expect(existsSync(resolve(webDir, 'src/taskPanel.test.tsx'))).toBe(true);
     expect(config.test.coverage.thresholds.lines).toBe(80);
   });
+
+  it('S5_FE_AC24: the document suites run under the same coverage threshold', () => {
+    expect(existsSync(resolve(webDir, 'src/documents.test.tsx'))).toBe(true);
+    expect(existsSync(resolve(webDir, 'src/documentPanel.test.tsx'))).toBe(true);
+    expect(existsSync(resolve(webDir, 'src/components/document/documentMarkdown.test.ts'))).toBe(
+      true,
+    );
+    expect(config.test.coverage.thresholds.lines).toBe(80);
+  });
 });

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 DEFAULT_KIND = "idea"
 TASK_KIND = "task"
+DOCUMENT_KIND = "document"
 
 CHECKLIST_MAX_ITEMS = 30
 ITEM_TEXT_MAX_LENGTH = 100
@@ -62,17 +63,27 @@ class TaskProps(BaseModel):
         return self
 
 
+class DocumentProps(BaseModel):
+    """A document keeps its body in `node_documents`, not in `props` (slice 5, decision D2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class NodeType(NamedTuple):
-    """What the API knows about a kind: how to validate its props and whether it nests."""
+    """What the API knows about a kind: how to validate its props, whether it nests, and
+    whether it carries a Markdown body instead of a description (slice 5, decision D3)."""
 
     schema: type[BaseModel]
     allows_children: bool
+    has_content: bool = False
 
 
 NODE_TYPES: dict[str, NodeType] = {
     "idea": NodeType(IdeaProps, allows_children=True),
     # A task is a leaf: it holds a checklist, not other nodes (slice 4A, decision D3).
     TASK_KIND: NodeType(TaskProps, allows_children=False),
+    # A document is a leaf too: its content is its body (slice 5, decision D1).
+    DOCUMENT_KIND: NodeType(DocumentProps, allows_children=False, has_content=True),
 }
 
 
@@ -88,6 +99,12 @@ def allows_children(kind: str) -> bool:
     """Whether a node of this kind can be a parent. An unknown kind never can."""
     node_type = NODE_TYPES.get(kind)
     return node_type is not None and node_type.allows_children
+
+
+def has_content(kind: str) -> bool:
+    """Whether a node of this kind has a Markdown body and no description (slice 5, D3)."""
+    node_type = NODE_TYPES.get(kind)
+    return node_type is not None and node_type.has_content
 
 
 def validate_props(kind: str, props: dict[str, Any]) -> dict[str, Any]:

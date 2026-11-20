@@ -14,6 +14,8 @@ export type MapNodeData = {
   draggable: boolean;
   dragging: boolean;
   dropState: DropState;
+  /** The kind menu is open on this idea (slice 5, decision D8). */
+  menuOpen: boolean;
 };
 
 /** A drop zone drawn between two siblings while one of them is dragged. */
@@ -33,6 +35,9 @@ export interface NodeActions {
   open: (id: string) => void;
   /** Creates a child of the given kind; `idea` by default (slice 4A, decision D9). */
   createChild: (id: string, kind?: string) => void;
+  /** "+" opens the kind menu on an idea, or closes it if it is open (slice 5, decision D8). */
+  toggleKindMenu: (id: string) => void;
+  closeKindMenu: (focusMap: boolean) => void;
   /** A click on the empty canvas clears the selection (slice 3, decision D7). */
   clearSelection: () => void;
   remove: (id: string) => void;

@@ -151,7 +151,7 @@ export function BoardPage() {
         )}
         <div className="map-header-actions">
           <ViewToggle focusId={focusId} rootId={me.root_node_id} current="board" />
-          <ShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
+          <ShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} context="Board" />
           <span className="user-name">{me.name}</span>
           <button type="button" onClick={logout}>
             Sign out

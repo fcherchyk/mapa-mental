@@ -87,8 +87,11 @@ def test_S3_BE_AC3_get_returns_the_node_out_fields_plus_description(client: Test
 
     expected = {k: v for k, v in from_window.items() if k != "level"}
     # `path` joined the detail in slice 4B (decision D12); it is covered by S4B_BE_AC10.
-    assert {k: v for k, v in body.items() if k not in ("description", "path")} == expected
+    # `content` joined it in slice 5 (decision D3); it is covered by S5_BE_AC2.
+    extra = ("description", "path", "content")
+    assert {k: v for k, v in body.items() if k not in extra} == expected
     assert body["description"] == ""
+    assert body["content"] == ""
     assert body["child_count"] == 1
 
 

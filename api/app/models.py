@@ -98,3 +98,18 @@ class Node(Base):
 
     # SQLAlchemy bumps `version` on every UPDATE and fails if someone else changed it first.
     __mapper_args__ = {"version_id_col": version}
+
+
+class NodeDocument(Base):
+    """A document node's Markdown body (slice 5, decision D2).
+
+    Kept out of `nodes` so the window, which reads many rows, never touches long texts. One row
+    per document, created with the node and removed with it by the cascade.
+    """
+
+    __tablename__ = "node_documents"
+
+    node_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("nodes.id", ondelete="CASCADE"), primary_key=True
+    )
+    content: Mapped[str] = mapped_column(Text, default="", server_default=text("''"))

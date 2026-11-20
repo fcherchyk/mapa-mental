@@ -10,8 +10,9 @@ import { ViewToggle } from '../components/ViewToggle';
 import { pathFor, useSession } from '../session';
 import { isUsefulTarget, type DropTarget } from './dropTarget';
 import { MapCanvas, type DragState } from './MapCanvas';
+import { kindForKey } from './nodes/KindMenu';
 import { NodeActionsContext, type NodeActions } from './nodes/nodeActions';
-import { allowsChildren, TASK_KIND } from './nodes/taskProps';
+import { allowsChildren, isDocument } from './nodes/kinds';
 import { isRealRoot, moveSelection, visibleChildren, type ArrowKey } from './tree';
 import { useMapView } from './useMapView';
 
@@ -45,6 +46,7 @@ export function MapPage() {
   const { state, selectedId, editingId } = view;
   const [helpOpen, setHelpOpen] = useState(false);
   const [drag, setDrag] = useState<DragState>({ draggingId: null, hover: null });
+  const [kindMenuFor, setKindMenuFor] = useState<string | null>(null);
   const canvasRef = useRef<HTMLElement>(null);
   const wasEditing = useRef(false);
 
@@ -72,6 +74,30 @@ export function MapPage() {
 
   const goTo = (id: string) => navigate(pathFor(id, me.root_node_id));
 
+  // The kind menu belongs to the selected idea: another selection or an inline edit closes it.
+  useEffect(() => {
+    if (kindMenuFor && (kindMenuFor !== selectedId || editingId)) setKindMenuFor(null);
+  }, [kindMenuFor, selectedId, editingId]);
+
+  // A document waiting for its editor is forgotten once the selection leaves it (decision D9).
+  const { editorFocusFor, consumeEditorFocus } = view;
+  useEffect(() => {
+    if (editorFocusFor && selectedId !== editorFocusFor) consumeEditorFocus();
+  }, [editorFocusFor, selectedId, consumeEditorFocus]);
+
+  /** "+" or Shift+Tab on an idea opens the kind menu (slice 5, decision D8). */
+  const openKindMenu = (id: string) => {
+    const node = state?.nodes[id];
+    if (!node || node.pending || !allowsChildren(node.kind)) return;
+    view.select(id);
+    setKindMenuFor(id);
+  };
+
+  const closeKindMenu = (returnFocus: boolean) => {
+    setKindMenuFor(null);
+    if (returnFocus) focusMap();
+  };
+
   /** Double click: focuses the node; on the focus it goes up one level; on the real root, nothing. */
   const open = (id: string) => {
     if (!state || state.nodes[id]?.pending) return;
@@ -97,7 +123,12 @@ export function MapPage() {
   const actions: NodeActions = {
     select: view.select,
     open,
-    createChild: (id, kind) => view.startCreateChild(id, goTo, kind),
+    createChild: (id, kind) => {
+      setKindMenuFor(null);
+      view.startCreateChild(id, goTo, kind);
+    },
+    toggleKindMenu: (id) => (kindMenuFor === id ? closeKindMenu(true) : openKindMenu(id)),
+    closeKindMenu,
     clearSelection: view.clearSelection,
     remove: (id) => view.remove(id, goTo),
     commitEdit: view.commitEdit,
@@ -159,6 +190,22 @@ export function MapPage() {
     return true;
   };
 
+  /** 1–3 choose and Escape closes the open kind menu; other keys go on as usual. */
+  const answerKindMenu = (event: KeyboardEvent, parentId: string): boolean => {
+    const kind = event.altKey || event.ctrlKey || event.metaKey ? null : kindForKey(event.key);
+    if (kind) {
+      event.preventDefault();
+      actions.createChild(parentId, kind);
+      return true;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeKindMenu(true);
+      return true;
+    }
+    return false;
+  };
+
   const handleKey = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && drag.draggingId) {
       endDrag();
@@ -166,6 +213,8 @@ export function MapPage() {
       return;
     }
     if (!state || editingId || helpOpen || view.deleteRequest) return;
+    // The kind menu's keys work even if the focus did not reach the menu (slice 5, D8).
+    if (kindMenuFor && answerKindMenu(event, kindMenuFor)) return;
     if (isInteractiveTarget(event.target)) return;
     if (!selectedId) {
       // Nothing selected (decision D7): the arrows bring the selection back, on the focus.
@@ -185,9 +234,9 @@ export function MapPage() {
       if (moveWithKeyboard(selectedId, event.key as ArrowKey)) event.preventDefault();
       return;
     }
-    // Shift+Tab creates a task where Tab creates an idea (slice 4A, decision D9).
+    // Tab creates an idea; Shift+Tab opens the kind menu to choose (slice 5, decision D8).
     if (event.key === 'Tab' && event.shiftKey) {
-      view.startCreateChild(selectedId, goTo, TASK_KIND);
+      openKindMenu(selectedId);
       event.preventDefault();
       return;
     }
@@ -262,7 +311,11 @@ export function MapPage() {
         )}
         <div className="map-header-actions">
           <ViewToggle focusId={focusId} rootId={me.root_node_id} current="map" />
-          <ShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
+          <ShortcutsHelp
+            open={helpOpen}
+            onOpenChange={setHelpOpen}
+            context={panelNode && isDocument(panelNode) ? 'Document' : 'Map'}
+          />
           <SettingsPanel depth={depth} onDepthChange={setDepth} />
           <span className="user-name">{me.name}</span>
           <button type="button" onClick={logout}>
@@ -284,7 +337,13 @@ export function MapPage() {
           {!state && view.status === 'loading' && <p>Loading…</p>}
           {state && (
             <NodeActionsContext.Provider value={actions}>
-              <MapCanvas state={state} selectedId={selectedId} editingId={editingId} drag={drag} />
+              <MapCanvas
+                state={state}
+                selectedId={selectedId}
+                editingId={editingId}
+                drag={drag}
+                kindMenuFor={kindMenuFor === selectedId && !editingId ? kindMenuFor : null}
+              />
             </NodeActionsContext.Provider>
           )}
           {rootIsEmpty && <p className="map-hint">Tap + or Tab to add an idea</p>}
@@ -299,6 +358,9 @@ export function MapPage() {
             onSave={view.saveDetails}
             onRetry={view.retryDetail}
             onDone={focusMap}
+            documentActions={view.documentActions}
+            focusContent={editorFocusFor === panelNode.id}
+            onContentFocused={consumeEditorFocus}
           />
         )}
       </div>

@@ -4,12 +4,12 @@ import uuid
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
-from sqlalchemy import delete
+from sqlalchemy import delete, func
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
-from app.models import Node
-from app.node_types import TASK_KIND, allows_children, validate_props
+from app.models import Node, NodeDocument
+from app.node_types import TASK_KIND, allows_children, has_content, validate_props
 from app.nodes import repository
 from app.nodes.board import rank_for_new_task
 from app.nodes.schemas import (
@@ -61,7 +61,20 @@ def to_node_detail(db: Session, owner_id: uuid.UUID, node: Node) -> NodeDetail:
         PathEntry(id=row["id"], title=row["title"])
         for row in repository.fetch_ancestors(db, owner_id, node.id)
     ]
-    return NodeDetail(**to_node_out(db, node).model_dump(), description=node.description, path=path)
+    return NodeDetail(
+        **to_node_out(db, node).model_dump(),
+        description=node.description,
+        content=document_content(db, node),
+        path=path,
+    )
+
+
+def document_content(db: Session, node: Node) -> str:
+    """A document's body, read only for the detail (slice 5, decision D3); `""` otherwise."""
+    if not has_content(node.kind):
+        return ""
+    document = db.get(NodeDocument, node.id)
+    return document.content if document is not None else ""
 
 
 def get_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID) -> NodeDetail:
@@ -110,6 +123,10 @@ def create_child(
         board_rank=board_rank,
     )
     db.add(node)
+    if has_content(data.kind):
+        # The body is born empty, with the node, in the same transaction (slice 5, decision D2).
+        db.flush()
+        db.add(NodeDocument(node_id=node.id, content=""))
     db.commit()
     return to_node_out(db, node)
 
@@ -129,7 +146,7 @@ def update_node(
         raise not_found()
     if patch.version != node.version:
         raise HTTPException(status.HTTP_409_CONFLICT, VERSION_CONFLICT)
-    apply_patch(node, patch)
+    apply_patch(db, node, patch)
     try:
         db.commit()
     except StaleDataError:
@@ -138,7 +155,12 @@ def update_node(
     return to_node_detail(db, owner_id, node)
 
 
-def apply_patch(node: Node, patch: NodePatch) -> None:
+def apply_patch(db: Session, node: Node, patch: NodePatch) -> None:
+    # A document has content instead of a description (slice 5, decision D3).
+    if patch.content is not None and not has_content(node.kind):
+        raise unprocessable("only a document has content")
+    if patch.description is not None and has_content(node.kind):
+        raise unprocessable(f"a {node.kind} has no description")
     if patch.props is not None:
         try:
             node.props = validate_props(node.kind, patch.props)
@@ -152,6 +174,25 @@ def apply_patch(node: Node, patch: NodePatch) -> None:
         node.collapsed = patch.collapsed
     if patch.sort_key is not None:
         node.sort_key = patch.sort_key
+    if patch.content is not None:
+        apply_content(db, node, patch.content)
+
+
+def apply_content(db: Session, node: Node, content: str) -> None:
+    """Stores the body; a real change bumps the node's `version` like any other edit."""
+    # Without autoflush: flushing pending title changes here would write the node row twice and
+    # bump `version` twice for one PATCH.
+    with db.no_autoflush:
+        document = db.get(NodeDocument, node.id)
+    if document is None:
+        document = NodeDocument(node_id=node.id, content="")
+        db.add(document)
+    if document.content == content:
+        return
+    document.content = content
+    # The body lives in another table: touching `updated_at` makes the node row part of the
+    # UPDATE, so SQLAlchemy checks and bumps `version` in the same transaction.
+    node.updated_at = func.now()
 
 
 def move_node(db: Session, owner_id: uuid.UUID, node_id: uuid.UUID, data: NodeMove) -> NodeOut:

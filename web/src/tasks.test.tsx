@@ -6,7 +6,15 @@ import { currentPath, nodeElement, queryNode, renderApp, sampleTree } from './te
 const taskTitleInput = () => screen.getByLabelText('New task title');
 const queryTaskTitleInput = () => screen.queryByLabelText('New task title');
 const queryIdeaTitleInput = () => screen.queryByLabelText('New idea title');
-const addTaskButton = (title: string) => screen.getByLabelText(`Add a task inside ${title}`);
+const addButton = (title: string) => screen.getByLabelText(`Add inside ${title}`);
+const queryAddButton = (title: string) => screen.queryByLabelText(`Add inside ${title}`);
+const menuItem = (label: string) =>
+  within(screen.getByRole('menu', { hidden: true })).getByLabelText(label);
+/** Amended in slice 5 (decision D8): the task button became the "Task" entry of the kind menu. */
+const addTaskWith = (title: string) => {
+  fireEvent.click(addButton(title));
+  fireEvent.click(menuItem('Task'));
+};
 const createCalls = (api: FakeApi, parentId: string) =>
   api.callsTo('POST', `/api/nodes/${parentId}/children`);
 
@@ -27,40 +35,40 @@ const selectNode = async (id: string) => {
 
 // --- S4A_FE_AC1: the task button -------------------------------------------------------------
 
-describe('S4A_FE_AC1: the task button', () => {
-  it('S4A_FE_AC1: every idea offers "Add a task inside", and a task offers neither button', async () => {
+describe('S4A_FE_AC1: the kind menu offers tasks', () => {
+  it('S4A_FE_AC1: every idea has a "+" whose menu offers "Task", and a task has no "+"', async () => {
     renderApp('/n/f', taskApi());
     await screen.findByTestId('node-t');
 
-    expect(addTaskButton('Focus')).toBeInTheDocument();
-    expect(addTaskButton('Idea A')).toBeInTheDocument();
-    expect(screen.getByLabelText('Add an idea inside Idea A')).toBeInTheDocument();
+    expect(addButton('Focus')).toBeInTheDocument();
+    fireEvent.click(addButton('Idea A'));
+    expect(menuItem('Task')).toBeInTheDocument();
 
-    expect(screen.queryByLabelText('Add a task inside Call the vet')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Add an idea inside Call the vet')).not.toBeInTheDocument();
+    expect(queryAddButton('Call the vet')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Add a task inside Idea A')).not.toBeInTheDocument();
   });
 
-  it('S4A_FE_AC1: the task button is not drawn on a node being created', async () => {
+  it('S4A_FE_AC1: the node being created has no "+"', async () => {
     const { user } = renderApp('/n/f', taskApi());
     await screen.findByTestId('node-f');
     await selectNode('a');
 
-    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    await user.keyboard('{Shift>}{Tab}{/Shift}2');
 
     expect(taskTitleInput()).toBeInTheDocument();
-    expect(screen.queryByLabelText('Add a task inside ')).not.toBeInTheDocument();
+    expect(queryAddButton('')).not.toBeInTheDocument();
   });
 });
 
 // --- S4A_FE_AC2 and AC3: creating tasks -------------------------------------------------------
 
 describe('S4A_FE_AC2: creating a task inline', () => {
-  it('S4A_FE_AC2: Shift+Tab opens "New task title" and posts kind task without props', async () => {
+  it('S4A_FE_AC2: Shift+Tab then 2 opens "New task title" and posts kind task without props', async () => {
     const { user, api } = renderApp('/n/f', taskApi());
     await screen.findByTestId('node-f');
     await selectNode('a');
 
-    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    await user.keyboard('{Shift>}{Tab}{/Shift}2');
     expect(taskTitleInput()).toHaveFocus();
     expect(queryIdeaTitleInput()).not.toBeInTheDocument();
 
@@ -70,11 +78,11 @@ describe('S4A_FE_AC2: creating a task inline', () => {
     expect(createCalls(api, 'a')[0].body).toEqual({ title: 'Book a slot', kind: 'task' });
   });
 
-  it('S4A_FE_AC2: the task button creates the task and it is drawn as one', async () => {
+  it('S4A_FE_AC2: "Task" in the menu of + creates the task and it is drawn as one', async () => {
     const { user, api } = renderApp('/n/f', taskApi());
     await screen.findByTestId('node-f');
 
-    fireEvent.click(addTaskButton('Idea B'));
+    addTaskWith('Idea B');
     await user.type(taskTitleInput(), 'Book a slot{Enter}');
     await user.keyboard('{Escape}');
 
@@ -92,7 +100,7 @@ describe('S4A_FE_AC2: creating a task inline', () => {
     await screen.findByTestId('node-f');
     await selectNode('b');
 
-    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    await user.keyboard('{Shift>}{Tab}{/Shift}2');
     await user.type(taskTitleInput(), 'First{Enter}');
     await waitFor(() => expect(createCalls(api, 'b')).toHaveLength(1));
 
@@ -121,7 +129,7 @@ describe('S4A_FE_AC4: creating a task under a border or collapsed idea', () => {
     await screen.findByTestId('node-a');
     await selectNode('a');
 
-    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    await user.keyboard('{Shift>}{Tab}{/Shift}2');
 
     await waitFor(() => expect(currentPath()).toBe('/n/a'));
     await waitFor(() => expect(taskTitleInput()).toBeInTheDocument());
@@ -137,7 +145,7 @@ describe('S4A_FE_AC4: creating a task under a border or collapsed idea', () => {
     await screen.findByTestId('node-a');
     await selectNode('a');
 
-    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    await user.keyboard('{Shift>}{Tab}{/Shift}2');
 
     await waitFor(() => expect(api.nodes.get('a')!.collapsed).toBe(false));
     await waitFor(() => expect(taskTitleInput()).toBeInTheDocument());
@@ -158,6 +166,8 @@ describe('S4A_FE_AC5: nothing is created inside a task', () => {
 
     expect(queryTaskTitleInput()).not.toBeInTheDocument();
     expect(queryIdeaTitleInput()).not.toBeInTheDocument();
+    // Amended in slice 5: Shift+Tab opens no kind menu on a leaf.
+    expect(screen.queryByRole('menu', { hidden: true })).not.toBeInTheDocument();
     expect(createCalls(api, 't')).toHaveLength(0);
     expect(api.callsTo('PATCH', '/api/nodes/t')).toHaveLength(0);
   });
