@@ -1,14 +1,27 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FakeApi } from './test/fakeApi';
-import { currentPath, nodeElement, renderApp, sampleApi } from './test/renderApp';
+import { currentPath, nodeElement, renderApp, sampleApi, sampleTree } from './test/renderApp';
 
 // React Flow nodes stay `visibility: hidden` in jsdom, so the buttons inside them are looked up
 // by label and not by role.
 const titleInput = () => screen.getByLabelText('New idea title');
 const queryTitleInput = () => screen.queryByLabelText('New idea title');
-const addButton = (title: string) => screen.getByLabelText(`Add an idea inside ${title}`);
+const addButton = (title: string) => screen.getByLabelText(`Add inside ${title}`);
+const menuItem = (label: string) =>
+  within(screen.getByRole('menu', { hidden: true })).getByLabelText(label);
+/** Amended in slice 5 (decision D8): "+" opens the kind menu, and "Idea" creates the child. */
+const addIdeaWith = (title: string) => {
+  fireEvent.click(addButton(title));
+  fireEvent.click(menuItem('Idea'));
+};
 const helpButton = () => screen.getByRole('button', { name: 'Keyboard shortcuts' });
+// Amended in slice 5 (S5_FE_AC28): the panel has one tab per section.
+const helpTab = (name: string) => screen.getByRole('tab', { name });
+const helpGroup = (name: string) => {
+  fireEvent.click(helpTab(name));
+  return screen.getByRole('tabpanel', { name });
+};
 
 const selectNode = async (id: string) => {
   fireEvent.click(await screen.findByTestId(`node-${id}`));
@@ -19,7 +32,7 @@ describe('S1_FE_AC17: the + button creates a child in edit mode', () => {
   it('S1_FE_AC17: the root + creates a child in edit mode and Enter sends it as a POST', async () => {
     const { user, api } = renderApp('/', sampleApi());
     await screen.findByTestId('node-root');
-    fireEvent.click(addButton('My map'));
+    addIdeaWith('My map');
     expect(titleInput()).toHaveFocus();
     expect(api.callsTo('POST', /children/)).toHaveLength(0);
     await user.type(titleInput(), 'New idea{Enter}');
@@ -36,7 +49,7 @@ describe('S1_FE_AC17: the + button creates a child in edit mode', () => {
   it('S1_FE_AC17: the + of a child node creates a child in edit mode inside that node', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Idea A'));
+    addIdeaWith('Idea A');
     expect(titleInput()).toHaveFocus();
     await user.type(titleInput(), 'Child of A{Enter}');
     await waitFor(() => expect(api.callsTo('POST', '/api/nodes/a/children')).toHaveLength(1));
@@ -48,7 +61,7 @@ describe('S1_FE_AC17: the + button creates a child in edit mode', () => {
   it('S1_FE_AC17: an empty or whitespace-only title when creating with + is not sent to the API', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Focus'));
+    addIdeaWith('Focus');
     expect(titleInput()).toHaveFocus();
     await user.type(titleInput(), '   {Enter}');
     expect(queryTitleInput()).not.toBeInTheDocument();
@@ -59,7 +72,7 @@ describe('S1_FE_AC17: the + button creates a child in edit mode', () => {
   it('S1_FE_AC17: Escape while creating a child with + cancels the creation without calling the API', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Focus'));
+    addIdeaWith('Focus');
     expect(titleInput()).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(queryTitleInput()).not.toBeInTheDocument();
@@ -70,7 +83,7 @@ describe('S1_FE_AC17: the + button creates a child in edit mode', () => {
   it('S1_FE_AC17: a title with leading and trailing spaces when creating with + is sent trimmed', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Focus'));
+    addIdeaWith('Focus');
     await user.type(titleInput(), '   Idea with spaces   ');
     fireEvent.blur(titleInput());
     await waitFor(() => expect(api.callsTo('POST', '/api/nodes/f/children')).toHaveLength(1));
@@ -119,7 +132,7 @@ describe('S1_FE_AC18: the + button is present where it should be', () => {
   it('S1_FE_AC18: the pending node created with the + button has no + button in the DOM', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Focus'));
+    addIdeaWith('Focus');
     expect(titleInput().closest('.map-node')?.querySelector('.map-node-add')).toBeNull();
   });
 });
@@ -144,7 +157,8 @@ describe('S1_FE_AC19: the + button does not trigger other node actions', () => {
     await screen.findByTestId('node-f');
     fireEvent.click(addButton('Idea A'));
     expect(currentPath()).toBe('/n/f');
-    expect(titleInput()).toHaveFocus();
+    // Amended in slice 5: the click opens the kind menu on that idea, focused on its first entry.
+    expect(menuItem('Idea')).toHaveFocus();
   });
 });
 
@@ -153,7 +167,8 @@ describe('S1_FE_AC19: the + button does not trigger other node actions', () => {
 describe('S1_FE_AC21: shortcuts keep working after the +', () => {
   it('S1_FE_AC21: F2 works after creating a child with the +', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Add an idea inside Focus'));
+    await screen.findByTestId('node-f');
+    addIdeaWith('Focus');
     await user.type(titleInput(), 'New child');
     fireEvent.blur(titleInput());
     await waitFor(() => expect(nodeElement('new-1')).toHaveTextContent('New child'));
@@ -166,7 +181,8 @@ describe('S1_FE_AC21: shortcuts keep working after the +', () => {
 
   it('S1_FE_AC21: if creating with + is cancelled with Escape, focus returns to the map and shortcuts keep working', async () => {
     const { user } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Add an idea inside Focus'));
+    await screen.findByTestId('node-f');
+    addIdeaWith('Focus');
     expect(titleInput()).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(screen.getByRole('main')).toHaveFocus();
@@ -176,7 +192,8 @@ describe('S1_FE_AC21: shortcuts keep working after the +', () => {
 
   it('S1_FE_AC21: after creating a child with the + button, Tab on the new child creates a grandchild in edit mode', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
-    fireEvent.click(await screen.findByLabelText('Add an idea inside Focus'));
+    await screen.findByTestId('node-f');
+    addIdeaWith('Focus');
     await user.type(titleInput(), 'New child');
     fireEvent.blur(titleInput());
     await waitFor(() => expect(nodeElement('new-1')).toHaveTextContent('New child'));
@@ -196,9 +213,9 @@ describe('S1_FE_AC22: opening and closing the help', () => {
     const help = helpButton();
     expect(help).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(help);
-    // Since slice 4B the panel has a "Map" and a "Board" group (S4B_FE_AC20).
+    // Since slice 5 the panel has one tab per section, opened on the view's one (S5_FE_AC28).
     const panel = within(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).getByRole(
-      'region',
+      'tabpanel',
       { name: 'Map' },
     );
     const expected = [
@@ -206,16 +223,16 @@ describe('S1_FE_AC22: opening and closing the help', () => {
         key: 'Tab',
         desc: 'With the map focused, adds a child idea to the selected idea and starts editing it.',
       },
-      // F2 amended in slice 3 (S3_FE_AC20); the rest, in slice 4A (S4A_FE_AC23).
-      { key: 'F2', desc: 'Edit the selected idea or task in the details panel.' },
+      // F2 amended in slice 3 (S3_FE_AC20); the rest, in slices 4A (S4A_FE_AC23) and 5 (S5_FE_AC22).
+      { key: 'F2', desc: "Edit the selected node's title in the details panel." },
       { key: 'Space', desc: 'Collapses or expands the selected idea.' },
       {
         key: 'Delete',
-        desc: 'Deletes the selected idea or task. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
+        desc: 'Deletes the selected idea, task or document. If it has children, asks whether to delete the whole subtree or only the idea and move its children up.',
       },
       {
         key: 'Enter',
-        desc: 'Focuses the selected idea. While you create one, confirms it and opens a sibling of the same kind.',
+        desc: 'Focuses the selected idea. While you create one, confirms it and opens a sibling of the same kind; a new document opens its editor instead.',
       },
       { key: 'Backspace', desc: 'Goes up one level from the focused idea.' },
       {
@@ -224,7 +241,7 @@ describe('S1_FE_AC22: opening and closing the help', () => {
       },
       {
         key: 'Double click',
-        desc: 'Focuses the idea; on the focused idea, goes up one level. A task cannot be focused.',
+        desc: 'Focuses the idea; on the focused idea, goes up one level. Tasks and documents cannot be focused.',
       },
     ];
     for (const { key, desc } of expected) {
@@ -308,6 +325,9 @@ describe('S1_FE_AC24: it can be used with the keyboard only', () => {
 
     addButton('Focus').focus();
     await user.keyboard('{Enter}');
+    // Amended in slice 5: the + opens the kind menu; Enter on "Idea" creates the child.
+    expect(menuItem('Idea')).toHaveFocus();
+    await user.keyboard('{Enter}');
     expect(titleInput()).toHaveFocus();
   });
 
@@ -315,6 +335,8 @@ describe('S1_FE_AC24: it can be used with the keyboard only', () => {
     const { user } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     addButton('Focus').focus();
+    await user.keyboard(' ');
+    expect(menuItem('Idea')).toHaveFocus();
     await user.keyboard(' ');
     expect(titleInput()).toHaveFocus();
   });
@@ -349,7 +371,7 @@ describe('S1_FE_AC25: initial hint', () => {
     const { user } = renderApp('/', api);
     await screen.findByTestId('node-root');
     expect(screen.getByText(HINT)).toBeInTheDocument();
-    fireEvent.click(addButton('My map'));
+    addIdeaWith('My map');
     await user.type(titleInput(), 'First with +');
     fireEvent.blur(titleInput());
     await waitFor(() => expect(nodeElement('new-1')).toHaveTextContent('First with +'));
@@ -361,7 +383,7 @@ describe('S1_FE_AC25: initial hint', () => {
     const { user } = renderApp('/', api);
     await screen.findByTestId('node-root');
     expect(screen.getByText(HINT)).toBeInTheDocument();
-    fireEvent.click(addButton('My map'));
+    addIdeaWith('My map');
     expect(titleInput()).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(queryTitleInput()).not.toBeInTheDocument();
@@ -404,7 +426,7 @@ describe('S1_FE_AC27: focus when creating siblings', () => {
   it('S1_FE_AC27: Enter, Enter, Enter leaves the third sibling in edit mode and focused', async () => {
     const { user, api } = renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Focus'));
+    addIdeaWith('Focus');
     await user.keyboard('One{Enter}Two{Enter}Three{Enter}');
     expect(titleInput()).toHaveFocus();
     expect(titleInput()).toHaveValue('');
@@ -423,7 +445,7 @@ describe('S1_FE_AC26: creating beyond the border or inside a collapsed node', ()
     api.depth = 2;
     const { user } = renderApp('/n/root', api);
     await screen.findByTestId('node-root');
-    fireEvent.click(addButton('Idea A'));
+    addIdeaWith('Idea A');
     await waitFor(() => expect(currentPath()).toBe('/n/f'));
     await waitFor(() => expect(titleInput()).toHaveFocus());
     await user.type(titleInput(), 'Child of A');
@@ -448,7 +470,7 @@ describe('S1_FE_AC26: creating beyond the border or inside a collapsed node', ()
     api.nodes.get('a')!.collapsed = true;
     const { user } = renderApp('/n/f', api);
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Idea A'));
+    addIdeaWith('Idea A');
     await waitFor(() => expect(titleInput()).toHaveFocus());
     expect(api.callsTo('PATCH', '/api/nodes/a')[0].body).toEqual({ collapsed: false, version: 1 });
     expect(nodeElement('a1')).toBeInTheDocument();
@@ -464,7 +486,7 @@ describe('S1_FE_AC26: creating beyond the border or inside a collapsed node', ()
     api.failNext((call) => call.method === 'PATCH' && call.url === '/api/nodes/a', 500);
     const { user } = renderApp('/n/f', api);
     await screen.findByTestId('node-f');
-    fireEvent.click(addButton('Idea A'));
+    addIdeaWith('Idea A');
     await screen.findByRole('alert');
     expect(queryTitleInput()).not.toBeInTheDocument();
     // Expanding by hand afterwards does not open a child in edit mode for the failed +.
@@ -503,12 +525,12 @@ describe('S3_FE_AC20: the help describes the details panel', () => {
     await screen.findByTestId('node-f');
     fireEvent.click(helpButton());
     const help = within(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).getByRole(
-      'region',
+      'tabpanel',
       { name: 'Map' },
     );
-    // Amended in slice 4A (S4A_FE_AC23): the panel edits a task too.
+    // Amended in slices 4A (S4A_FE_AC23) and 5 (S5_FE_AC22): the panel edits every kind.
     expect(
-      within(help).getByText('Edit the selected idea or task in the details panel.'),
+      within(help).getByText("Edit the selected node's title in the details panel."),
     ).toBeInTheDocument();
     expect(within(help).getByText('Escape')).toBeInTheDocument();
     expect(
@@ -518,26 +540,27 @@ describe('S3_FE_AC20: the help describes the details panel', () => {
 });
 
 describe('S4A_FE_AC23: the help describes the task shortcuts', () => {
-  it('S4A_FE_AC23: Shift + Tab creates a task, and the drag entry names what a task refuses', async () => {
+  it('S4A_FE_AC23: Shift + Tab opens the kind menu, and the drag entry names what a leaf refuses', async () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(helpButton());
     const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
 
+    // Amended in slice 5 (S5_FE_AC22): Shift + Tab opens the kind menu, and documents are leaves.
     expect(within(help).getByText('Shift + Tab')).toBeInTheDocument();
     expect(
       within(help).getByText(
-        "With the map focused, adds a task inside the selected idea and starts editing it. Tasks can't contain anything.",
+        'With the map focused, opens the menu of what to add inside the selected idea, as + does: press 1 for an idea, 2 for a task or 3 for a document. Only ideas can have child nodes.',
       ),
     ).toBeInTheDocument();
     expect(
       within(help).getByText(
-        'Drop an idea or task on an idea to make it its last child, or between its own siblings to reorder it. Breadcrumb entries also accept the drop; a task never does.',
+        'Drop any node on an idea to make it its last child, or between its own siblings to reorder it. Breadcrumb entries also accept the drop; tasks and documents never do.',
       ),
     ).toBeInTheDocument();
     expect(
       within(help).getByText(
-        'Makes the selected idea or task the last child of the idea above it. A task takes nothing inside it.',
+        'Makes the selected node the last child of the idea above it. Only ideas can have child nodes.',
       ),
     ).toBeInTheDocument();
   });
@@ -548,8 +571,7 @@ describe('S4B_FE_AC20: the help describes the board', () => {
     renderApp('/n/f', sampleApi());
     await screen.findByTestId('node-f');
     fireEvent.click(helpButton());
-    const help = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
-    const group = within(help).getByRole('region', { name: 'Board' });
+    const group = helpGroup('Board');
 
     const expected = [
       { key: 'Enter', desc: "Opens the focused card's details." },
@@ -563,6 +585,119 @@ describe('S4B_FE_AC20: the help describes the board', () => {
       expect(within(group).getByText(key)).toBeInTheDocument();
       expect(within(group).getByText(desc)).toBeInTheDocument();
     }
-    expect(within(help).getByRole('region', { name: 'Map' })).toBeInTheDocument();
+    expect(helpTab('Map')).toBeInTheDocument();
+  });
+});
+
+describe('S5_FE_AC22: the help describes documents and the kind menu', () => {
+  it('S5_FE_AC22: Shift + Tab names the kind menu and its numbers, and a "Document" group lists the editor keys', async () => {
+    renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(helpButton());
+    const mapGroup = screen.getByRole('tabpanel', { name: 'Map' });
+
+    expect(
+      within(mapGroup).getByText(
+        'With the map focused, opens the menu of what to add inside the selected idea, as + does: press 1 for an idea, 2 for a task or 3 for a document. Only ideas can have child nodes.',
+      ),
+    ).toBeInTheDocument();
+    const group = helpGroup('Document');
+    for (const key of ['Markdown', 'Tab', 'Ctrl/⌘ + B, I', 'Escape']) {
+      expect(within(group).getByText(key)).toBeInTheDocument();
+    }
+    expect(
+      within(group).getByText(
+        'Collapses the expanded editor; otherwise saves and gives the keyboard back to the map. It never discards text. It is the way out of the editor, since Tab writes.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('S5_FE_AC25: a press outside closes the help', () => {
+  it('S5_FE_AC25: pressing the map closes the panel without moving the focus to "?"', async () => {
+    const { user } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(helpButton());
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('main'));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(helpButton()).toHaveAttribute('aria-expanded', 'false');
+    expect(helpButton()).not.toHaveFocus();
+  });
+
+  it('S5_FE_AC25: pressing inside the panel keeps it open, and "?" still toggles it', async () => {
+    const { user } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    await user.click(helpButton());
+
+    await user.click(helpTab('Document'));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(helpButton());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('S5_FE_AC28: the help has one tab per section', () => {
+  it('S5_FE_AC28: on the map it opens on "Map", and the tabs switch by click and arrows', async () => {
+    const { user } = renderApp('/n/f', sampleApi());
+    await screen.findByTestId('node-f');
+    fireEvent.click(helpButton());
+
+    const tabs = screen.getByRole('tablist', { name: 'Shortcut sections' });
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Map', 'Board', 'Document']);
+    expect(helpTab('Map')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Map' })).toBeInTheDocument();
+
+    fireEvent.click(helpTab('Document'));
+    expect(screen.getByRole('tabpanel', { name: 'Document' })).toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: 'Map' })).not.toBeInTheDocument();
+
+    helpTab('Document').focus();
+    await user.keyboard('{ArrowRight}');
+    expect(helpTab('Map')).toHaveFocus();
+    expect(screen.getByRole('tabpanel', { name: 'Map' })).toBeInTheDocument();
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('tabpanel', { name: 'Document' })).toBeInTheDocument();
+  });
+
+  it('S5_FE_AC28: on the board it opens on "Board", and the next opening follows the view again', async () => {
+    const { user } = renderApp('/n/f/board', sampleApi());
+    await screen.findByRole('heading', { name: 'Focus' });
+    fireEvent.click(helpButton());
+
+    expect(helpTab('Board')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Board' })).toBeInTheDocument();
+
+    // Another tab is a passing look; reopening starts from the view's tab again.
+    fireEvent.click(helpTab('Map'));
+    await user.keyboard('{Escape}');
+    fireEvent.click(helpButton());
+    expect(helpTab('Board')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('S5_FE_AC28: with a document selected on the map, it opens on "Document"', async () => {
+    const api = new FakeApi([
+      ...sampleTree(),
+      { id: 'd', parent_id: 'f', title: 'Notes', sort_key: 'Z', kind: 'document' },
+    ]);
+    renderApp('/n/f', api);
+    fireEvent.click(await screen.findByTestId('node-d'));
+    await screen.findByRole('complementary', { name: 'Document details' });
+
+    fireEvent.click(helpButton());
+    expect(helpTab('Document')).toHaveAttribute('aria-selected', 'true');
+
+    // Back on an idea, the help opens on "Map" again.
+    fireEvent.click(helpButton());
+    fireEvent.click(screen.getByTestId('node-a'));
+    fireEvent.click(helpButton());
+    expect(helpTab('Map')).toHaveAttribute('aria-selected', 'true');
   });
 });

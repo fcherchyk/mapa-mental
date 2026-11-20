@@ -446,7 +446,7 @@ def test_S1_BE_AC16_repeated_delete_returns_404(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize(
-    "extra", [{"kind": "document"}, {"props": {"url": "https://x"}}, {"props": "text"}]
+    "extra", [{"kind": "spreadsheet"}, {"props": {"url": "https://x"}}, {"props": "text"}]
 )
 def test_S1_BE_AC17_post_with_invalid_kind_or_props_returns_422(
     client: TestClient, extra: dict

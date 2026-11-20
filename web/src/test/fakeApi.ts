@@ -9,6 +9,7 @@ import type {
   PathEntry,
   TaskProps,
 } from '../api/client';
+import { DOCUMENT_KIND } from '../map/nodes/kinds';
 import { defaultTaskProps, TASK_KIND } from '../map/nodes/taskProps';
 
 export interface FakeNode {
@@ -19,15 +20,17 @@ export interface FakeNode {
   collapsed?: boolean;
   version?: number;
   description?: string;
+  /** A document's Markdown body (slice 5); always empty for other kinds. */
+  content?: string;
   kind?: string;
   props?: Record<string, unknown>;
   /** Board order (slice 4B); tasks without one get it in tree order, as the migration does. */
   board_rank?: number;
 }
 
-/** Kinds that take children, as `app/node_types` decides on the server (slice 4A, decision D3). */
+/** Kinds that take children, as `app/node_types` decides on the server (4A D3, 5 D1). */
 function allowsChildren(kind: string): boolean {
-  return kind !== TASK_KIND;
+  return kind !== TASK_KIND && kind !== DOCUMENT_KIND;
 }
 
 function propsFor(
@@ -69,6 +72,7 @@ export class FakeApi {
         collapsed: false,
         version: 1,
         description: '',
+        content: '',
         board_rank: 0,
         ...node,
         kind,
@@ -194,15 +198,21 @@ export class FakeApi {
   private out(node: Required<FakeNode>): NodeOut {
     const rest: Partial<Required<FakeNode>> = { ...node };
     delete rest.description;
+    delete rest.content;
     delete rest.board_rank;
     return {
-      ...(rest as Omit<Required<FakeNode>, 'description' | 'board_rank'>),
+      ...(rest as Omit<Required<FakeNode>, 'description' | 'content' | 'board_rank'>),
       child_count: this.children(node.id).length,
     };
   }
 
   detail(node: Required<FakeNode>): NodeDetail {
-    return { ...this.out(node), description: node.description, path: this.path(node) };
+    return {
+      ...this.out(node),
+      description: node.description,
+      content: node.content,
+      path: this.path(node),
+    };
   }
 
   private path(node: Required<FakeNode>): PathEntry[] {
@@ -326,6 +336,7 @@ export class FakeApi {
       collapsed: false,
       version: 1,
       description: '',
+      content: '',
       kind,
       props: propsFor(kind, body.props),
       board_rank: 0,
@@ -381,17 +392,32 @@ export class FakeApi {
       version: number;
       title?: string;
       description?: string;
+      content?: string;
       collapsed?: boolean;
       kind?: string;
       props?: Record<string, unknown>;
     };
     // `kind` is not a patchable field (slice 4A, decision D2).
     if (body.kind !== undefined) return json(422, { detail: 'unknown field: kind' });
+    // Only a document has content, and it has no description (slice 5, decision D3).
+    const isDocument = node.kind === DOCUMENT_KIND;
+    if (body.content !== undefined && !isDocument) {
+      return json(422, { detail: 'only a document has content' });
+    }
+    if (body.description !== undefined && isDocument) {
+      return json(422, { detail: 'a document has no description' });
+    }
     if (body.version !== node.version) return json(409, { detail: 'the node changed' });
+    const unchanged =
+      body.content !== undefined &&
+      body.content === node.content &&
+      Object.keys(body).every((key) => key === 'version' || key === 'content');
+    if (unchanged) return json(200, this.detail(node));
     const updated = {
       ...node,
       title: body.title ?? node.title,
       description: body.description ?? node.description,
+      content: body.content ?? node.content,
       collapsed: body.collapsed ?? node.collapsed,
       props: body.props ?? node.props,
       version: node.version + 1,

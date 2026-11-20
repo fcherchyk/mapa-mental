@@ -1,7 +1,7 @@
 import type { NodeDetail, NodeOut, PathEntry } from '../api/client';
 
 /**
- * Node details (today, the description) by id. The window never carries them (slice 3,
+ * Node details (the description, and a document's content since slice 5) by id. The window never carries them (slice 3,
  * decision D2): they are read once with `GET /nodes/{id}` and then kept fresh by every `PATCH`.
  */
 export class DetailCache {
@@ -16,11 +16,11 @@ export class DetailCache {
   }
 
   /**
-   * A node that was just created has an empty description: no need to ask for it. Its path is
+   * A node that was just created has an empty description and content: no need to ask for them. Its path is
    * known to the caller, which has the parent's ancestors on screen (slice 4B, decision D12).
    */
   setCreated(node: NodeOut, path: PathEntry[]): void {
-    this.set({ ...withoutDescription(node), description: '', path });
+    this.set({ ...withoutDetailFields(node), description: '', content: '', path });
   }
 
   delete(id: string): void {
@@ -35,9 +35,14 @@ export class DetailCache {
   }
 }
 
-/** `PATCH` answers with a `NodeDetail`; the window's nodes must not carry the description. */
-export function withoutDescription<T extends NodeOut>(node: T): NodeOut {
-  const rest: NodeOut & { description?: string } = { ...node };
+/**
+ * `PATCH` answers with a `NodeDetail`; the window's nodes carry neither the description nor a
+ * document's content (slice 3, D2; slice 5, D3), nor the path.
+ */
+export function withoutDetailFields<T extends NodeOut>(node: T): NodeOut {
+  const rest: NodeOut & { description?: string; content?: string; path?: unknown } = { ...node };
   delete rest.description;
+  delete rest.content;
+  delete rest.path;
   return rest;
 }

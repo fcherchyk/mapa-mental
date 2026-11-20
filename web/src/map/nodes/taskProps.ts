@@ -1,18 +1,12 @@
 import type { ChecklistItem, NodeOut, TaskProps, TaskStatus } from '../../api/client';
+import { TASK_KIND } from './kinds';
 
 /** Mirrors `api/app/node_types` (slice 4A, decision D6). */
 export const CHECKLIST_MAX_ITEMS = 30;
 export const ITEM_TEXT_MAX_LENGTH = 100;
 
-export const TASK_KIND = 'task';
-export const DEFAULT_KIND = 'idea';
-
-/** Kinds that can be a parent. A task is a leaf (decision D3); the API enforces it. */
-const LEAF_KINDS = new Set<string>([TASK_KIND]);
-
-export function allowsChildren(kind: string): boolean {
-  return !LEAF_KINDS.has(kind);
-}
+// The kind registry lives in `kinds.ts` since slice 5; re-exported for the task modules.
+export { allowsChildren, DEFAULT_KIND, TASK_KIND } from './kinds';
 
 export function isTask(node: Pick<NodeOut, 'kind'> | undefined): boolean {
   return node?.kind === TASK_KIND;

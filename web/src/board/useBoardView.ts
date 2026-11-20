@@ -6,7 +6,7 @@ import {
   type NodeOut,
   type TaskStatus,
 } from '../api/client';
-import { DetailCache, withoutDescription } from '../map/detailCache';
+import { DetailCache, withoutDetailFields } from '../map/detailCache';
 import { asProps, defaultTaskProps, TASK_KIND, taskPropsOf } from '../map/nodes/taskProps';
 import type { DetailsChange, DetailState } from '../map/useMapView';
 import { useSession } from '../session';
@@ -306,7 +306,7 @@ export function useBoardView(focusId: string): BoardViewModel {
         setDetailsRead((count) => count + 1);
         return updated;
       },
-      (tasks, updated: NodeDetail) => replaceCard(tasks, id, withoutDescription(updated)),
+      (tasks, updated: NodeDetail) => replaceCard(tasks, id, withoutDetailFields(updated)),
       () => {
         details.current.delete(id);
         setDetailStatus((status) => withoutKey(status, id));

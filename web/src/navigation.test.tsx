@@ -113,6 +113,7 @@ describe('focus navigation', () => {
         board_rank: 0,
         version: 1,
         description: '',
+        content: '',
         kind: 'idea',
         props: {},
       });

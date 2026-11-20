@@ -17,6 +17,7 @@ run, in Spanish, kept as history) and in `.agents/log.md`.
 | 3 | [slice-3-node-details.md](slice-3-node-details.md) — node description and details side panel (replaces the pencil) | Delivered |
 | 4A | [slice-4a-task-nodes.md](slice-4a-task-nodes.md) — task nodes: kind, status and checklist | Delivered |
 | 4B | [slice-4b-kanban-board.md](slice-4b-kanban-board.md) — kanban board of the focused node's tasks, with one global card order | Delivered |
+| 5 | [slice-5-document-nodes.md](slice-5-document-nodes.md) — document nodes: Markdown body with plain and rich editor; "+" becomes a kind menu | Delivered |
 
 The backlog beyond slice 1 is the [Roadmap in `README.md`](../../README.md#roadmap).
 

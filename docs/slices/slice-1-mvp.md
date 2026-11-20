@@ -360,6 +360,7 @@ Given a map with the root focused, when the button named "Add idea inside &lt;ro
 clicked, then a new child appears with the title editor open, the same as pressing Tab; confirming
 with Enter calls `POST /nodes/{id}/children` with the typed title. An empty or whitespace-only
 title is not sent, spaces are trimmed and Escape cancels without calling the API.
+*Amended by slice 5 (decision D8): "+" is labelled "Add inside &lt;title&gt;" and opens the kind menu; the child idea is created by choosing "Idea" (click, Enter or 1). The tests open the menu and choose Idea.*
 → `S1_FE_AC17:` in `web/src/actions.test.tsx` (5 tests)
 
 **S1_FE_AC18 — The "+" is present where it should be.**
@@ -372,6 +373,8 @@ edited has it in the DOM, including collapsed and border nodes, where it is enab
 Double-clicking the "+" of a node that is not the focus does not change the route; double-clicking
 the "+" of the focus does not go up a level; a single click on a child's "+" does not navigate to
 or focus that node.
+*Amended by slice 5: the single click opens the kind menu, focused on its first entry, instead of
+a title field.*
 → `S1_FE_AC19:` in `web/src/actions.test.tsx` (3 tests)
 
 **S1_FE_AC20 — Shortcuts keep working after the pencil.** *Superseded by slice 3 (`S3_FE_AC14`):
@@ -386,6 +389,7 @@ Given a child created with the "+" button and confirmed, F2 puts the focus on th
 title (*amended by slice 3*) and
 Tab on the new child creates a grandchild in edit mode. If the creation is cancelled with Escape,
 focus returns to the map and the shortcuts keep working.
+*Amended by slice 5: "created with the '+'" means "+" then "Idea" in the kind menu.*
 → `S1_FE_AC21:` in `web/src/actions.test.tsx` (3 tests)
 
 **S1_FE_AC22 — Opening and closing the help.**
@@ -394,7 +398,8 @@ their descriptions, and the button becomes `aria-expanded="true"`. Escape or a s
 the panel, returns focus to the "?" button and sets `aria-expanded="false"`.
 *Amended by slice 2 (`S2_FE_AC17`): this used to require exactly the 8 shortcuts of slice 1, and
 now requires those 8 to be present, since slice 2 adds the `Alt` and `Drag` entries. Slice 3
-(`S3_FE_AC20`) rewords F2 and Enter and adds Escape.*
+(`S3_FE_AC20`) rewords F2 and Enter and adds Escape.* *Amended by slice 5 (`S5_FE_AC25`): a press anywhere
+outside the panel and "?" also closes it, without moving the focus to "?".*
 → `S1_FE_AC22:` in `web/src/actions.test.tsx` (2 tests)
 
 **S1_FE_AC23 — The help does not trigger map shortcuts.**
@@ -405,7 +410,8 @@ neither create children, edit nor navigate, and the arrows do not change the sel
 **S1_FE_AC24 — It can be used with the keyboard only.**
 Reaching "?" or a "+" with the browser's focus and pressing Enter or Space runs the same action as
 the click. With focus on a button, Tab does not create a child: it moves to the next interactive
-control.
+control. *Amended by slice 5: Enter or Space on "+" opens the kind menu, and a second Enter or
+Space creates the idea.*
 → `S1_FE_AC24:` in `web/src/actions.test.tsx` (3 tests)
 
 **S1_FE_AC25 — First-use hint.**

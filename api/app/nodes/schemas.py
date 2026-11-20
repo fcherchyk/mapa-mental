@@ -8,6 +8,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -24,6 +25,10 @@ DESCRIPTION_MAX_LENGTH = 1000
 
 # Not trimmed: line breaks and indentation belong to the user (slice 3, decision D3).
 Description = Annotated[str, StringConstraints(max_length=DESCRIPTION_MAX_LENGTH)]
+CONTENT_MAX_LENGTH = 100_000
+
+# A document's raw Markdown, stored as sent like the description (slice 5, decision D2).
+Content = Annotated[str, StringConstraints(max_length=CONTENT_MAX_LENGTH)]
 SortKey = Annotated[str, StringConstraints(pattern=SORT_KEY_PATTERN, max_length=128)]
 
 
@@ -84,19 +89,21 @@ class NodePatch(BaseModel):
     version: Annotated[int, Field(strict=True, ge=1)]
     title: Title | None = None
     description: Description | None = None
+    # Only a document has content, and a document has no description (slice 5, decision D3).
+    content: Content | None = None
     collapsed: bool | None = None
     sort_key: SortKey | None = None
     # `kind` is not patchable: a node is born its kind (slice 4A, decision D2). `extra="forbid"`
     # turns a `kind` in the body into a 422.
     props: dict[str, Any] | None = None
 
-    @field_validator("description", mode="before")
+    @field_validator("description", "content", mode="before")
     @classmethod
-    def description_is_never_null(cls, description: object) -> object:
+    def text_is_never_null(cls, value: object, info: ValidationInfo) -> object:
         """Absent means "unchanged"; an explicit null is refused, `""` is the empty value."""
-        if description is None:
-            raise ValueError("description cannot be null; send an empty string to clear it")
-        return description
+        if value is None:
+            raise ValueError(f"{info.field_name} cannot be null; send an empty string to clear it")
+        return value
 
 
 class AfterSibling(BaseModel):
@@ -157,6 +164,7 @@ class NodeDetail(NodeOut):
     """A single node with the fields the window does not carry (slice 3, decision D2)."""
 
     description: str
+    content: str = Field(description="A document's Markdown body; empty for other kinds (slice 5).")
     path: list[PathEntry] = Field(description="From the root to the node's parent (slice 4B).")
 
 

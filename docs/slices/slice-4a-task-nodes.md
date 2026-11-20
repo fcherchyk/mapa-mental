@@ -1,6 +1,8 @@
 # Slice 4A — Task nodes: kind, status and checklist
 
-**Status:** delivered.
+**Status:** delivered. *Slice 5 replaced the task button with the kind menu: "+" or Shift+Tab
+opens it and "Task" (or 2) creates a task. D9, D14, `S4A_FE_AC1`–`AC5` and `AC23` are amended
+accordingly; see [slice 5](slice-5-document-nodes.md), section 7.*
 
 Builds on [slice 1](slice-1-mvp.md), [slice 2](slice-2-move-and-reorder.md) and
 [slice 3](slice-3-node-details.md). Criteria ids follow the convention in [README.md](README.md):
@@ -122,7 +124,8 @@ shows nothing. The status word is not drawn; the stripe carries it as an accessi
 ("Status: In progress") for assistive technology only. Tasks show no "+" and no "+k": they never
 have children. They show 🗑 like ideas, and they can be dragged.
 
-**D9 — Creating a task mirrors creating an idea.**
+**D9 — Creating a task mirrors creating an idea.** *(Amended by slice 5, D8: the button and the
+direct Shift+Tab gave way to the kind menu.)*
 A second button on every **idea** (not on tasks) with the accessible label "Add a task inside
 <title>", shown with the same hover/selection rules as "+", and the **Shift+Tab** shortcut. Both
 open the inline `TitleEditor` with the label "New task title". Confirming creates the node with
@@ -274,13 +277,15 @@ a task on another user's node answers `404`.
 
 ### Creating tasks
 
-**S4A_FE_AC1 — The task button.**
+**S4A_FE_AC1 — The task button.** *(Amended by slice 5: the "Task" entry of the kind menu of
+"+"; tasks have no "+", and a node being created has none either.)*
 Every idea node has a button with the accessible label "Add a task inside <title>", shown under
 the same rules as "+" (focus, selection, hover; never while editing or pending). Task nodes have
 neither "+" nor the task button.
 → `S4A_FE_AC1:` in `web/src/tasks.test.tsx`
 
-**S4A_FE_AC2 — Creating a task inline.**
+**S4A_FE_AC2 — Creating a task inline.** *(Amended by slice 5: Shift+Tab opens the kind menu and
+2, or "Task", opens the editor.)*
 Given an idea selected and the map focused, when Shift+Tab is pressed (or the task button is
 clicked), then an inline editor labelled "New task title" opens as a new last child. Confirming
 with Enter sends `POST /children` with `{title, kind: "task"}` (no `props`), and the created node
@@ -405,7 +410,8 @@ Shift+Tab, Delete, Backspace, Space, the arrows and Alt+arrows never act on the 
 
 ### Help, manual, coverage
 
-**S4A_FE_AC23 — The shortcuts panel.**
+**S4A_FE_AC23 — The shortcuts panel.** *(Amended by slice 5, `S5_FE_AC22`: new Shift + Tab
+wording, and the Alt and Drag entries name documents.)*
 The "?" panel lists Shift+Tab with the wording of D14 and the amended Tab, Drag and Alt+→ entries.
 → `S4A_FE_AC23:` in `web/src/actions.test.tsx`
 

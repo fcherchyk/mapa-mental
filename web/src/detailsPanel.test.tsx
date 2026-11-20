@@ -385,6 +385,7 @@ describe('S4B_FE_AC8: the panel shows the path', () => {
       collapsed: false,
       version: 1,
       description: '',
+      content: '',
       kind: 'task',
       props: { status: 'to_do', checklist: [] },
       board_rank: 1,

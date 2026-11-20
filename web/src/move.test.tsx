@@ -437,15 +437,15 @@ describe('the shortcuts panel', () => {
 
     // The map's group of the panel; the board has its own since slice 4B (S4B_FE_AC20).
     const panel = within(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).getByRole(
-      'region',
+      'tabpanel',
       { name: 'Map' },
     );
     for (const keys of ['Alt + ↑ ↓', 'Alt + →', 'Alt + ←', 'Drag']) {
       expect(within(panel).getByText(keys)).toBeInTheDocument();
     }
     expect(
-      // Amended in slice 4A (S4A_FE_AC23): a task moves with the same keys.
-      within(panel).getByText('Move the selected idea or task up or down among its siblings.'),
+      // Amended in slices 4A (S4A_FE_AC23) and 5 (S5_FE_AC22): every kind moves with these keys.
+      within(panel).getByText('Move the selected node up or down among its siblings.'),
     ).toBeInTheDocument();
   });
 });

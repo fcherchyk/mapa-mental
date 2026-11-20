@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import type { ChecklistItem, TaskStatus } from '../api/client';
+import { capitalized, isDocument, kindName } from '../map/nodes/kinds';
 import { isTask, taskPropsOf } from '../map/nodes/taskProps';
-import type { DetailState, DetailsChange } from '../map/useMapView';
+import type { DetailState, DetailsChange, DocumentActions } from '../map/useMapView';
 import { ChecklistEditor } from './ChecklistEditor';
+import { DocumentEditor } from './document/DocumentEditor';
 import { StatusControl } from './StatusControl';
 
 export const DESCRIPTION_MAX_LENGTH = 1000;
@@ -20,7 +22,14 @@ interface DetailsPanelProps {
   onRetry: (id: string) => void;
   /** Gives the keyboard back to the map (S3_FE_AC14). */
   onDone: () => void;
+  /** Saving and reloading a document's body; only the map has documents (slice 5). */
+  documentActions?: DocumentActions;
+  /** The document editor takes the focus when it shows (slice 5, decision D9). */
+  focusContent?: boolean;
+  onContentFocused?: () => void;
 }
+
+const noop = () => {};
 
 /**
  * The selected node's title and description, always editable (slice 3). Each field saves when it
@@ -41,7 +50,14 @@ function DetailsForm({
   onSave,
   onRetry,
   onDone,
+  documentActions,
+  focusContent = false,
+  onContentFocused = noop,
 }: DetailsPanelProps) {
+  // A document has a body instead of a description (slice 5, decision D3).
+  const documentKind = isDocument({ kind });
+  // The wide editor over the map (decision D6); it belongs to one node, like the drafts.
+  const [expanded, setExpanded] = useState(false);
   const savedDescription = detail.status === 'ready' ? detail.detail.description : '';
   // A task's own fields come from the window's `props`, which always carries them (decision D1).
   const task = isTask({ kind });
@@ -151,8 +167,10 @@ function DetailsForm({
 
   return (
     <aside
-      className="details-panel"
-      aria-label={task ? 'Task details' : 'Idea details'}
+      className={['details-panel', documentKind && 'is-document', expanded && 'is-expanded']
+        .filter(Boolean)
+        .join(' ')}
+      aria-label={`${capitalized(kindName(kind))} details`}
       onKeyDown={stop}
     >
       {path.length > 0 && (
@@ -186,33 +204,49 @@ function DetailsForm({
       {task && detail.status === 'ready' && (
         <StatusControl status={props.status} onChange={saveStatus} />
       )}
-      <label className="details-field">
-        <span>Description</span>
-        <textarea
-          value={descriptionDraft}
-          maxLength={DESCRIPTION_MAX_LENGTH}
-          rows={8}
-          disabled={detail.status !== 'ready'}
-          onFocus={() => (editing.current.description = true)}
-          onChange={(event) => {
-            editing.current.description = true;
-            drafts.current.description = event.target.value;
-            setDescriptionDraft(event.target.value);
-          }}
-          onBlur={() => editing.current.description && saveDescription()}
-          onKeyDown={onDescriptionKey}
-        />
-      </label>
-      <p className="details-counter" aria-live="polite">
-        {descriptionDraft.length} / {DESCRIPTION_MAX_LENGTH}
-      </p>
+      {!documentKind && (
+        <>
+          <label className="details-field">
+            <span>Description</span>
+            <textarea
+              value={descriptionDraft}
+              maxLength={DESCRIPTION_MAX_LENGTH}
+              rows={8}
+              disabled={detail.status !== 'ready'}
+              onFocus={() => (editing.current.description = true)}
+              onChange={(event) => {
+                editing.current.description = true;
+                drafts.current.description = event.target.value;
+                setDescriptionDraft(event.target.value);
+              }}
+              onBlur={() => editing.current.description && saveDescription()}
+              onKeyDown={onDescriptionKey}
+            />
+          </label>
+          <p className="details-counter" aria-live="polite">
+            {descriptionDraft.length} / {DESCRIPTION_MAX_LENGTH}
+          </p>
+        </>
+      )}
       {task && detail.status === 'ready' && (
         <ChecklistEditor checklist={props.checklist} onChange={saveChecklist} onDone={onDone} />
+      )}
+      {documentKind && documentActions && detail.status === 'ready' && (
+        <DocumentEditor
+          nodeId={nodeId}
+          detail={detail.detail}
+          actions={documentActions}
+          expanded={expanded}
+          onToggleExpanded={() => setExpanded((open) => !open)}
+          autoFocus={focusContent}
+          onAutoFocused={onContentFocused}
+          onDone={onDone}
+        />
       )}
       {detail.status === 'loading' && <p className="details-status">Loading…</p>}
       {detail.status === 'error' && (
         <p role="alert" className="details-error">
-          Could not load the description.{' '}
+          {documentKind ? 'Could not load the document.' : 'Could not load the description.'}{' '}
           <button type="button" onClick={() => onRetry(nodeId)}>
             Retry
           </button>
