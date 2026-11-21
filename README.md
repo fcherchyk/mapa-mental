@@ -168,12 +168,12 @@ web/
 - [x] Task nodes: status and checklist (slice 4A, the first of the task-oriented series)
 - [x] Kanban board of the focused node's tasks, with drag between columns and one global card order (slice 4B)
 - [x] Document nodes: Markdown body with a plain and a rich text editor, and a kind menu on "+" (slice 5)
-- [ ] Other node kinds: spreadsheets, calendar events, repositories or projects
-- [ ] Integrations with Google Calendar, Trello and GitHub
-- [ ] Mobile app that reuses the API, starting with a PWA
+- [ ] Node kind github repo
+- [ ] Node kind calendar event
+- [ ] Node kind encrypted data
 - [ ] Deployment beyond local
-- [ ] Integrations with task management tools, Google Docs links, attachments and other services
-- [ ] Share the map with an AI assistant as context, with edit permissions
+- [ ] Node kind doc lin
+- [ ] Node kibng image
 - [ ] Better design and usability
 - [ ] Mobile-friendly view
 - [ ] Multi-language support
